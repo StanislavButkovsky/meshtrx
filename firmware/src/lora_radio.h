@@ -4,6 +4,11 @@
 // === Конфигурация ===
 #define ENFORCE_DUTY_CYCLE  false
 #define TX_POWER_DBM        14
+#ifdef BOARD_V4
+  #define MAX_TX_POWER_DBM  22   // SX1262 max; GC1109 PA добавляет ~6 dB
+#else
+  #define MAX_TX_POWER_DBM  22   // SX1262 max (V3, без PA)
+#endif
 #define DUTY_CYCLE_PERCENT  1
 #define NUM_CHANNELS        23
 #define DEFAULT_CHANNEL     0

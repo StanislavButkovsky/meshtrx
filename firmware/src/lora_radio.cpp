@@ -154,10 +154,10 @@ int8_t loraGetSNR() {
 
 void loraSetTxPower(int8_t power) {
   if (power < 1) power = 1;
-  if (power > 22) power = 22;
+  if (power > MAX_TX_POWER_DBM) power = MAX_TX_POWER_DBM;
   currentTxPower = power;
   radio.setOutputPower(power);
-  Serial.printf("[LoRa] TX power → %d dBm\n", power);
+  Serial.printf("[LoRa] TX power → %d dBm (max %d)\n", power, MAX_TX_POWER_DBM);
 }
 
 void loraSetDutyCycle(bool enabled) {

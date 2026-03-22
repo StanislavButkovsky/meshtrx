@@ -63,7 +63,7 @@
             android:text="TX: 14 dBm" android:textSize="13sp" android:textColor="#cccccc" />
         <SeekBar android:id="@+id/seekTxPower"
             android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:min="1" android:max="22" android:progress="14" />
+            android:min="1" android:max="30" android:progress="14" />
 
         <LinearLayout
             android:layout_width="match_parent" android:layout_height="wrap_content"
