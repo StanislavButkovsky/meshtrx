@@ -153,11 +153,14 @@ int8_t loraGetSNR() {
 }
 
 void loraSetTxPower(int8_t power) {
+  // power — эффективная мощность (включая PA gain)
   if (power < 1) power = 1;
   if (power > MAX_TX_POWER_DBM) power = MAX_TX_POWER_DBM;
   currentTxPower = power;
-  radio.setOutputPower(power);
-  Serial.printf("[LoRa] TX power → %d dBm (max %d)\n", power, MAX_TX_POWER_DBM);
+  int8_t radioPower = power - PA_GAIN_DB;
+  if (radioPower < 1) radioPower = 1;
+  radio.setOutputPower(radioPower);
+  Serial.printf("[LoRa] TX power → %d dBm effective (radio %d, PA +%d)\n", power, radioPower, PA_GAIN_DB);
 }
 
 void loraSetDutyCycle(bool enabled) {
