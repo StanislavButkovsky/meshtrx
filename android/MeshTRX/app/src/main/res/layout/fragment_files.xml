@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#141414"
+    android:padding="12dp">
+
+    <TextView
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="@string/files_title" android:textSize="11sp" android:textColor="#555555"
+        android:letterSpacing="0.06" android:layout_marginBottom="8dp" />
+
+    <!-- Кнопки отправки -->
+    <LinearLayout
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:layout_marginBottom="12dp">
+        <Button android:id="@+id/btnSendPhoto"
+            android:layout_width="0dp" android:layout_height="44dp" android:layout_weight="1"
+            android:text="@string/send_photo" android:textSize="13sp"
+            android:textColor="#4ade80" android:backgroundTint="#1e3a1e"
+            android:enabled="false" />
+        <Button android:id="@+id/btnSendFile"
+            android:layout_width="0dp" android:layout_height="44dp" android:layout_weight="1"
+            android:text="@string/send_file" android:textSize="13sp"
+            android:textColor="#5ba3e8" android:backgroundTint="#1e3a5f"
+            android:enabled="false" android:layout_marginStart="8dp" />
+    </LinearLayout>
+
+    <!-- Предпросмотр (для выбранного фото) -->
+    <LinearLayout android:id="@+id/layoutPreview"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:visibility="gone"
+        android:background="#1a1a1a" android:padding="8dp"
+        android:layout_marginBottom="12dp">
+        <ImageView android:id="@+id/ivPreview"
+            android:layout_width="160dp" android:layout_height="120dp"
+            android:layout_gravity="center_horizontal"
+            android:scaleType="fitCenter"
+            android:background="#222222" />
+        <TextView android:id="@+id/tvPreviewInfo"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:text="" android:textSize="12sp" android:textColor="#888888"
+            android:layout_marginTop="4dp" />
+        <LinearLayout
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:gravity="center"
+            android:layout_marginTop="8dp">
+            <Button android:id="@+id/btnSendPreview"
+                android:layout_width="wrap_content" android:layout_height="36dp"
+                android:text="@string/send" android:textSize="12sp"
+                android:textColor="#4ade80" android:backgroundTint="#1e3a1e" />
+            <Button android:id="@+id/btnCancelPreview"
+                android:layout_width="wrap_content" android:layout_height="36dp"
+                android:text="@string/cancel_preview" android:textSize="12sp"
+                android:textColor="#888888" android:backgroundTint="#222222"
+                android:layout_marginStart="8dp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- История -->
+    <TextView
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="ИСТОРИЯ" android:textSize="11sp" android:textColor="#555555"
+        android:letterSpacing="0.06" android:layout_marginBottom="4dp" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvFiles"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+</LinearLayout>

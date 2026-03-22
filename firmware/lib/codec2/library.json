@@ -1,0 +1,18 @@
+{
+  "name": "codec2",
+  "version": "1.2.0",
+  "description": "Codec2 low-bitrate speech codec (mode 3200 + 1200)",
+  "build": {
+    "flags": [
+      "-DCODEC2_MODE_EN_DEFAULT=0",
+      "-DCODEC2_MODE_3200_EN=1",
+      "-DCODEC2_MODE_1200_EN=1",
+      "-DCODEC2_MODE_700C_EN=0",
+      "-DCODEC2_MODE_450_EN=0",
+      "-w"
+    ],
+    "srcFilter": [
+      "+<*.c>"
+    ]
+  }
+}

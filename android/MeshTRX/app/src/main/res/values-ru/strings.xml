@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MeshTRX</string>
+
+    <!-- Tabs -->
+    <string name="tab_ptt">PTT</string>
+    <string name="tab_chat">Чат</string>
+    <string name="tab_files">Файлы</string>
+    <string name="tab_map">Карта</string>
+    <string name="tab_settings">Настр.</string>
+
+    <!-- Header -->
+    <string name="status_disconnected">● Отключено</string>
+    <string name="status_scanning">● Поиск…</string>
+    <string name="status_connecting">● Подключение</string>
+    <string name="status_connected">● Подключено</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Настройки</string>
+    <string name="connection">Подключение</string>
+    <string name="disconnected">Отключено</string>
+    <string name="connect">Подключить</string>
+    <string name="disconnect">Отключить</string>
+    <string name="cancel">Отмена</string>
+    <string name="scanning">Поиск…</string>
+    <string name="connecting">Подключение…</string>
+    <string name="connected">Подключено</string>
+    <string name="new_device">Новое устройство</string>
+    <string name="callsign">Позывной</string>
+    <string name="callsign_hint">Макс 8 символов</string>
+    <string name="radio">Радио</string>
+    <string name="channel_label">Канал</string>
+    <string name="tx_power">Мощность TX: %d dBm</string>
+    <string name="duty_cycle">Duty Cycle EU868</string>
+    <string name="vox_threshold">Порог VOX: %d</string>
+    <string name="vox_hangtime">Задержка: %d мс</string>
+    <string name="beacon">Beacon</string>
+    <string name="peer_list">Список станций</string>
+    <string name="remove_after">Удалять через: 60 мин</string>
+    <string name="file_history">История файлов</string>
+    <string name="language">Язык / Language</string>
+    <string name="apply_save">Применить и сохранить</string>
+    <string name="settings_applied">Настройки применены</string>
+
+    <!-- Messages -->
+    <string name="messages_title">Сообщения</string>
+    <string name="filter">Фильтр:</string>
+    <string name="all">Все</string>
+    <string name="to_label">Кому: %s</string>
+    <string name="to_all">Кому: Всем</string>
+    <string name="msg_hint">Сообщение (макс 84)</string>
+    <string name="send_to">Отправить кому?</string>
+    <string name="broadcast_channel">Broadcast на канал</string>
+
+    <!-- Files -->
+    <string name="send_photo">Фото</string>
+    <string name="send_file">Файл</string>
+    <string name="sending">Отправка: %s → %s</string>
+    <string name="share">Поделиться</string>
+    <string name="retry_send">Повторить отправку</string>
+    <string name="delete">Удалить</string>
+    <string name="close">Закрыть</string>
+    <string name="no_data">Данные файла отсутствуют</string>
+    <string name="outgoing">Исходящий</string>
+    <string name="incoming">Входящий</string>
+    <string name="photo">Фото</string>
+    <string name="text">Текст</string>
+    <string name="file">Файл</string>
+    <string name="to">Кому: %s</string>
+    <string name="from">От: %s</string>
+
+    <!-- Map -->
+    <string name="gps_waiting">GPS: ожидание…</string>
+    <string name="gps_coords">GPS: %s</string>
+    <string name="map_tab">Карта</string>
+    <string name="radar_tab">Радар</string>
+    <string name="gps_no_coords">GPS: ожидание координат…</string>
+
+    <!-- Radar -->
+    <string name="north">С</string>
+    <string name="south">Ю</string>
+    <string name="west">З</string>
+    <string name="east">В</string>
+
+    <!-- Voice -->
+    <string name="call_all">ОБЩИЙ</string>
+    <string name="call">ВЫЗВАТЬ</string>
+    <string name="sos">SOS</string>
+
+    <!-- Beacon intervals -->
+    <string name="beacon_never">Никогда</string>
+    <string name="beacon_1min">1 мин</string>
+    <string name="beacon_3min">3 мин</string>
+    <string name="beacon_5min">5 мин</string>
+    <string name="beacon_15min">15 мин</string>
+    <string name="beacon_30min">30 мин</string>
+    <string name="beacon_1hour">1 час</string>
+
+    <!-- Timeouts -->
+    <string name="timeout_15">15 мин</string>
+    <string name="timeout_30">30 мин</string>
+    <string name="timeout_60">60 мин</string>
+    <string name="timeout_2h">2 часа</string>
+    <string name="timeout_6h">6 часов</string>
+    <string name="timeout_24h">24 часа</string>
+
+    <!-- File history -->
+    <string name="history_7d">7 дней</string>
+    <string name="history_14d">14 дней</string>
+    <string name="history_30d">30 дней</string>
+    <string name="history_90d">90 дней</string>
+    <string name="history_unlimited">Без ограничений</string>
+
+    <!-- Voice / PTT -->
+    <string name="ptt_talk">ГОВОРИТЬ</string>
+    <string name="ptt_hold">удержать</string>
+    <string name="ptt_transmit">ПЕРЕДАЧА</string>
+    <string name="ptt_release">отпустить</string>
+    <string name="ptt_receive">ПРИЁМ</string>
+    <string name="ptt_vox_auto">авто</string>
+    <string name="call_general">Общий вызов</string>
+    <string name="sos_title">ЭКСТРЕННЫЙ ВЫЗОВ SOS</string>
+    <string name="sos_confirm">Отправить сигнал бедствия ВСЕМ?</string>
+    <string name="sos_send">ОТПРАВИТЬ SOS</string>
+    <string name="calling">Вызов: %s</string>
+    <string name="general_channel">Общий канал</string>
+    <string name="call_type_all">Общ</string>
+    <string name="call_type_private">Лич</string>
+    <string name="call_type_group">Грп</string>
+
+    <!-- Call Picker -->
+    <string name="stations">Станции</string>
+    <string name="groups">Группы</string>
+    <string name="sort_label">Сортировка:</string>
+    <string name="sort_signal">По сигналу</string>
+    <string name="sort_name">По имени</string>
+    <string name="sort_distance">По расстоянию</string>
+    <string name="groups_coming_soon">Создание групп — в разработке</string>
+    <string name="group_call">Групповой вызов: %s</string>
+
+    <!-- Incoming call -->
+    <string name="incoming_call">ВХОДЯЩИЙ ВЫЗОВ</string>
+    <string name="reject">ОТКЛОНИТЬ</string>
+    <string name="accept">ПРИНЯТЬ</string>
+    <string name="close_call">ЗАКРЫТЬ</string>
+
+    <!-- Files extra -->
+    <string name="files_title">ФАЙЛЫ</string>
+    <string name="send">Отправить</string>
+    <string name="cancel_preview">Отмена</string>
+    <string name="photo_failed">Не удалось обработать фото</string>
+    <string name="file_too_big">Файл слишком большой (%d КБ, макс 100 КБ)</string>
+    <string name="photo_too_big">Фото слишком большое (%d КБ, макс 100 КБ)</string>
+    <string name="error_msg">Ошибка: %s</string>
+    <string name="no_data_retry">Данные файла отсутствуют — выберите заново</string>
+    <string name="device_label">Устройство: %s\nMeshTRX v4.2</string>
+    <string name="me_label">Я</string>
+    <string name="fab_me">Я</string>
+    <string name="fab_all">Все</string>
+    <string name="listen_all">Слушать всех</string>
+    <string name="listen_private">Только мои</string>
+    <string name="status_waiting">● ожидание</string>
+    <string name="recent">ПОСЛЕДНИЕ</string>
+    <string name="sec_ago">%dс назад</string>
+    <string name="min_ago">%dмин назад</string>
+    <string name="hour_ago">%dч назад</string>
+    <string name="speaker">Динамик</string>
+    <string name="rx_volume">Громкость приёма: %d%%</string>
+    <string name="ptt_rms">PTT RMS: %d (отсечка шума)</string>
+    <string name="repeater_title">Ретранслятор</string>
+    <string name="repeater_warning">Устройство перезагрузится в режиме ретранслятора. Подключитесь к WiFi для мониторинга.</string>
+    <string name="wifi_ssid">WiFi SSID (опционально)</string>
+    <string name="wifi_password">WiFi пароль</string>
+    <string name="static_ip">Статический IP (опционально)</string>
+    <string name="activate_repeater">ВКЛЮЧИТЬ РЕТРАНСЛЯТОР</string>
+    <string name="deactivate_repeater">Выключить ретранслятор</string>
+</resources>

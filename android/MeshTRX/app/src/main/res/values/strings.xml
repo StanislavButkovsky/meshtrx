@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MeshTRX</string>
+
+    <!-- Tabs -->
+    <string name="tab_ptt">PTT</string>
+    <string name="tab_chat">Chat</string>
+    <string name="tab_files">Files</string>
+    <string name="tab_map">Map</string>
+    <string name="tab_settings">Settings</string>
+
+    <!-- Header -->
+    <string name="status_disconnected">● Disconnected</string>
+    <string name="status_scanning">● Scanning…</string>
+    <string name="status_connecting">● Connecting</string>
+    <string name="status_connected">● Connected</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="connection">Connection</string>
+    <string name="disconnected">Disconnected</string>
+    <string name="connect">Connect</string>
+    <string name="disconnect">Disconnect</string>
+    <string name="cancel">Cancel</string>
+    <string name="scanning">Scanning…</string>
+    <string name="connecting">Connecting…</string>
+    <string name="connected">Connected</string>
+    <string name="new_device">New device</string>
+    <string name="callsign">Callsign</string>
+    <string name="callsign_hint">Max 8 characters</string>
+    <string name="radio">Radio</string>
+    <string name="channel_label">Channel</string>
+    <string name="tx_power">TX Power: %d dBm</string>
+    <string name="duty_cycle">Duty Cycle EU868</string>
+    <string name="vox_threshold">VOX Threshold: %d</string>
+    <string name="vox_hangtime">Delay: %d ms</string>
+    <string name="beacon">Beacon</string>
+    <string name="peer_list">Peer list</string>
+    <string name="remove_after">Remove after: 60 min</string>
+    <string name="file_history">File history</string>
+    <string name="language">Language</string>
+    <string name="apply_save">Apply and save</string>
+    <string name="settings_applied">Settings applied</string>
+
+    <!-- Messages -->
+    <string name="messages_title">Messages</string>
+    <string name="filter">Filter:</string>
+    <string name="all">All</string>
+    <string name="to_label">To: %s</string>
+    <string name="to_all">To: All</string>
+    <string name="msg_hint">Message (max 84)</string>
+    <string name="send_to">Send to?</string>
+    <string name="broadcast_channel">Broadcast to channel</string>
+
+    <!-- Files -->
+    <string name="send_photo">Photo</string>
+    <string name="send_file">File</string>
+    <string name="sending">Sending: %s → %s</string>
+    <string name="share">Share</string>
+    <string name="retry_send">Retry send</string>
+    <string name="delete">Delete</string>
+    <string name="close">Close</string>
+    <string name="no_data">Data unavailable</string>
+    <string name="outgoing">Outgoing</string>
+    <string name="incoming">Incoming</string>
+    <string name="photo">Photo</string>
+    <string name="text">Text</string>
+    <string name="file">File</string>
+    <string name="to">To: %s</string>
+    <string name="from">From: %s</string>
+
+    <!-- Map -->
+    <string name="gps_waiting">GPS: waiting…</string>
+    <string name="gps_coords">GPS: %s</string>
+    <string name="map_tab">Map</string>
+    <string name="radar_tab">Radar</string>
+    <string name="gps_no_coords">GPS: waiting for coordinates…</string>
+
+    <!-- Radar -->
+    <string name="north">N</string>
+    <string name="south">S</string>
+    <string name="west">W</string>
+    <string name="east">E</string>
+
+    <!-- Voice -->
+    <string name="call_all">ALL</string>
+    <string name="call">CALL</string>
+    <string name="sos">SOS</string>
+
+    <!-- Beacon intervals -->
+    <string name="beacon_never">Never</string>
+    <string name="beacon_1min">1 min</string>
+    <string name="beacon_3min">3 min</string>
+    <string name="beacon_5min">5 min</string>
+    <string name="beacon_15min">15 min</string>
+    <string name="beacon_30min">30 min</string>
+    <string name="beacon_1hour">1 hour</string>
+
+    <!-- Timeouts -->
+    <string name="timeout_15">15 min</string>
+    <string name="timeout_30">30 min</string>
+    <string name="timeout_60">60 min</string>
+    <string name="timeout_2h">2 hours</string>
+    <string name="timeout_6h">6 hours</string>
+    <string name="timeout_24h">24 hours</string>
+
+    <!-- File history -->
+    <string name="history_7d">7 days</string>
+    <string name="history_14d">14 days</string>
+    <string name="history_30d">30 days</string>
+    <string name="history_90d">90 days</string>
+    <string name="history_unlimited">Unlimited</string>
+
+    <!-- Voice / PTT -->
+    <string name="ptt_talk">TALK</string>
+    <string name="ptt_hold">hold</string>
+    <string name="ptt_transmit">TRANSMIT</string>
+    <string name="ptt_release">release</string>
+    <string name="ptt_receive">RECEIVE</string>
+    <string name="ptt_vox_auto">auto</string>
+    <string name="call_general">General call</string>
+    <string name="sos_title">EMERGENCY SOS CALL</string>
+    <string name="sos_confirm">Send distress signal to ALL?</string>
+    <string name="sos_send">SEND SOS</string>
+    <string name="calling">Call: %s</string>
+    <string name="general_channel">General channel</string>
+    <string name="call_type_all">All</string>
+    <string name="call_type_private">Prv</string>
+    <string name="call_type_group">Grp</string>
+
+    <!-- Call Picker -->
+    <string name="stations">Stations</string>
+    <string name="groups">Groups</string>
+    <string name="sort_label">Sort:</string>
+    <string name="sort_signal">By signal</string>
+    <string name="sort_name">By name</string>
+    <string name="sort_distance">By distance</string>
+    <string name="groups_coming_soon">Groups — coming soon</string>
+    <string name="group_call">Group call: %s</string>
+
+    <!-- Incoming call -->
+    <string name="incoming_call">INCOMING CALL</string>
+    <string name="reject">REJECT</string>
+    <string name="accept">ACCEPT</string>
+    <string name="close_call">CLOSE</string>
+
+    <!-- Files extra -->
+    <string name="files_title">FILES</string>
+    <string name="send">Send</string>
+    <string name="cancel_preview">Cancel</string>
+    <string name="photo_failed">Failed to process photo</string>
+    <string name="file_too_big">File too large (%d KB, max 100 KB)</string>
+    <string name="photo_too_big">Photo too large (%d KB, max 100 KB)</string>
+    <string name="error_msg">Error: %s</string>
+    <string name="no_data_retry">Data unavailable — select file again</string>
+    <string name="device_label">Device: %s\nMeshTRX v4.2</string>
+    <string name="me_label">Me</string>
+    <string name="fab_me">Me</string>
+    <string name="fab_all">All</string>
+    <string name="listen_all">Listen all</string>
+    <string name="listen_private">My calls only</string>
+    <string name="status_waiting">● waiting</string>
+    <string name="recent">RECENT</string>
+    <string name="sec_ago">%ds ago</string>
+    <string name="min_ago">%dm ago</string>
+    <string name="hour_ago">%dh ago</string>
+    <string name="speaker">Speaker</string>
+    <string name="rx_volume">RX Volume: %d%%</string>
+    <string name="ptt_rms">PTT RMS: %d (noise gate)</string>
+    <string name="repeater_title">Repeater</string>
+    <string name="repeater_warning">Device will restart in repeater mode. Connect to WiFi AP to monitor.</string>
+    <string name="wifi_ssid">WiFi SSID (optional)</string>
+    <string name="wifi_password">WiFi Password</string>
+    <string name="static_ip">Static IP (optional)</string>
+    <string name="activate_repeater">ACTIVATE REPEATER</string>
+    <string name="deactivate_repeater">Deactivate Repeater</string>
+</resources>

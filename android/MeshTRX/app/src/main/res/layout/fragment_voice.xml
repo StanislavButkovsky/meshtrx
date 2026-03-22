@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#141414">
+
+    <!-- КОНТРОЛЬНАЯ ПОЛОСА: Listen mode + PTT/VOX -->
+    <LinearLayout
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:gravity="center_vertical"
+        android:paddingStart="16dp" android:paddingEnd="16dp"
+        android:paddingTop="8dp" android:paddingBottom="8dp">
+
+        <!-- Listen mode toggle -->
+        <LinearLayout
+            android:layout_width="0dp" android:layout_height="40dp"
+            android:layout_weight="1"
+            android:orientation="horizontal" android:gravity="center_vertical">
+            <Button android:id="@+id/btnListenAll"
+                android:layout_width="0dp" android:layout_height="36dp" android:layout_weight="1"
+                android:text="@string/listen_all"
+                android:textColor="#4ade80" android:backgroundTint="#1e3a1e"
+                android:minHeight="0dp" android:insetTop="0dp" android:insetBottom="0dp"
+                android:maxLines="1"
+                app:autoSizeTextType="uniform"
+                app:autoSizeMinTextSize="8sp"
+                app:autoSizeMaxTextSize="12sp" />
+            <Button android:id="@+id/btnListenMy"
+                android:layout_width="0dp" android:layout_height="36dp" android:layout_weight="1"
+                android:text="@string/listen_private"
+                android:textColor="#888888" android:backgroundTint="#222222"
+                android:layout_marginStart="4dp"
+                android:minHeight="0dp" android:insetTop="0dp" android:insetBottom="0dp"
+                android:maxLines="1"
+                app:autoSizeTextType="uniform"
+                app:autoSizeMinTextSize="8sp"
+                app:autoSizeMaxTextSize="12sp" />
+        </LinearLayout>
+
+        <!-- PTT/VOX переключатель -->
+        <LinearLayout
+            android:layout_width="wrap_content" android:layout_height="40dp"
+            android:orientation="horizontal" android:gravity="center_vertical"
+            android:background="#222222"
+            android:paddingStart="10dp" android:paddingEnd="10dp"
+            android:layout_marginStart="8dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="PTT" android:textSize="12sp" android:textColor="#888888" />
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switchVox"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_marginStart="4dp" android:layout_marginEnd="4dp" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="VOX" android:textSize="12sp" android:textColor="#888888" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- PTT КНОПКА -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:layout_marginBottom="4dp">
+
+        <com.meshtrx.app.ui.PttButtonView
+            android:id="@+id/pttButton"
+            android:layout_width="200dp"
+            android:layout_height="200dp"
+            android:layout_gravity="center_horizontal" />
+
+        <ImageButton android:id="@+id/btnSpeaker"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:src="@drawable/ic_speaker_off"
+            android:background="@drawable/btn_circle_gray"
+            android:scaleType="centerInside"
+            android:contentDescription="@string/speaker"
+            android:layout_gravity="end|top"
+            android:layout_marginEnd="16dp" />
+    </FrameLayout>
+
+    <!-- VOX индикатор -->
+    <TextView android:id="@+id/tvVoxState"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:textSize="12sp" android:textColor="#ff6b6b"
+        android:visibility="gone" />
+
+    <!-- Строка статуса -->
+    <TextView android:id="@+id/tvStatusLine"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:text="@string/status_waiting" android:textSize="12sp" android:textColor="#2d5a2d"
+        android:paddingStart="12dp" android:paddingEnd="12dp"
+        android:paddingTop="4dp" android:paddingBottom="4dp"
+        android:layout_marginBottom="4dp" />
+
+    <!-- КНОПКИ ВЫЗОВОВ -->
+    <LinearLayout
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingStart="16dp" android:paddingEnd="16dp"
+        android:layout_marginBottom="8dp">
+        <Button android:id="@+id/btnCallAll"
+            android:layout_width="0dp" android:layout_height="44dp" android:layout_weight="1"
+            android:text="@string/call_all" android:textSize="13sp" android:textColor="#5ba3e8"
+            android:backgroundTint="#1e3a5f" android:enabled="false" />
+        <Button android:id="@+id/btnCallPrivate"
+            android:layout_width="0dp" android:layout_height="44dp" android:layout_weight="1"
+            android:text="@string/call" android:textSize="13sp" android:textColor="#4ade80"
+            android:backgroundTint="#1e3a1e" android:enabled="false"
+            android:layout_marginStart="8dp" />
+    </LinearLayout>
+
+    <!-- ПОСЛЕДНИЕ ВЫЗОВЫ (скроллируемый список) -->
+    <TextView
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="@string/recent" android:textSize="11sp" android:textColor="#555555"
+        android:letterSpacing="0.06"
+        android:paddingStart="16dp" android:layout_marginBottom="4dp" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvRecentCalls"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:paddingStart="16dp" android:paddingEnd="16dp"
+        android:clipToPadding="false" />
+
+</LinearLayout>

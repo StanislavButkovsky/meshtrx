@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.MeshTRX" parent="Theme.MaterialComponents.NoActionBar">
+        <item name="colorPrimary">#4ade80</item>
+        <item name="colorPrimaryVariant">#2d5a2d</item>
+        <item name="colorOnPrimary">#141414</item>
+        <item name="colorSecondary">#5ba3e8</item>
+        <item name="colorOnSecondary">#141414</item>
+        <item name="android:windowBackground">#141414</item>
+        <item name="android:statusBarColor">#141414</item>
+        <item name="android:navigationBarColor">#111111</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+    <style name="Theme.MeshTRX.Splash" parent="Theme.MaterialComponents.NoActionBar">
+        <item name="android:windowBackground">#000000</item>
+        <item name="android:statusBarColor">#000000</item>
+        <item name="android:navigationBarColor">#000000</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+    <style name="Theme.MeshTRX.IncomingCall" parent="Theme.MaterialComponents.NoActionBar">
+        <item name="android:windowBackground">#141414</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:statusBarColor">#000000</item>
+        <item name="android:navigationBarColor">#000000</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

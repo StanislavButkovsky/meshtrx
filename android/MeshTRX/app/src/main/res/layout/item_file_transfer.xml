@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:padding="8dp"
+    android:background="#1a1a1a"
+    android:layout_marginBottom="4dp">
+
+    <!-- Иконка направления -->
+    <TextView android:id="@+id/tvDirection"
+        android:layout_width="20dp" android:layout_height="wrap_content"
+        android:text="→" android:textSize="14sp" android:gravity="center" />
+
+    <LinearLayout
+        android:layout_width="0dp" android:layout_height="wrap_content"
+        android:layout_weight="1" android:orientation="vertical"
+        android:layout_marginStart="8dp">
+
+        <TextView android:id="@+id/tvFileName"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="photo.jpg" android:textSize="13sp" android:textColor="#cccccc" />
+
+        <TextView android:id="@+id/tvFileInfo"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="12 KB · Фото · 14:20" android:textSize="11sp" android:textColor="#555555" />
+    </LinearLayout>
+
+    <!-- Прогресс -->
+    <ProgressBar android:id="@+id/progressFile"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="50dp" android:layout_height="4dp"
+        android:max="100" android:progress="0"
+        android:progressTint="#4ade80"
+        android:visibility="gone" />
+
+    <!-- Статус -->
+    <TextView android:id="@+id/tvFileStatus"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="✓" android:textSize="14sp" android:textColor="#4ade80" />
+
+
+</LinearLayout>

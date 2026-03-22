@@ -1,0 +1,28 @@
+# PlatformIO
+firmware/.pio/
+firmware/.vscode/
+
+# Android
+android/MeshTRX/.gradle/
+android/MeshTRX/.idea/
+android/MeshTRX/app/build/
+android/MeshTRX/app/.cxx/
+android/MeshTRX/build/
+android/MeshTRX/local.properties
+android/MeshTRX/gradlew.bat
+
+# Web
+web/node_modules/
+web/.next/
+web/out/
+
+# Claude Code
+.claude/
+
+# OS
+.DS_Store
+*.swp
+*~
+
+# Codec2 temp
+/tmp/codec2_src/

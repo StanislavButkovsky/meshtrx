@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@+id/nav_voice" android:icon="@android:drawable/ic_btn_speak_now"
+        android:title="@string/tab_ptt" />
+    <item android:id="@+id/nav_messages" android:icon="@android:drawable/ic_dialog_email"
+        android:title="@string/tab_chat" />
+    <item android:id="@+id/nav_files" android:icon="@android:drawable/ic_menu_save"
+        android:title="@string/tab_files" />
+    <item android:id="@+id/nav_map" android:icon="@android:drawable/ic_dialog_map"
+        android:title="@string/tab_map" />
+    <item android:id="@+id/nav_settings" android:icon="@android:drawable/ic_menu_preferences"
+        android:title="@string/tab_settings" />
+</menu>

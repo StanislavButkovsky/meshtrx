@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/rootLayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:background="#141414"
+    android:padding="32dp">
+
+    <!-- Тип вызова -->
+    <TextView android:id="@+id/tvCallType"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="@string/incoming_call" android:textSize="14sp"
+        android:textColor="#888888" android:letterSpacing="0.1"
+        android:layout_marginBottom="24dp" />
+
+    <!-- Позывной -->
+    <TextView android:id="@+id/tvCallerName"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="TX-6770" android:textSize="32sp"
+        android:textColor="#e8e8e8" android:textStyle="bold"
+        android:layout_marginBottom="8dp" />
+
+    <!-- ID -->
+    <TextView android:id="@+id/tvCallerId"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="ID: AABBCCDD" android:textSize="12sp"
+        android:textColor="#555555"
+        android:layout_marginBottom="16dp" />
+
+    <!-- RSSI -->
+    <TextView android:id="@+id/tvCallRssi"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="-75 dBm" android:textSize="16sp"
+        android:textColor="#4ade80" android:fontFamily="monospace"
+        android:layout_marginBottom="16dp" />
+
+    <!-- Координаты (только для SOS) -->
+    <TextView android:id="@+id/tvCallCoords"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="" android:textSize="14sp"
+        android:textColor="#cccccc" android:visibility="gone"
+        android:layout_marginBottom="24dp" />
+
+    <!-- Таймер -->
+    <TextView android:id="@+id/tvCallTimer"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="30" android:textSize="12sp"
+        android:textColor="#555555"
+        android:layout_marginBottom="32dp" />
+
+    <!-- Кнопки -->
+    <LinearLayout
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:gravity="center">
+
+        <Button android:id="@+id/btnReject"
+            android:layout_width="0dp" android:layout_height="56dp"
+            android:layout_weight="1"
+            android:text="@string/reject" android:textSize="14sp"
+            android:textColor="#f87171" android:backgroundTint="#3a0e0e" />
+
+        <View android:layout_width="16dp" android:layout_height="1dp" />
+
+        <Button android:id="@+id/btnAccept"
+            android:layout_width="0dp" android:layout_height="56dp"
+            android:layout_weight="1"
+            android:text="@string/accept" android:textSize="14sp"
+            android:textColor="#4ade80" android:backgroundTint="#1a3a1a" />
+    </LinearLayout>
+
+    <!-- Закрыть (для ALL CALL) -->
+    <Button android:id="@+id/btnClose"
+        android:layout_width="match_parent" android:layout_height="48dp"
+        android:text="@string/close_call" android:textSize="14sp"
+        android:textColor="#888888" android:backgroundTint="#222222"
+        android:visibility="gone"
+        android:layout_marginTop="16dp" />
+
+</LinearLayout>

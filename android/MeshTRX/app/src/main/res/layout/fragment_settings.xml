@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp"
+    android:background="#141414">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="@string/settings_title" android:textSize="18sp" android:textStyle="bold"
+            android:textColor="#e8e8e8" android:layout_marginBottom="16dp" />
+
+        <!-- Подключение -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="@string/connection" android:textSize="14sp" android:textStyle="bold"
+            android:textColor="#e8e8e8" android:layout_marginBottom="4dp" />
+
+        <TextView android:id="@+id/tvConnStatus"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/disconnected" android:textSize="13sp" android:textColor="#999"
+            android:layout_marginBottom="4dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:layout_marginBottom="16dp">
+            <Button android:id="@+id/btnConnect"
+                android:layout_width="0dp" android:layout_height="44dp" android:layout_weight="1"
+                android:text="@string/connect" />
+            <Button android:id="@+id/btnForgetDevice"
+                android:layout_width="wrap_content" android:layout_height="44dp"
+                android:text="@string/new_device" android:textSize="11sp"
+                android:layout_marginStart="8dp" />
+        </LinearLayout>
+
+        <!-- Позывной -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="@string/callsign" android:textSize="14sp" android:textStyle="bold"
+            android:textColor="#e8e8e8" android:layout_marginBottom="4dp" />
+        <EditText android:id="@+id/etCallSign"
+            android:layout_width="match_parent" android:layout_height="44dp"
+            android:hint="@string/callsign_hint" android:maxLength="8"
+            android:inputType="text" android:singleLine="true"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Радио -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="@string/radio" android:textSize="14sp" android:textStyle="bold"
+            android:textColor="#e8e8e8" android:layout_marginBottom="4dp" />
+
+        <!-- Канал -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="@string/channel_label" android:textSize="13sp" android:textColor="#cccccc" />
+        <Spinner android:id="@+id/spinnerChannel"
+            android:layout_width="match_parent" android:layout_height="44dp"
+            android:layout_marginBottom="8dp" />
+
+        <TextView android:id="@+id/tvTxPower"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="TX: 14 dBm" android:textSize="13sp" android:textColor="#cccccc" />
+        <SeekBar android:id="@+id/seekTxPower"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:min="1" android:max="22" android:progress="14" />
+
+        <LinearLayout
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:gravity="center_vertical"
+            android:layout_marginTop="8dp" android:layout_marginBottom="16dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="@string/duty_cycle" android:textSize="13sp" android:textColor="#cccccc" />
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switchDutyCycle"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_marginStart="8dp" />
+        </LinearLayout>
+
+        <!-- Громкость приёма -->
+        <TextView android:id="@+id/tvRxVolume"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="@string/rx_volume" android:textSize="13sp" android:textColor="#cccccc" />
+        <SeekBar android:id="@+id/seekRxVolume"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:max="300" android:progress="200"
+            android:layout_marginBottom="8dp" />
+
+        <!-- PTT RMS (шумоподавление) -->
+        <TextView android:id="@+id/tvPttRms"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="@string/ptt_rms" android:textSize="13sp" android:textColor="#cccccc" />
+        <SeekBar android:id="@+id/seekPttRms"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:max="1000" android:progress="0"
+            android:layout_marginBottom="16dp" />
+
+        <!-- VOX -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="VOX" android:textSize="14sp" android:textStyle="bold"
+            android:textColor="#e8e8e8" android:layout_marginBottom="4dp" />
+        <TextView android:id="@+id/tvVoxThreshold"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="VOX: 800" android:textSize="13sp" android:textColor="#cccccc" />
+        <SeekBar android:id="@+id/seekVoxThreshold"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:max="5000" android:progress="800" />
+        <TextView android:id="@+id/tvVoxHangtime"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="800 ms" android:textSize="13sp" android:textColor="#cccccc" />
+        <SeekBar android:id="@+id/seekVoxHangtime"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:max="2000" android:progress="800"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Beacon -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="@string/beacon" android:textSize="14sp" android:textStyle="bold"
+            android:textColor="#e8e8e8" android:layout_marginBottom="4dp" />
+        <Spinner android:id="@+id/spinnerBeaconInterval"
+            android:layout_width="match_parent" android:layout_height="44dp"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Таймаут peers -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="@string/peer_list" android:textSize="14sp" android:textStyle="bold"
+            android:textColor="#e8e8e8" android:layout_marginBottom="4dp" />
+        <TextView android:id="@+id/tvPeerTimeout"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="@string/remove_after" android:textSize="13sp" android:textColor="#cccccc" />
+        <Spinner android:id="@+id/spinnerPeerTimeout"
+            android:layout_width="match_parent" android:layout_height="44dp"
+            android:layout_marginBottom="16dp" />
+
+        <!-- История файлов -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="@string/file_history" android:textSize="14sp" android:textStyle="bold"
+            android:textColor="#e8e8e8" android:layout_marginBottom="4dp" />
+        <Spinner android:id="@+id/spinnerFileHistory"
+            android:layout_width="match_parent" android:layout_height="44dp"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Язык -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="@string/language" android:textSize="14sp" android:textStyle="bold"
+            android:textColor="#e8e8e8" android:layout_marginBottom="4dp" />
+        <Spinner android:id="@+id/spinnerLanguage"
+            android:layout_width="match_parent" android:layout_height="44dp"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Применить -->
+        <Button android:id="@+id/btnApplySettings"
+            android:layout_width="match_parent" android:layout_height="48dp"
+            android:text="@string/apply_save"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Ретранслятор -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="@string/repeater_title" android:textSize="14sp" android:textStyle="bold"
+            android:textColor="#e8e8e8" android:layout_marginBottom="4dp" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/repeater_warning" android:textSize="11sp" android:textColor="#ff6b6b"
+            android:layout_marginBottom="8dp" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="@string/wifi_ssid" android:textSize="13sp" android:textColor="#cccccc" />
+        <EditText android:id="@+id/etRepeaterSsid"
+            android:layout_width="match_parent" android:layout_height="40dp"
+            android:hint="MeshTRX-Repeater" android:textSize="13sp"
+            android:inputType="text" android:singleLine="true"
+            android:layout_marginBottom="4dp" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="@string/wifi_password" android:textSize="13sp" android:textColor="#cccccc" />
+        <EditText android:id="@+id/etRepeaterPass"
+            android:layout_width="match_parent" android:layout_height="40dp"
+            android:hint="meshtrx123" android:textSize="13sp"
+            android:inputType="textPassword" android:singleLine="true"
+            android:layout_marginBottom="4dp" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="@string/static_ip" android:textSize="13sp" android:textColor="#cccccc" />
+        <EditText android:id="@+id/etRepeaterIp"
+            android:layout_width="match_parent" android:layout_height="40dp"
+            android:hint="192.168.1.100" android:textSize="13sp"
+            android:inputType="text" android:singleLine="true"
+            android:layout_marginBottom="8dp" />
+        <Button android:id="@+id/btnRepeaterOn"
+            android:layout_width="match_parent" android:layout_height="44dp"
+            android:text="@string/activate_repeater" android:textSize="13sp"
+            android:textColor="#ff6b6b" android:backgroundTint="#3a1e1e"
+            android:enabled="false"
+            android:layout_marginBottom="8dp" />
+        <Button android:id="@+id/btnRepeaterOff"
+            android:layout_width="match_parent" android:layout_height="44dp"
+            android:text="@string/deactivate_repeater" android:textSize="13sp"
+            android:textColor="#4ade80" android:backgroundTint="#1e3a1e"
+            android:enabled="false"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Info -->
+        <TextView android:id="@+id/tvDeviceInfo"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:textSize="12sp" android:textColor="#999" android:fontFamily="monospace" />
+    </LinearLayout>
+</ScrollView>

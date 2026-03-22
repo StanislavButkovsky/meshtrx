@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+:root {
+  --bg: #141414;
+  --accent: #4ade80;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--bg);
+  color: #f5f5f5;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #1e1e1e;
+}
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #4ade80;
+}
+
+/* Glow effect */
+.glow {
+  box-shadow: 0 0 20px rgba(74, 222, 128, 0.15);
+}
+
+.glow-text {
+  text-shadow: 0 0 10px rgba(74, 222, 128, 0.3);
+}
+
+/* Animated mesh line */
+@keyframes pulse-line {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+.animate-pulse-line {
+  animation: pulse-line 2s ease-in-out infinite;
+}
+
+@keyframes dash {
+  to { stroke-dashoffset: -20; }
+}
+
+.animate-dash {
+  animation: dash 1s linear infinite;
+}
+
+/* Markdown styles */
+.prose-mesh h1 { @apply text-2xl font-bold text-accent mt-8 mb-4; }
+.prose-mesh h2 { @apply text-xl font-bold text-text-primary mt-6 mb-3; }
+.prose-mesh h3 { @apply text-lg font-semibold text-text-primary mt-4 mb-2; }
+.prose-mesh p { @apply text-text-secondary mb-4 leading-relaxed; }
+.prose-mesh ul { @apply list-disc list-inside mb-4 text-text-secondary; }
+.prose-mesh ol { @apply list-decimal list-inside mb-4 text-text-secondary; }
+.prose-mesh li { @apply mb-1; }
+.prose-mesh code { @apply bg-bg-card text-accent px-1.5 py-0.5 rounded text-sm; }
+.prose-mesh pre { @apply bg-bg-card p-4 rounded-lg mb-4 overflow-x-auto; }
+.prose-mesh pre code { @apply bg-transparent p-0; }
+.prose-mesh a { @apply text-accent hover:underline; }
+.prose-mesh blockquote { @apply border-l-2 border-accent pl-4 italic text-text-secondary; }
+.prose-mesh table { @apply w-full mb-4; }
+.prose-mesh th { @apply text-left p-2 border-b border-border text-text-primary; }
+.prose-mesh td { @apply p-2 border-b border-border text-text-secondary; }
+.prose-mesh hr { @apply border-border my-6; }

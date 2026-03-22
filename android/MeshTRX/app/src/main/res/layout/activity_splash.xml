@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- Камуфляжный фон -->
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:src="@drawable/camo_bg"
+        android:scaleType="centerCrop" />
+
+    <!-- Логотип по центру с отступами -->
+    <ImageView
+        android:id="@+id/splashLogo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_margin="24dp"
+        android:adjustViewBounds="true"
+        android:src="@drawable/splash_logo"
+        android:scaleType="fitCenter" />
+
+    <!-- Версия внизу -->
+    <TextView
+        android:id="@+id/splashVersion"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="48dp"
+        android:text="v4.2"
+        android:textColor="#4ade80"
+        android:textSize="14sp" />
+
+</FrameLayout>

@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:padding="10dp"
+    android:background="?android:attr/selectableItemBackground">
+
+    <!-- Индикатор статуса -->
+    <View android:id="@+id/viewStatus"
+        android:layout_width="10dp"
+        android:layout_height="10dp"
+        android:background="@android:color/holo_green_dark" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:layout_marginStart="10dp">
+
+        <!-- Позывной -->
+        <TextView android:id="@+id/tvCallSign"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="TX-XXXX"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <!-- RSSI + батарея -->
+        <TextView android:id="@+id/tvDetails"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="-85 dBm  14dBm  78%"
+            android:textSize="12sp"
+            android:textColor="#666" />
+
+        <!-- Время -->
+        <TextView android:id="@+id/tvLastSeen"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="2 мин назад"
+            android:textSize="11sp"
+            android:textColor="#999" />
+    </LinearLayout>
+
+    <!-- RSSI бар -->
+    <ProgressBar android:id="@+id/progressSignal"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="50dp"
+        android:layout_height="6dp"
+        android:max="100"
+        android:progress="50" />
+
+    <!-- Кнопка вызова -->
+    <ImageButton android:id="@+id/btnCall"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:src="@android:drawable/ic_menu_call"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Вызвать"
+        android:layout_marginStart="8dp" />
+
+</LinearLayout>

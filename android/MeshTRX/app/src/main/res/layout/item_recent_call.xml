@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingStart="4dp"
+    android:paddingEnd="4dp"
+    android:paddingTop="6dp"
+    android:paddingBottom="6dp"
+    android:background="?android:attr/selectableItemBackground">
+
+    <!-- Иконка: входящий/исходящий -->
+    <TextView android:id="@+id/tvCallIcon"
+        android:layout_width="24dp"
+        android:layout_height="wrap_content"
+        android:text="←"
+        android:textSize="16sp"
+        android:gravity="center" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:layout_marginStart="8dp">
+
+        <TextView android:id="@+id/tvRecentName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="TX-6770"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <TextView android:id="@+id/tvRecentInfo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="14:32 · Личный вызов · -75dBm"
+            android:textSize="11sp"
+            android:textColor="#888" />
+    </LinearLayout>
+
+    <ImageButton android:id="@+id/btnRecentCall"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:src="@android:drawable/ic_menu_call"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Вызвать" />
+
+</LinearLayout>
