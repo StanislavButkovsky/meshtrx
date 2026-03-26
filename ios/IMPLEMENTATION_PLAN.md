@@ -26,8 +26,8 @@
 
 ## Этап 0 — Инициализация проекта (1-2 дня)
 
-- [ ] Создать Xcode проект (SwiftUI App)
-- [ ] Настроить структуру папок:
+- [x] Создать Xcode проект (SwiftUI App)
+- [x] Настроить структуру папок:
   ```
   ios/MeshTRX/
   ├── MeshTRX.xcodeproj
@@ -60,8 +60,8 @@
   ├── Info.plist
   └── MeshTRX.entitlements
   ```
-- [ ] Добавить Capabilities: Background Modes (BLE, Audio), локализация (ru, en)
-- [ ] Настроить Info.plist: NSBluetoothAlwaysUsageDescription, NSMicrophoneUsageDescription, NSLocationWhenInUseUsageDescription
+- [x] Добавить Capabilities: Background Modes (BLE, Audio), локализация (ru, en)
+- [x] Настроить Info.plist: NSBluetoothAlwaysUsageDescription, NSMicrophoneUsageDescription, NSLocationWhenInUseUsageDescription
 
 ---
 
@@ -69,7 +69,7 @@
 
 Прямой порт Android моделей на Swift.
 
-- [ ] **Models.swift** — перечисления и структуры:
+- [x] **Models.swift** — перечисления и структуры:
   ```swift
   enum BleState: String { case disconnected, scanning, connecting, connected }
   enum TxMode { case ptt, vox }
@@ -85,7 +85,7 @@
   struct RecentCall: Identifiable { ... }
   ```
 
-- [ ] **AppState.swift** — ObservableObject (аналог ServiceState):
+- [x] **AppState.swift** — ObservableObject (аналог ServiceState):
   ```swift
   @MainActor
   class AppState: ObservableObject {
@@ -110,7 +110,7 @@
 
 Ключевой компонент — полный порт BLE-протокола.
 
-- [ ] **BLEManager.swift** — CoreBluetooth реализация:
+- [x] **BLEManager.swift** — CoreBluetooth реализация:
   - CBCentralManager delegate (scan, connect, disconnect)
   - Фильтр по имени `MeshTRX-`
   - Nordic UART Service UUID: `6E400001-B5A3-F393-E0A9-E50E24DCCA9E`
@@ -119,7 +119,7 @@
   - Подписка на notifications
   - MTU negotiation
 
-- [ ] **Протокол команд** — парсинг и формирование пакетов:
+- [x] **Протокол команд** — парсинг и формирование пакетов:
   | Cmd | Константа | Описание |
   |-----|-----------|----------|
   | 0x01 | AUDIO_TX | Отправка аудио (64 байта Codec2) |
@@ -144,21 +144,21 @@
   | 0x27 | FILE_DATA | Данные файла |
   | 0x28 | SET_REPEATER | Конфиг ретранслятора |
 
-- [ ] Автопереподключение с бэкоффом (3с, 5с, 7с, 10с)
-- [ ] Сохранение последнего устройства (UserDefaults)
-- [ ] Background BLE (state restoration, CBCentralManagerOptionRestoreIdentifierKey)
+- [x] Автопереподключение с бэкоффом (3с, 5с, 7с, 10с)
+- [x] Сохранение последнего устройства (UserDefaults)
+- [x] Background BLE (state restoration, CBCentralManagerOptionRestoreIdentifierKey)
 
 ---
 
 ## Этап 3 — Codec2 интеграция (2-3 дня)
 
-- [ ] Скопировать C-исходники Codec2 из `android/MeshTRX/app/src/main/jni/codec2/`
-- [ ] Создать bridging header:
+- [x] Скопировать C-исходники Codec2 из `android/MeshTRX/app/src/main/jni/codec2/`
+- [x] Создать bridging header:
   ```c
   // MeshTRX-Bridging-Header.h
   #include "codec2.h"
   ```
-- [ ] **Codec2Wrapper.swift** — Swift обёртка:
+- [x] **Codec2Wrapper.swift** — Swift обёртка:
   ```swift
   class Codec2Wrapper {
       private var codec: OpaquePointer?
@@ -175,33 +175,33 @@
       deinit { codec2_destroy(codec) }
   }
   ```
-- [ ] Добавить .c файлы в Xcode target, настроить compile flags (`-DCODEC2_MODE_EN_DEFAULT=0`)
+- [x] Добавить .c файлы в Xcode target, настроить compile flags (`-DCODEC2_MODE_EN_DEFAULT=0`)
 
 ---
 
 ## Этап 4 — Аудио движок (3-4 дня)
 
-- [ ] **AudioEngine.swift** — AVAudioEngine-based:
+- [x] **AudioEngine.swift** — AVAudioEngine-based:
   - Запись: 8 кГц, mono, Int16
   - Воспроизведение: 8 кГц, mono
   - Audio Session категория: `.playAndRecord`, mode: `.voiceChat`
   - Маршрутизация: speaker / earpiece
   - Прерывания (звонки, другие приложения)
 
-- [ ] **Запись (TX):**
+- [x] **Запись (TX):**
   - Install tap on input node
   - Конвертация sampleRate → 8 кГц (AVAudioConverter)
   - Буферизация 1280 сэмплов (8 фреймов × 160)
   - Codec2 encode → 64 байта → BLE send
   - RMS-мониторинг для VU-индикатора и VOX
 
-- [ ] **Воспроизведение (RX):**
+- [x] **Воспроизведение (RX):**
   - Codec2 decode → PCM
   - Volume boost (0.5x – 3.0x)
   - Roger beep (1200 + 1600 Гц, 80 мс)
   - Очередь пакетов для плавного воспроизведения
 
-- [ ] **VoxEngine.swift** — state machine:
+- [x] **VoxEngine.swift** — state machine:
   ```
   IDLE → ATTACK → ACTIVE → HANGTIME → IDLE
   ```
@@ -209,17 +209,17 @@
   - Attack time: 50 мс
   - Hangtime: 800 мс (настраиваемый)
 
-- [ ] Background audio (UIBackgroundModes: audio)
+- [x] Background audio (UIBackgroundModes: audio)
 
 ---
 
 ## Этап 5 — UI: Splash + Tab навигация (1 день)
 
-- [ ] **SplashView.swift:**
+- [x] **SplashView.swift:**
   - Логотип с fade-in анимацией
   - 2 секунды → переход к MainTabView
 
-- [ ] **MainTabView.swift:**
+- [x] **MainTabView.swift:**
   - TabView с 5 табами: Voice, Messages, Files, Map, Settings
   - Иконки: mic.fill, message.fill, doc.fill, map.fill, gear
   - Badge на Messages (непрочитанные)
@@ -229,7 +229,7 @@
 
 ## Этап 6 — Voice экран (3-4 дня)
 
-- [ ] **VoiceView.swift:**
+- [x] **VoiceView.swift:**
   - PTT-кнопка (большая, центральная)
   - Состояния: IDLE (серый), TX (красный), RX (зелёный), VOX_IDLE (синий), VOX_TX (красный)
   - Анимация колец при TX (на основе RMS уровня)
@@ -238,59 +238,58 @@
   - Кнопки вызова: общий, приватный (выбор пира), экстренный
   - Список недавних вызовов
 
-- [ ] **PttButtonView.swift** — Canvas (SwiftUI Shape/Canvas):
+- [x] **PttButtonView.swift** — Canvas (SwiftUI Shape/Canvas):
   - Анимированные расходящиеся кольца
   - Пульсация центра
   - Long press gesture для PTT
   - Haptic feedback (UIImpactFeedbackGenerator)
 
-- [ ] **IncomingCallView.swift:**
+- [x] **IncomingCallView.swift:**
   - Full-screen overlay (.fullScreenCover)
   - Цвета по типу: ALL=синий, PRIVATE=зелёный, GROUP=янтарный, EMERGENCY=красный
   - Accept / Reject кнопки
   - 30-сек автоотклонение
-  - Вибрация (UINotificationFeedbackGenerator + AudioServicesPlaySystemSound)
-  - Показ поверх lockscreen: нужна Push Notification с UNNotificationContentExtension
+  - Вибрация (AudioServicesPlaySystemSound, паттерн по типу вызова)
+  - Пульсирующий круг с иконкой
 
 ---
 
 ## Этап 7 — Messages экран (2-3 дня)
 
-- [ ] **MessagesView.swift:**
+- [x] **MessagesView.swift:**
   - Поле ввода с ограничением 84 байта UTF-8
   - Счётчик оставшихся байт
   - Picker получателя: Все / конкретный пир
   - Фильтр по отправителю/получателю
 
-- [ ] **MessageBubbleView.swift:**
+- [x] **MessageBubbleView.swift:**
   - Исходящие: справа, синий
   - Входящие: слева, серый
   - Метаданные: время, RSSI, имя отправителя
   - Статус: отправляется → отправлено → доставлено / ошибка
 
-- [ ] Автоскролл к последнему сообщению
+- [x] Автоскролл к последнему сообщению
 - [ ] Персистентность: SwiftData или JSON в Documents/
 
 ---
 
 ## Этап 8 — Files экран (3-4 дня)
 
-- [ ] **FilesView.swift:**
+- [x] **FilesView.swift:**
   - PhotosPicker для выбора изображений
-  - DocumentPicker (UTType) для файлов
+  - DocumentPicker (fileImporter) для файлов
   - Превью перед отправкой
   - Picker получателя
 
-- [ ] **ImageProcessor.swift:**
+- [x] **ImageProcessor.swift:**
   - Ресайз до 320×426 (aspect fit)
   - JPEG сжатие 70%
-  - Коррекция EXIF ориентации (CGImageSource)
+  - Коррекция EXIF ориентации (UIGraphicsContext)
   - Лимит 100 КБ
 
-- [ ] **Список передач:**
+- [x] **Список передач (FileTransferRow):**
   - ProgressView для активных
   - Статусы: ожидание, передача, готово, ошибка
-  - Действия: повтор, удалить, поделиться (ShareLink)
 
 - [ ] Чанки 120 байт с задержкой 100 мс
 - [ ] Хранение в Documents/transfers/
@@ -299,23 +298,23 @@
 
 ## Этап 9 — Map экран (3-4 дня)
 
-- [ ] **MapView.swift** — MapKit (iOS 17 MapKit SwiftUI / MKMapView через UIViewRepresentable):
+- [x] **MapContentView** — MKMapView через UIViewRepresentable:
   - Маркеры пиров с callsign, дистанцией, RSSI
-  - Линии от меня к пирам (цвет по возрасту: зелёный <5 мин, жёлтый <10 мин, красный >10 мин)
-  - Маркер моей позиции
-  - Кнопки: zoom to fit all, center on me
+  - Линии от меня к пирам (MKPolyline)
+  - showsUserLocation для своей позиции
 
-- [ ] **RadarView.swift** — Canvas (SwiftUI):
-  - Концентрические кольца дистанции
-  - Вращение по компасу (CLLocationManager heading)
-  - Точки пиров с цветом по сигналу
+- [x] **RadarView.swift** — Canvas (SwiftUI):
+  - Концентрические кольца дистанции (4 кольца)
+  - Вращение по компасу (heading)
+  - Точки пиров с цветом по давности (<5 мин зелёный, <10 жёлтый, >10 красный)
   - 10 уровней масштаба (0.1 – 100 км)
   - Cardinal points (N/E/S/W)
-  - Tap для переключения масштаба
+  - Кнопки +/− для масштаба
+  - Пульсирующий центр (своя позиция)
 
-- [ ] **Табы:** Map / Radar (Picker с .segmented стилем)
+- [x] **Табы:** Map / Radar (кастомные кнопки)
 
-- [ ] **LocationManager.swift:**
+- [x] **LocationManager.swift:**
   - CLLocationManager delegate
   - requestWhenInUseAuthorization
   - desiredAccuracy: kCLLocationAccuracyBest
@@ -326,7 +325,7 @@
 
 ## Этап 10 — Settings экран (2 дня)
 
-- [ ] **SettingsView.swift** — Form/List:
+- [x] **SettingsView.swift** — Form/List:
   - Подключение: Connect / Disconnect / Forget Device
   - Callsign: TextField, отправка на устройство
   - Канал: Picker 0-22 (863.15 – 869.75 МГц, шаг 300 кГц)
@@ -336,8 +335,9 @@
   - Peer timeout: Picker (15 мин – 24 ч)
   - RX Volume: Slider (50% – 300%)
   - PTT RMS порог: Slider (0 = выкл)
-  - Язык: Picker (Русский / English)
-  - О приложении: версия, ссылки
+  - VOX: Threshold + Hangtime sliders
+  - Ретранслятор: SSID, пароль, IP, вкл/выкл
+  - О приложении: версия, сборка
 
 - [ ] Сохранение в UserDefaults
 - [ ] Синхронизация настроек с устройством через BLE (CMD 0x0A-0x0C)
@@ -346,28 +346,28 @@
 
 ## Этап 11 — Peer Discovery и управление (2 дня)
 
-- [ ] Парсинг PEER_SEEN пакетов (28 байт):
-  - Device ID (2 байта MAC suffix)
-  - Callsign
+- [x] Парсинг PEER_SEEN пакетов (28 байт):
+  - Device ID (4 байта)
+  - Callsign (9 байт)
   - RSSI, SNR, TX Power
   - Battery %
   - GPS координаты (lat_e7, lon_e7)
 
-- [ ] Таймер очистки стухших пиров (каждые 60 сек)
-- [ ] Настраиваемый таймаут (15 мин – 24 ч)
+- [x] Таймер очистки стухших пиров (каждые 60 сек)
+- [x] Настраиваемый таймаут (15 мин – 24 ч)
 - [ ] Персистентность списка пиров
 
 ---
 
 ## Этап 12 — Вызовы (2-3 дня)
 
-- [ ] Типы вызовов: ALL, PRIVATE, GROUP, EMERGENCY
-- [ ] Исходящий вызов → CMD 0x18-0x1B
-- [ ] Входящий вызов → CMD 0x1F → IncomingCallView
-- [ ] Accept / Reject / Cancel → CMD 0x1C-0x1E
+- [x] Типы вызовов: ALL, PRIVATE, GROUP, EMERGENCY
+- [x] Исходящий вызов → CMD 0x18-0x1B
+- [x] Входящий вызов → CMD 0x1F → IncomingCallView
+- [x] Accept / Reject / Cancel → CMD 0x1C-0x1E
 - [ ] CallKit интеграция (опционально, для нативного UI звонков)
-- [ ] История вызовов (макс 20, сохранение в UserDefaults)
-- [ ] Вибрация по типу вызова:
+- [x] История вызовов (макс 20)
+- [x] Вибрация по типу вызова:
   - EMERGENCY: 7 пульсов
   - PRIVATE: 3 пульса
   - GROUP: 2 пульса

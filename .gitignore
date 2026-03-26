@@ -16,6 +16,11 @@ web/node_modules/
 web/.next/
 web/out/
 
+# iOS
+ios/MeshTRX/MeshTRX.xcodeproj/xcuserdata/
+ios/MeshTRX/MeshTRX.xcodeproj/project.xcworkspace/xcuserdata/
+ios/MeshTRX/DerivedData/
+
 # Claude Code
 .claude/
 

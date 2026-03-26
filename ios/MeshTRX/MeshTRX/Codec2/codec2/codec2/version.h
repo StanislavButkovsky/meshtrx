@@ -1,0 +1,7 @@
+#ifndef __CODEC2_VERSION__
+#define __CODEC2_VERSION__
+#define CODEC2_VERSION_MAJOR 1
+#define CODEC2_VERSION_MINOR 2
+#define CODEC2_VERSION_PATCH 0
+#define CODEC2_VERSION "1.2.0"
+#endif
