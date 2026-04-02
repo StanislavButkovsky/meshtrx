@@ -20,14 +20,14 @@ class IncomingCallActivity : AppCompatActivity() {
         const val EXTRA_RSSI = "rssi"
         const val EXTRA_LAT = "lat"
         const val EXTRA_LON = "lon"
-        private const val TIMEOUT_MS = 30_000L
+        private const val TIMEOUT_SEC = 10
     }
 
     private var service: MeshTRXService? = null
     private var bound = false
     private lateinit var ringer: CallRinger
     private val handler = Handler(Looper.getMainLooper())
-    private var timeoutSec = 30
+    private var timeoutSec = TIMEOUT_SEC
 
     private lateinit var callType: CallType
     private lateinit var senderId: String
@@ -80,9 +80,12 @@ class IncomingCallActivity : AppCompatActivity() {
         val tvCallRssi = findViewById<TextView>(R.id.tvCallRssi)
         val tvCallCoords = findViewById<TextView>(R.id.tvCallCoords)
         val tvCallTimer = findViewById<TextView>(R.id.tvCallTimer)
-        val btnAccept = findViewById<Button>(R.id.btnAccept)
-        val btnReject = findViewById<Button>(R.id.btnReject)
-        val btnClose = findViewById<Button>(R.id.btnClose)
+        val btnOk = findViewById<Button>(R.id.btnClose)
+        // Скрыть Accept/Reject, показать только OK
+        findViewById<Button>(R.id.btnAccept).visibility = View.GONE
+        findViewById<Button>(R.id.btnReject).visibility = View.GONE
+        btnOk.visibility = View.VISIBLE
+        btnOk.text = "OK"
 
         // UI по типу вызова
         tvCallerName.text = callSign
@@ -94,32 +97,20 @@ class IncomingCallActivity : AppCompatActivity() {
             CallType.ALL -> {
                 tvCallType.text = "ОБЩИЙ ВЫЗОВ"
                 tvCallType.setTextColor(Colors.blueAccent)
-                btnAccept.visibility = View.GONE
-                btnReject.visibility = View.GONE
-                btnClose.visibility = View.VISIBLE
             }
             CallType.PRIVATE -> {
                 tvCallType.text = "ЛИЧНЫЙ ВЫЗОВ"
                 tvCallType.setTextColor(Colors.greenAccent)
-                btnAccept.visibility = View.VISIBLE
-                btnReject.visibility = View.VISIBLE
-                btnClose.visibility = View.GONE
             }
             CallType.GROUP -> {
                 tvCallType.text = "ГРУППОВОЙ ВЫЗОВ"
                 tvCallType.setTextColor(Colors.amberAccent)
-                btnAccept.visibility = View.VISIBLE
-                btnReject.visibility = View.VISIBLE
-                btnClose.visibility = View.GONE
             }
             CallType.EMERGENCY -> {
                 tvCallType.text = "!!! SOS !!!"
                 tvCallType.setTextColor(Colors.redAccent)
                 tvCallType.textSize = 20f
                 rootLayout.setBackgroundColor(0xFF1a0000.toInt())
-                btnAccept.text = "ПРИНЯТЬ SOS"
-                btnReject.visibility = View.GONE
-                btnClose.visibility = View.GONE
                 if (lat != 0.0 || lon != 0.0) {
                     tvCallCoords.text = "%.4f°N  %.4f°E".format(lat, lon)
                     tvCallCoords.visibility = View.VISIBLE
@@ -127,25 +118,9 @@ class IncomingCallActivity : AppCompatActivity() {
             }
         }
 
-        // Кнопки
-        btnAccept.setOnClickListener {
-            val call = IncomingCall(callType, senderId, callSign, callSeq = callSeq, rssi = rssi)
-            service?.acceptCall(call)
-            ringer.stop()
-            finish()
-        }
-
-        btnReject.setOnClickListener {
-            val call = IncomingCall(callType, senderId, callSign, callSeq = callSeq, rssi = rssi)
-            service?.rejectCall(call)
-            ringer.stop()
-            finish()
-        }
-
-        btnClose.setOnClickListener {
-            ringer.stop()
-            ServiceState.incomingCall.postValue(null)
-            finish()
+        // Кнопка OK — закрыть экран, остановить зумер
+        btnOk.setOnClickListener {
+            dismissCall()
         }
 
         // Зумер/вибрация

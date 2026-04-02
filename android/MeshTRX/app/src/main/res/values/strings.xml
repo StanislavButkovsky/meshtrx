@@ -52,6 +52,8 @@
     <string name="send_to">Send to?</string>
     <string name="select_subscriber">Select subscriber</string>
     <string name="broadcast_channel">Broadcast to channel</string>
+    <string name="clear_peers">Clear subscriber list</string>
+    <string name="clear_peers_confirm">Clear all subscribers and recent calls?</string>
 
     <!-- Files -->
     <string name="send_photo">Photo</string>

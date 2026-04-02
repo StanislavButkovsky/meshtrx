@@ -154,6 +154,14 @@
             android:text="@string/apply_save"
             android:layout_marginBottom="16dp" />
 
+        <!-- Очистка данных -->
+        <Button android:id="@+id/btnClearPeers"
+            android:layout_width="match_parent" android:layout_height="44dp"
+            android:text="@string/clear_peers"
+            android:textColor="#ff6b6b"
+            android:backgroundTint="#2a1a1a"
+            android:layout_marginBottom="16dp" />
+
         <!-- Ретранслятор -->
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:text="@string/repeater_title" android:textSize="14sp" android:textStyle="bold"

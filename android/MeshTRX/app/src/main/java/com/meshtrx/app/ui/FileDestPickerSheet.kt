@@ -13,6 +13,7 @@ import com.meshtrx.app.model.Peer
 class FileDestPickerSheet : BottomSheetDialogFragment() {
 
     var onSelected: ((destMac: ByteArray?, destName: String) -> Unit)? = null
+    var onSelectedFull: ((deviceId: String?, destName: String) -> Unit)? = null // с полным deviceId
     var showBroadcast: Boolean = true // false для файлов (только адресная)
     var customTitle: String? = null
 
@@ -77,6 +78,7 @@ class FileDestPickerSheet : BottomSheetDialogFragment() {
                 holder.tvInfo.text = getString(R.string.broadcast_channel)
                 holder.itemView.setOnClickListener {
                     onSelected?.invoke(null, getString(R.string.all))
+                    onSelectedFull?.invoke(null, getString(R.string.all))
                     dismiss()
                 }
             } else {
@@ -91,6 +93,7 @@ class FileDestPickerSheet : BottomSheetDialogFragment() {
                 holder.tvInfo.text = "${peer.rssi}dBm · $agoStr назад"
                 holder.itemView.setOnClickListener {
                     onSelected?.invoke(peerToMac(peer), peer.callSign)
+                    onSelectedFull?.invoke(peer.deviceId, peer.callSign)
                     dismiss()
                 }
             }

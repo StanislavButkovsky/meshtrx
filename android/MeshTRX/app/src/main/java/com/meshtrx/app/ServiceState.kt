@@ -45,6 +45,7 @@ object ServiceState {
     val lastRxSnr = MutableLiveData(0)
     val isReceiving = MutableLiveData(false)
     val isPlayingVoice = MutableLiveData(false) // воспроизведение адресного голосового
+    val isReceivingFile = MutableLiveData(false) // приём файла (адресный PTT и др.)
 
     // Events (one-shot) — UI подписывается
     val showPinDialog = MutableLiveData(false)

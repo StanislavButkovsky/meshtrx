@@ -431,9 +431,14 @@ class MeshTRXService : Service() {
         }.start()
     }
 
-    fun setCallSign(cs: String) {
+    /** Сохранить позывной локально (без отправки на девайс) */
+    fun saveCallSignLocal(cs: String) {
         prefs.edit().putString("my_callsign", cs).apply()
         ServiceState.callSign.postValue(cs)
+    }
+
+    fun setCallSign(cs: String) {
+        saveCallSignLocal(cs)
         // Отправить на девайс через настройки
         val json = """{"callsign":"$cs"}"""
         bleManager.sendSettings(json)
@@ -535,7 +540,7 @@ class MeshTRXService : Service() {
                 val pktSize = 4 + Codec2Wrapper.PACKET_BYTES // 36
                 if (data.size >= pktSize) {
                     val flags = data[1].toInt() and 0xFF
-                    val senderId = String.format("%02X%02X", data[2], data[3])
+                    val senderId = String.format("%02X%02X", data[2].toInt() and 0xFF, data[3].toInt() and 0xFF)
                     val audio = data.copyOfRange(4, pktSize)
                     val isLast = (flags and 0x02) != 0 // PKT_FLAG_PTT_END
                     // Воспроизводить если: слушаем всех ИЛИ вызов принят
@@ -584,7 +589,7 @@ class MeshTRXService : Service() {
                     val text = String(data, 2, textEnd - 2, Charsets.UTF_8)
                     var senderId = "??"
                     if (textEnd + 2 < data.size) {
-                        senderId = String.format("%02X%02X", data[textEnd + 1], data[textEnd + 2])
+                        senderId = String.format("%02X%02X", data[textEnd + 1].toInt() and 0xFF, data[textEnd + 2].toInt() and 0xFF)
                     }
                     // Найти позывной отправителя из peers
                     val senderName = ServiceState.peers.value
@@ -625,7 +630,8 @@ class MeshTRXService : Service() {
             BleManager.CMD_PEER_SEEN -> {
                 if (data.size >= 28) {
                     val id = String.format("%02X%02X%02X%02X",
-                        data[1], data[2], data[3], data[4])
+                        data[1].toInt() and 0xFF, data[2].toInt() and 0xFF,
+                        data[3].toInt() and 0xFF, data[4].toInt() and 0xFF)
                     val cs = String(data, 5, 9, Charsets.UTF_8).trimEnd('\u0000')
                     // Координаты: байты 14-17=lat_e7, 18-21=lon_e7 (int32 LE)
                     val latE7 = getInt(data, 14)
@@ -639,14 +645,23 @@ class MeshTRXService : Service() {
                     val lat = if (latE7 != 0 || lonE7 != 0) latE7 / 1e7 else null
                     val lon = if (latE7 != 0 || lonE7 != 0) lonE7 / 1e7 else null
 
-                    val peer = Peer(id, cs, pRssi, pSnr, txPwr,
+                    Log.d(TAG, "PEER_SEEN: id=$id cs='$cs' rssi=$pRssi snr=$pSnr")
+
+                    val list = ServiceState.peers.value?.toMutableList() ?: mutableListOf()
+                    // Найти существующий peer (по точному ID или по последним 4 символам)
+                    val shortId = id.takeLast(4)
+                    val existing = list.find { it.deviceId == id || it.deviceId.endsWith(shortId) }
+                    // Сохранить позывной если в beacon пусто, но ранее был известен
+                    val finalCs = if (cs.isNotEmpty()) cs
+                        else existing?.callSign?.takeIf { it != "TX-$shortId" }
+                        ?: "TX-$shortId"
+                    list.removeAll { it.deviceId == id || it.deviceId.endsWith(shortId) }
+                    val peer = Peer(id, finalCs, pRssi, pSnr, txPwr,
                         if (batt == 0xFF) null else batt,
                         System.currentTimeMillis(), lat, lon)
-                    val list = ServiceState.peers.value?.toMutableList() ?: mutableListOf()
-                    list.removeAll { it.deviceId == id }
                     list.add(peer)
                     ServiceState.peers.postValue(list)
-                    savePeers()
+                    savePeers(list)
                 }
             }
             BleManager.CMD_GET_LOCATION -> {
@@ -666,10 +681,30 @@ class MeshTRXService : Service() {
             BleManager.CMD_SETTINGS_RESP -> {
                 val json = String(data, 1, data.size - 1, Charsets.UTF_8)
                 Log.d(TAG, "Settings: $json")
-                // Загрузить сохранённый позывной
+                // Позывной: приоритет — локально сохранённый, иначе с девайса
                 val saved = prefs.getString("my_callsign", null)
                 if (!saved.isNullOrEmpty()) {
                     ServiceState.callSign.postValue(saved)
+                    // Синхронизировать на девайс если отличается
+                    try {
+                        val doc = org.json.JSONObject(json)
+                        val deviceCs = doc.optString("callsign", "")
+                        if (deviceCs != saved) {
+                            Log.d(TAG, "CallSign mismatch: device='$deviceCs' local='$saved', syncing to device")
+                            bleManager.sendSettings("""{"callsign":"$saved"}""")
+                        }
+                    } catch (_: Exception) {}
+                } else {
+                    // Если локально пусто — взять с девайса
+                    try {
+                        val doc = org.json.JSONObject(json)
+                        val deviceCs = doc.optString("callsign", "")
+                        if (deviceCs.isNotEmpty() && !deviceCs.startsWith("TX-")) {
+                            prefs.edit().putString("my_callsign", deviceCs).apply()
+                            ServiceState.callSign.postValue(deviceCs)
+                            Log.d(TAG, "CallSign loaded from device: $deviceCs")
+                        }
+                    } catch (_: Exception) {}
                 }
             }
             BleManager.CMD_PIN_RESULT -> {
@@ -710,7 +745,7 @@ class MeshTRXService : Service() {
                         ((data[5].toInt() and 0xFF) shl 24)
                     if (data.size >= 29) {
                         // Новый формат с sender
-                        val senderId = String.format("%02X%02X", data[7], data[8])
+                        val senderId = String.format("%02X%02X", data[7].toInt() and 0xFF, data[8].toInt() and 0xFF)
                         incomingFileName = String(data, 9, 20.coerceAtMost(data.size - 9), Charsets.UTF_8).trimEnd('\u0000')
                         incomingFileSender = senderId
                         val currentRssi = ServiceState.rssi.value ?: 0
@@ -725,6 +760,9 @@ class MeshTRXService : Service() {
                     }
                     incomingFileBuffer = ByteArray(incomingFileSize)
                     incomingFileOffset = 0
+                    if (incomingFileType == 0x05) {
+                        ServiceState.isReceivingFile.postValue(true)
+                    }
                     Log.d(TAG, "File recv header: type=$incomingFileType size=$incomingFileSize name=$incomingFileName sender=$incomingFileSender")
                 }
             }
@@ -767,6 +805,9 @@ class MeshTRXService : Service() {
                             }
                         }
 
+                        if (fileType == 0x05) {
+                            ServiceState.isReceivingFile.postValue(false)
+                        }
                         Log.d(TAG, "File complete: type=$fileType size=${fileData.size} from=$senderName")
                         val timeMs = System.currentTimeMillis()
                         val localPath = saveFileData(recvFileName, timeMs, fileData)
@@ -825,7 +866,9 @@ class MeshTRXService : Service() {
                 if (data.size >= 24) {
                     val callTypeCode = data[1].toInt() and 0xFF
                     val ct = CallType.fromCode(callTypeCode)
-                    val sid = String.format("%02X%02X%02X%02X", data[2], data[3], data[4], data[5])
+                    val sid = String.format("%02X%02X%02X%02X",
+                        data[2].toInt() and 0xFF, data[3].toInt() and 0xFF,
+                        data[4].toInt() and 0xFF, data[5].toInt() and 0xFF)
                     val cs = String(data, 6, 9, Charsets.UTF_8).trimEnd('\u0000')
                     val latE7 = getInt(data, 15)
                     val lonE7 = getInt(data, 19)
@@ -840,6 +883,7 @@ class MeshTRXService : Service() {
                     if (existingPeer != null) {
                         peerList.remove(existingPeer)
                         peerList.add(existingPeer.copy(
+                            deviceId = sid, // обновить на полный ID
                             callSign = if (cs.isNotEmpty()) cs else existingPeer.callSign,
                             rssi = currentRssi,
                             lastSeenMs = System.currentTimeMillis(),
@@ -857,7 +901,7 @@ class MeshTRXService : Service() {
                         ))
                     }
                     ServiceState.peers.postValue(peerList)
-                    savePeers()
+                    savePeers(peerList)
 
                     val listenMode = ServiceState.listenMode.value ?: ListenMode.ALL
                     val shouldShow = when {
@@ -890,8 +934,8 @@ class MeshTRXService : Service() {
 
     // === Peers persistence ===
 
-    private fun savePeers() {
-        val peers = ServiceState.peers.value ?: return
+    fun savePeers(peerList: List<Peer>? = null) {
+        val peers = peerList ?: ServiceState.peers.value ?: return
         val json = peers.joinToString(";") { p ->
             "${p.deviceId},${p.callSign},${p.rssi},${p.snr},${p.txPower}," +
             "${p.batteryPct ?: -1},${p.lastSeenMs},${p.lat ?: ""},${p.lon ?: ""}"
@@ -908,6 +952,8 @@ class MeshTRXService : Service() {
             if (p.size < 7) return@mapNotNull null
             val lastSeen = p[6].toLongOrNull() ?: return@mapNotNull null
             if (now - lastSeen > timeoutMs) return@mapNotNull null // устарел
+            // Отбросить peers с испорченными ID (от старого бага String.format без and 0xFF)
+            if (p[0].contains("FFFFFF")) return@mapNotNull null
             Peer(
                 deviceId = p[0], callSign = p[1],
                 rssi = p[2].toIntOrNull() ?: 0,
@@ -956,8 +1002,15 @@ class MeshTRXService : Service() {
 
     fun addRecentCall(call: RecentCall) {
         val list = ServiceState.recentCalls.value?.toMutableList() ?: mutableListOf()
-        // Уникальные записи — удалить старую запись с тем же deviceId+callType
-        list.removeAll { it.deviceId == call.deviceId && it.callType == call.callType }
+        // Убрать устаревшие типы
+        list.removeAll { it.callType == "SOS" }
+        // Дедупликация: ALL — по callType, остальные — по deviceId (endsWith)
+        if (call.callType == "ALL") {
+            list.removeAll { it.callType == "ALL" }
+        } else {
+            val shortId = call.deviceId.takeLast(4)
+            list.removeAll { it.deviceId.endsWith(shortId) && it.callType == call.callType }
+        }
         list.add(0, call) // новый сверху
         // Максимум 20
         while (list.size > 20) list.removeAt(list.size - 1)
@@ -977,6 +1030,7 @@ class MeshTRXService : Service() {
         val calls = json.split("\n").mapNotNull { line ->
             val p = line.split("\t")
             if (p.size < 7) return@mapNotNull null
+            if (p[3] == "SOS") return@mapNotNull null // убрать устаревшие
             RecentCall(
                 deviceId = p[0], callSign = p[1],
                 isOutgoing = p[2] == "true", callType = p[3],
@@ -984,8 +1038,21 @@ class MeshTRXService : Service() {
                 rssi = p[5].toIntOrNull(),
                 timeMs = p[6].toLongOrNull() ?: 0
             )
+        }.toMutableList()
+        // Дедупликация: оставить только последний ALL и по одному PRIVATE на deviceId
+        val deduped = mutableListOf<RecentCall>()
+        var hasAll = false
+        val seenPrivate = mutableSetOf<String>()
+        for (c in calls) {
+            if (c.callType == "ALL") {
+                if (!hasAll) { deduped.add(c); hasAll = true }
+            } else {
+                val key = c.deviceId.takeLast(4)
+                if (key !in seenPrivate) { deduped.add(c); seenPrivate.add(key) }
+            }
         }
-        ServiceState.recentCalls.value = calls
+        ServiceState.recentCalls.value = deduped
+        if (deduped.size != calls.size) saveRecentCalls(deduped)
     }
 
     // === File transfers persistence ===
@@ -1075,9 +1142,10 @@ class MeshTRXService : Service() {
         val list = ServiceState.peers.value?.toMutableList() ?: mutableListOf()
         val existing = list.find { it.deviceId.endsWith(shortId) }
         if (existing != null) {
-            // Обновить RSSI и время
+            // Обновить RSSI, SNR и время (callSign и deviceId сохраняются от beacon)
+            val snr = ServiceState.snr.value ?: 0
             list.remove(existing)
-            list.add(existing.copy(rssi = rssi, lastSeenMs = System.currentTimeMillis()))
+            list.add(existing.copy(rssi = rssi, snr = snr, lastSeenMs = System.currentTimeMillis()))
         } else {
             // Новый peer — знаем только последние 2 байта MAC
             list.add(Peer(
@@ -1089,7 +1157,7 @@ class MeshTRXService : Service() {
             ))
         }
         ServiceState.peers.postValue(list)
-                    savePeers()
+        savePeers(list)
     }
 
     private fun getInt(data: ByteArray, offset: Int): Int {

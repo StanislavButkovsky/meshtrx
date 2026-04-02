@@ -970,10 +970,11 @@ static void handleBleData(uint8_t* data, size_t len) {
       // Отправить текущие настройки
       char jsonBuf[160];
       snprintf(jsonBuf, sizeof(jsonBuf),
-        "{\"duty_cycle\":%s,\"tx_power\":%d,\"beacon_interval\":%d}",
+        "{\"duty_cycle\":%s,\"tx_power\":%d,\"beacon_interval\":%d,\"callsign\":\"%s\"}",
         loraIsDutyCycleEnabled() ? "true" : "false",
         loraGetTxPower(),
-        (int)beaconGetInterval());
+        (int)beaconGetInterval(),
+        beaconGetCallSign());
 
       uint8_t resp[1 + 160];
       resp[0] = BLE_CMD_SETTINGS_RESP;

@@ -19,6 +19,7 @@ class VoiceFragment : Fragment() {
     private var targetId: String? = null   // null = broadcast
     private var targetName: String? = null
     private val voiceRecorder = VoiceRecorder(maxDurationSec = 10)
+    private var updateTargetUiFn: (() -> Unit)? = null
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onCreateView(inflater: LayoutInflater, c: ViewGroup?, s: Bundle?): View {
@@ -96,16 +97,26 @@ class VoiceFragment : Fragment() {
                 tvTargetName.text = targetName ?: "TX-$targetId"
                 tvTargetName.setTextColor(Colors.greenAccent)
                 // Найти peer и показать сигнал
-                val peer = ServiceState.peers.value?.find { it.deviceId.endsWith(targetId!!) }
+                val shortTarget = targetId!!.takeLast(4)
+                val peer = ServiceState.peers.value?.find { it.deviceId.endsWith(shortTarget) }
                 if (peer != null) {
-                    val ago = (System.currentTimeMillis() - peer.lastSeenMs) / 1000
+                    val agoMs = System.currentTimeMillis() - peer.lastSeenMs
+                    val ago = agoMs / 1000
                     val agoStr = when {
                         ago < 60 -> "${ago}s"
                         ago < 3600 -> "${ago / 60}m"
                         else -> "${ago / 3600}h"
                     }
-                    tvTargetSignal.text = "${peer.rssi}dBm / ${peer.snr}dB · $agoStr"
-                    tvTargetSignal.setTextColor(Colors.rssiColor(peer.rssi))
+                    val isStale = agoMs > 15 * 60 * 1000 // >15 мин
+                    if (isStale) {
+                        tvTargetSignal.text = "✗ ${agoStr}"
+                        tvTargetSignal.setTextColor(Colors.redTx)
+                        tvTargetName.setTextColor(Colors.textDim)
+                    } else {
+                        tvTargetSignal.text = "${peer.rssi}dBm / ${peer.snr}dB · $agoStr"
+                        tvTargetSignal.setTextColor(Colors.rssiColor(peer.rssi))
+                        tvTargetName.setTextColor(Colors.greenAccent)
+                    }
                     tvTargetSignal.visibility = View.VISIBLE
                 } else {
                     tvTargetSignal.visibility = View.GONE
@@ -113,15 +124,17 @@ class VoiceFragment : Fragment() {
             }
         }
 
+        updateTargetUiFn = { updateTargetUI() }
+
         btnSelectTarget.setOnClickListener {
             val sheet = FileDestPickerSheet()
             sheet.customTitle = getString(R.string.select_subscriber)
-            sheet.onSelected = { mac, name ->
-                if (mac == null) {
+            sheet.onSelectedFull = { deviceId, name ->
+                if (deviceId == null) {
                     targetId = null
                     targetName = null
                 } else {
-                    targetId = String.format("%02X%02X", mac[0].toInt() and 0xFF, mac[1].toInt() and 0xFF)
+                    targetId = deviceId  // полный ID (8 hex символов)
                     targetName = name
                 }
                 updateTargetUI()
@@ -205,8 +218,32 @@ class VoiceFragment : Fragment() {
             val connected = ServiceState.connectionState.value == BleState.CONNECTED
             pttButton.isEnabled = connected && !playing
             if (playing) {
+                pttButton.state = PttButtonView.State.RX
                 tvStatusLine.text = "● воспроизведение..."
                 tvStatusLine.setTextColor(Colors.blueAccent)
+            } else if (ServiceState.isPttActive.value != true && ServiceState.isReceiving.value != true
+                       && ServiceState.isReceivingFile.value != true) {
+                val isVox = ServiceState.txMode.value == TxMode.VOX
+                pttButton.state = if (isVox) PttButtonView.State.VOX_IDLE else PttButtonView.State.IDLE
+                tvStatusLine.text = "● ожидание"
+                tvStatusLine.setTextColor(Colors.greenDim)
+            }
+        }
+
+        // Приём адресного голосового файла — блокировать PTT, показать RX
+        ServiceState.isReceivingFile.observe(viewLifecycleOwner) { receiving ->
+            val connected = ServiceState.connectionState.value == BleState.CONNECTED
+            val playing = ServiceState.isPlayingVoice.value == true
+            pttButton.isEnabled = connected && !receiving && !playing
+            if (receiving) {
+                pttButton.state = PttButtonView.State.RX
+                tvStatusLine.text = "● приём..."
+                tvStatusLine.setTextColor(Colors.blueAccent)
+            } else if (!playing && ServiceState.isPttActive.value != true && ServiceState.isReceiving.value != true) {
+                val isVox = ServiceState.txMode.value == TxMode.VOX
+                pttButton.state = if (isVox) PttButtonView.State.VOX_IDLE else PttButtonView.State.IDLE
+                tvStatusLine.text = "● ожидание"
+                tvStatusLine.setTextColor(Colors.greenDim)
             }
         }
 
@@ -257,7 +294,8 @@ class VoiceFragment : Fragment() {
 
         ServiceState.isReceiving.observe(viewLifecycleOwner) { receiving ->
             val senderId = ServiceState.lastRxDeviceId.value ?: ""
-            val isAddressed = targetId != null && senderId == targetId
+            val isAddressed = targetId != null && senderId.isNotEmpty() &&
+                (targetId!!.endsWith(senderId) || senderId.endsWith(targetId!!.takeLast(4)))
 
             if (receiving) {
                 if (isAddressed) {
@@ -290,9 +328,9 @@ class VoiceFragment : Fragment() {
         // Пункт 2: авто-выбор адресата только при входящем PRIVATE вызове
         ServiceState.incomingCall.observe(viewLifecycleOwner) { call ->
             if (call != null && call.callType == CallType.PRIVATE) {
-                val senderId = call.senderId.takeLast(4)
-                if (senderId.isNotEmpty() && senderId != "0000") {
-                    targetId = senderId
+                val senderId = call.senderId
+                if (senderId.isNotEmpty() && senderId != "00000000" && senderId != "0000") {
+                    targetId = senderId  // полный deviceId
                     targetName = call.callSign
                     updateTargetUI()
                 }
@@ -304,19 +342,31 @@ class VoiceFragment : Fragment() {
             tvRxSignal.setTextColor(Colors.rssiColor(rssi))
         }
 
-        ServiceState.recentCalls.observe(viewLifecycleOwner) { calls ->
-            // Обновить RSSI из текущих peers
+        fun refreshRecentList() {
+            val calls = ServiceState.recentCalls.value ?: emptyList()
             val peers = ServiceState.peers.value ?: emptyList()
+            val now = System.currentTimeMillis()
+            // Обновить RSSI из peers, сортировать по времени
             val updated = calls.take(20).map { call ->
                 val peer = peers.find { it.deviceId.endsWith(call.deviceId.takeLast(4)) }
-                if (peer != null) call.copy(rssi = peer.rssi) else call
-            }
-            rvRecent.adapter = RecentCallAdapter(updated) { call -> redial(call) }
+                if (peer != null) call.copy(rssi = peer.rssi, callSign = peer.callSign) else call
+            }.sortedByDescending { it.timeMs }
+            rvRecent.adapter = RecentCallAdapter(updated, now) { call -> redial(call) }
         }
+        ServiceState.recentCalls.observe(viewLifecycleOwner) { refreshRecentList() }
+        ServiceState.peers.observe(viewLifecycleOwner) { refreshRecentList() }
 
-        // Обновлять target info при изменении peers
-        ServiceState.peers.observe(viewLifecycleOwner) {
-            if (targetId != null) updateTargetUI()
+        // Обновлять target info и позывной при изменении peers
+        ServiceState.peers.observe(viewLifecycleOwner) { peers ->
+            if (targetId != null) {
+                // Обновить позывной из peers (мог прийти из beacon)
+                val shortTarget = targetId!!.takeLast(4)
+                val peer = peers?.find { it.deviceId.endsWith(shortTarget) }
+                if (peer != null && !peer.callSign.startsWith("TX-")) {
+                    targetName = peer.callSign
+                }
+                updateTargetUI()
+            }
         }
 
         return v
@@ -339,9 +389,10 @@ class VoiceFragment : Fragment() {
         tvStatusLine.setTextColor(Colors.amberAccent)
         tvDeliveryStatus.visibility = View.GONE
 
+        val shortId = targetId!!.takeLast(4)
         val destMac = byteArrayOf(
-            targetId!!.substring(0, 2).toInt(16).toByte(),
-            targetId!!.substring(2, 4).toInt(16).toByte()
+            shortId.substring(0, 2).toInt(16).toByte(),
+            shortId.substring(2, 4).toInt(16).toByte()
         )
         val fileName = "ptt_${System.currentTimeMillis()}.c2"
         service?.sendFile(fileName, 0x05, data, destMac, targetName) // FILE_TYPE_PTT_VOICE
@@ -385,21 +436,31 @@ class VoiceFragment : Fragment() {
             "ALL" -> {
                 service?.bleManager?.send(byteArrayOf(BleManager.CMD_CALL_ALL.toByte()))
                 service?.addRecentCall(call.copy(timeMs = System.currentTimeMillis()))
+                // Сбросить адресат на общий канал
+                targetId = null
+                targetName = null
             }
             "PRIVATE" -> {
-                val idBytes = call.deviceId.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+                // Полный deviceId (8 hex = 4 байта) для LoRa пакета
+                val fullId = call.deviceId.padStart(8, '0')
+                val idBytes = fullId.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
                 val pkt = ByteArray(1 + 4)
                 pkt[0] = BleManager.CMD_CALL_PRIVATE.toByte()
-                System.arraycopy(idBytes, 0, pkt, 1, idBytes.size.coerceAtMost(4))
+                System.arraycopy(idBytes, 0, pkt, 1, 4.coerceAtMost(idBytes.size))
                 service?.bleManager?.send(pkt)
                 service?.addRecentCall(call.copy(timeMs = System.currentTimeMillis()))
+                // Установить как адресат для диалога (полный ID)
+                targetId = call.deviceId
+                targetName = call.callSign
             }
         }
+        updateTargetUiFn?.invoke()
         Toast.makeText(requireContext(), getString(R.string.calling, call.callSign), Toast.LENGTH_SHORT).show()
     }
 
     inner class RecentCallAdapter(
         private val calls: List<RecentCall>,
+        private val now: Long,
         private val onRedial: (RecentCall) -> Unit
     ) : androidx.recyclerview.widget.RecyclerView.Adapter<RecentCallAdapter.VH>() {
 
@@ -437,12 +498,24 @@ class VoiceFragment : Fragment() {
             val time = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
                 .format(java.util.Date(call.timeMs))
             val typeStr = when (call.callType) {
-                "ALL" -> getString(R.string.call_type_all); "PRIVATE" -> getString(R.string.call_type_private); "GROUP" -> getString(R.string.call_type_group); "SOS" -> "SOS"
+                "ALL" -> getString(R.string.call_type_all); "PRIVATE" -> getString(R.string.call_type_private); "GROUP" -> getString(R.string.call_type_group)
                 else -> call.callType
             }
             val rssiStr = call.rssi?.let { " · ${it}dBm" } ?: ""
-            holder.tvInfo.text = "$time · $typeStr$rssiStr"
-            holder.tvInfo.setTextColor(Colors.textDim)
+
+            // Проверить актуальность peer (>15 мин = связь утрачена)
+            val peer = ServiceState.peers.value?.find { it.deviceId.endsWith(call.deviceId.takeLast(4)) }
+            val isStale = peer != null && (now - peer.lastSeenMs > 15 * 60 * 1000)
+            val staleStr = if (isStale && call.callType != "ALL") " · ✗" else ""
+
+            holder.tvInfo.text = "$time · $typeStr$rssiStr$staleStr"
+            if (isStale && call.callType != "ALL") {
+                holder.tvInfo.setTextColor(Colors.redTx)
+                holder.tvName.setTextColor(Colors.textDim)
+            } else {
+                holder.tvInfo.setTextColor(Colors.textDim)
+                holder.tvName.setTextColor(Colors.textSecondary)
+            }
 
             holder.btnCall.setOnClickListener { onRedial(call) }
             holder.itemView.setOnClickListener { onRedial(call) }

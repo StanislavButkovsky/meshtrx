@@ -52,6 +52,8 @@
     <string name="send_to">Отправить кому?</string>
     <string name="select_subscriber">Выбрать абонента</string>
     <string name="broadcast_channel">Broadcast на канал</string>
+    <string name="clear_peers">Очистить список абонентов</string>
+    <string name="clear_peers_confirm">Очистить всех абонентов и последние вызовы?</string>
 
     <!-- Files -->
     <string name="send_photo">Фото</string>

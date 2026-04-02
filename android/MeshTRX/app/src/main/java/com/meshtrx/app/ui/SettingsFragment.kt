@@ -44,6 +44,20 @@ class SettingsFragment : Fragment() {
             spinnerChannel.setSelection(ch)
         }
 
+        // Очистка списка абонентов
+        v.findViewById<Button>(R.id.btnClearPeers).setOnClickListener {
+            androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setMessage(getString(R.string.clear_peers_confirm))
+                .setPositiveButton("OK") { _, _ ->
+                    ServiceState.peers.value = emptyList()
+                    ServiceState.recentCalls.value = emptyList()
+                    service?.savePeers(emptyList())
+                    Toast.makeText(requireContext(), "OK", Toast.LENGTH_SHORT).show()
+                }
+                .setNegativeButton(getString(R.string.cancel), null)
+                .show()
+        }
+
         // Подключение
         btnConnect.setOnClickListener {
             when (ServiceState.connectionState.value) {
@@ -184,11 +198,12 @@ class SettingsFragment : Fragment() {
             val beaconSec = listOf(0, 60, 180, 300, 900, 1800, 3600)[beaconIdx]
             val callSign = etCallSign.text.toString().trim()
 
-            // Сохранить позывной локально и на девайс
+            // Сохранить позывной локально (на девайс отправится в общем JSON ниже)
             if (callSign.isNotEmpty()) {
-                service?.setCallSign(callSign)
+                service?.saveCallSignLocal(callSign)
             }
 
+            // Отправить все настройки одним пакетом (включая callsign)
             val json = buildString {
                 append("{\"tx_power\":$power,\"duty_cycle\":$dc")
                 append(",\"beacon_interval\":$beaconSec")
