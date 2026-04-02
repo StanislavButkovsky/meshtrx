@@ -16,7 +16,7 @@ class PttButtonView @JvmOverloads constructor(
     ctx: Context, attrs: AttributeSet? = null
 ) : View(ctx, attrs) {
 
-    enum class State { IDLE, TX, RX, VOX_IDLE, VOX_TX }
+    enum class State { IDLE, TX, RX, VOX_IDLE, VOX_TX, SENDING }
 
     var state: State = State.IDLE
         set(value) { field = value; invalidate() }
@@ -88,6 +88,7 @@ class PttButtonView @JvmOverloads constructor(
             State.RX -> Scheme(Color.parseColor("#0a2a4a"), Colors.blueBorder, Color.parseColor("#1a3a6b"), Colors.blueAccent, resources.getString(R.string.ptt_receive), "", Colors.blueAccent)
             State.VOX_IDLE -> Scheme(Colors.greenBg, Colors.greenBorder, Colors.bgBorder, Colors.greenAccent, "VOX", resources.getString(R.string.ptt_vox_auto), 0)
             State.VOX_TX -> Scheme(Colors.redTxBg, Colors.redTxBorder, Colors.redBorder, Colors.redTx, "VOX TX", "", Colors.redTx)
+            State.SENDING -> Scheme(Color.parseColor("#555555"), Color.parseColor("#777777"), Color.parseColor("#666666"), Color.parseColor("#cccccc"), resources.getString(R.string.ptt_sending), "", 0)
         }
 
         // Волны (за кнопкой)
@@ -122,6 +123,7 @@ class PttButtonView @JvmOverloads constructor(
                 State.IDLE, State.VOX_IDLE -> Colors.greenDim
                 State.TX, State.VOX_TX -> Colors.redBorder
                 State.RX -> Color.parseColor("#1a3a6b")
+                State.SENDING -> Color.parseColor("#555555")
             }
             paintText.color = subColor
             canvas.drawText(subLbl, cx, cy + 28f * resources.displayMetrics.density / 2f, paintText)

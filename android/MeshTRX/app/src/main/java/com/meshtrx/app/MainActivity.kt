@@ -94,7 +94,9 @@ class MainActivity : AppCompatActivity() {
         // === Хедер observers ===
         val tvCallSign = findViewById<android.widget.TextView>(R.id.tvCallSign)
         val tvDeviceName = findViewById<android.widget.TextView>(R.id.tvDeviceName)
-        val tvStatus = findViewById<android.widget.TextView>(R.id.tvStatus)
+        val ivBleStatus = findViewById<android.widget.ImageView>(R.id.ivBleStatus)
+        val ivBattery = findViewById<android.widget.ImageView>(R.id.ivBattery)
+        val tvBattery = findViewById<android.widget.TextView>(R.id.tvBattery)
 
         ServiceState.callSign.observe(this) { cs ->
             tvCallSign.text = if (cs.isNotEmpty()) cs else "MeshTRX"
@@ -105,18 +107,29 @@ class MainActivity : AppCompatActivity() {
             tvChannelInfo.text = "CH $ch · ${"%.2f".format(863.15 + ch * 0.3)} MHz"
         }
         ServiceState.connectionState.observe(this) { state ->
-            tvStatus.text = when (state) {
-                com.meshtrx.app.model.BleState.DISCONNECTED -> getString(R.string.status_disconnected)
-                com.meshtrx.app.model.BleState.SCANNING -> getString(R.string.status_scanning)
-                com.meshtrx.app.model.BleState.CONNECTING -> getString(R.string.status_connecting)
-                com.meshtrx.app.model.BleState.CONNECTED -> getString(R.string.status_connected)
+            val connected = state == com.meshtrx.app.model.BleState.CONNECTED
+            ivBleStatus.setImageResource(
+                if (connected) R.drawable.ic_bluetooth else R.drawable.ic_bluetooth_off
+            )
+            // Скрыть батарею если не подключены
+            ivBattery.visibility = if (connected) android.view.View.VISIBLE else android.view.View.GONE
+            tvBattery.visibility = if (connected) android.view.View.VISIBLE else android.view.View.GONE
+        }
+        ServiceState.batteryVoltage.observe(this) { voltage ->
+            if (voltage > 0.5f) {
+                tvBattery.text = "${"%.1f".format(voltage)}v"
+                // Иконка и цвет по уровню напряжения
+                val (iconRes, color) = when {
+                    voltage >= 4.0f -> R.drawable.ic_battery_full to com.meshtrx.app.ui.Colors.greenAccent
+                    voltage >= 3.8f -> R.drawable.ic_battery_75 to com.meshtrx.app.ui.Colors.greenAccent
+                    voltage >= 3.6f -> R.drawable.ic_battery_50 to com.meshtrx.app.ui.Colors.amberAccent
+                    voltage >= 3.4f -> R.drawable.ic_battery_25 to com.meshtrx.app.ui.Colors.redTx
+                    else -> R.drawable.ic_battery_empty to com.meshtrx.app.ui.Colors.redTx
+                }
+                ivBattery.setImageResource(iconRes)
+                ivBattery.setColorFilter(color)
+                tvBattery.setTextColor(color)
             }
-            tvStatus.setTextColor(when (state) {
-                com.meshtrx.app.model.BleState.CONNECTED -> com.meshtrx.app.ui.Colors.greenAccent
-                com.meshtrx.app.model.BleState.SCANNING,
-                com.meshtrx.app.model.BleState.CONNECTING -> com.meshtrx.app.ui.Colors.amberAccent
-                else -> com.meshtrx.app.ui.Colors.textDim
-            })
         }
 
         // Observers для диалогов (нужен Activity context)

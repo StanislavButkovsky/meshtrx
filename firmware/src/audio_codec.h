@@ -3,11 +3,11 @@
 
 // Codec2 режим 3200 bps
 // Фрейм: 20мс аудио (160 сэмплов @ 8000 Гц) → 8 байт
-// В одном LoRa пакете: 8 фреймов = 64 байт = 160мс
+// В одном LoRa пакете: 4 фрейма = 32 байт = 80мс (меньше пакет = надёжнее)
 #define CODEC2_FRAME_SAMPLES  160
 #define CODEC2_FRAME_BYTES    8  // Codec2 3200bps = 64 bits = 8 bytes
-#define CODEC2_FRAMES_PER_PKT 8
-#define CODEC2_PKT_BYTES      (CODEC2_FRAME_BYTES * CODEC2_FRAMES_PER_PKT)  // 64
+#define CODEC2_FRAMES_PER_PKT 4
+#define CODEC2_PKT_BYTES      (CODEC2_FRAME_BYTES * CODEC2_FRAMES_PER_PKT)  // 32
 
 void codecInit();
 void codecDestroy();

@@ -11,8 +11,6 @@
 #include "ble_service.h"
 #include "oled_display.h"
 #include "audio_codec.h"
-#include "vox.h"
-#include "roger_beep.h"
 #include "beacon.h"
 #include "repeater.h"
 #include "call_manager.h"
@@ -38,18 +36,12 @@ static QueueHandle_t txTextQueue  = nullptr;   // текстовые пакет�
 
 // === Состояние ===
 static volatile bool pttActive = false;
-static volatile bool voxEnabled = false;
-static volatile bool voxWasActive = false;
 uint8_t currentChannel = DEFAULT_CHANNEL;
 static uint8_t audioSeqNum = 0;
 static uint8_t textSeqNum = 0;
 static uint8_t senderMac[2] = {0};  // последние 2 байта MAC
 static int16_t lastRssi = 0;
 static int8_t lastSnr = 0;
-
-// Настройки
-static RogerBeepType rogerBeepType = BEEP_SHORT;
-static volatile bool rogerBeepPending = false;  // флаг для асинхронной отправки из loraTask
 
 // Файловая передача
 static uint8_t fileSessionId = 0;
@@ -70,6 +62,34 @@ static volatile uint32_t fileTxLedUntil = 0; // авто-сброс
 
 // LED RX индикация
 static volatile uint32_t rxLedUntil = 0;
+
+// Дедупликация текстовых сообщений
+#define TEXT_DEDUP_SIZE 16
+#define TEXT_DEDUP_TTL_MS 30000
+struct TextDedupEntry {
+  uint8_t sender[2];
+  uint8_t seq;
+  uint32_t timestamp;
+};
+static TextDedupEntry textDedupCache[TEXT_DEDUP_SIZE];
+static uint8_t textDedupHead = 0;
+
+static bool textIsDuplicate(uint8_t* sender, uint8_t seq) {
+  uint32_t now = millis();
+  for (int i = 0; i < TEXT_DEDUP_SIZE; i++) {
+    if (now - textDedupCache[i].timestamp > TEXT_DEDUP_TTL_MS) continue;
+    if (textDedupCache[i].sender[0] == sender[0] &&
+        textDedupCache[i].sender[1] == sender[1] &&
+        textDedupCache[i].seq == seq) return true;
+  }
+  // Добавить
+  textDedupCache[textDedupHead].sender[0] = sender[0];
+  textDedupCache[textDedupHead].sender[1] = sender[1];
+  textDedupCache[textDedupHead].seq = seq;
+  textDedupCache[textDedupHead].timestamp = now;
+  textDedupHead = (textDedupHead + 1) % TEXT_DEDUP_SIZE;
+  return false;
+}
 
 // Кнопка USER
 static uint32_t userBtnPressTime = 0;
@@ -104,7 +124,6 @@ static void bleTaskFunc(void* param);
 static void fileTaskFunc(void* param);
 static void handleBleData(uint8_t* data, size_t len);
 static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr);
-static void sendRogerBeep();
 static void sendStatusUpdate();
 static void loadSettings();
 static void handleUserButton();
@@ -154,7 +173,6 @@ void setup() {
     loraInit();
     loadSettings();
     beaconInit();
-    rogerBeepInit();
 
     // BLE — чтобы можно было выключить ретранслятор через приложение
     bleInit();
@@ -182,8 +200,6 @@ void setup() {
     // Инициализация модулей
     loraInit();
     codecInit();
-    voxInit();
-    rogerBeepInit();
     beaconInit();
     callManagerInit();
     loadSettings();
@@ -245,14 +261,6 @@ static void loadSettings() {
     currentChannel = ch;
     loraSetChannel(ch);
   }
-
-  voxEnabled = prefs.getBool("vox_enabled", false);
-  uint16_t vt = prefs.getUShort("vox_threshold", VOX_DEFAULT_THRESHOLD);
-  voxSetThreshold(vt);
-  uint32_t vh = prefs.getUInt("vox_hangtime", VOX_DEFAULT_HANGTIME);
-  voxSetHangtime(vh);
-
-  rogerBeepType = (RogerBeepType)prefs.getUChar("roger_beep", BEEP_SHORT);
 
   prefs.end();
   LOG_D("[Settings] Loaded from NVS");
@@ -333,22 +341,15 @@ static void loraTaskFunc(void* param) {
     }
 
     // Отправка аудио из очереди (приоритет)
-    if (pttActive || (voxEnabled && voxIsActive())) {
+    if (pttActive) {
       if (xQueueReceive(txAudioQueue, &txAudioPkt, 0) == pdTRUE) {
         loraSend((uint8_t*)&txAudioPkt, sizeof(txAudioPkt));
         loraStartReceive();
       }
     }
 
-    // Roger beep — асинхронная отправка после PTT_END
-    if (rogerBeepPending && !pttActive) {
-      rogerBeepPending = false;
-      sendRogerBeep();
-      loraStartReceive();
-    }
-
     // Отправка текста из очереди
-    if (!pttActive && !(voxEnabled && voxIsActive())) {
+    if (!pttActive) {
       if (xQueueReceive(txTextQueue, &txTextPkt, 0) == pdTRUE) {
         size_t textLen = strlen((char*)txTextPkt.text);
         size_t pktLen = 6 + textLen + 1; // header + text + null
@@ -378,25 +379,35 @@ static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr) 
       if (pkt->channel != currentChannel) break;
 
       // Отправить на телефон через BLE: cmd + flags + sender[2] + payload
-      uint8_t bleData[4 + 64];
+      uint8_t bleData[4 + CODEC2_PKT_BYTES];
       bleData[0] = BLE_CMD_AUDIO_RX;
       bleData[1] = pkt->flags; // PKT_FLAG_PTT_END и др.
       bleData[2] = pkt->sender[0];
       bleData[3] = pkt->sender[1];
-      memcpy(bleData + 4, pkt->payload, 64);
-      bleSendNotify(bleData, 68);
+      memcpy(bleData + 4, pkt->payload, CODEC2_PKT_BYTES);
+      bleSendNotify(bleData, 4 + CODEC2_PKT_BYTES);
 
       // Обновить OLED
       oledShowMain(currentChannel, loraGetFrequency(currentChannel),
                    rssi, snr, loraGetTxPower(), bleIsConnected(),
-                   loraIsDutyCycleEnabled(), false, voxEnabled && voxIsActive(), getCachedBattery());
+                   loraIsDutyCycleEnabled(), false, false, getCachedBattery());
       break;
     }
 
     case PKT_TYPE_TEXT: {
-      if (len < 6) break;
+      if (len < 8) break; // минимум: type+ch+seq+ttl+sender[2]+dest[2]
       LoRaTextPacket* pkt = (LoRaTextPacket*)data;
       if (pkt->channel != currentChannel) break;
+
+      // Проверить адресат: broadcast (0x0000) или наш MAC
+      {
+        uint16_t d = pkt->dest[0] | (pkt->dest[1] << 8);
+        uint16_t me = senderMac[0] | (senderMac[1] << 8);
+        if (d != 0x0000 && d != me) break; // не нам
+      }
+
+      // Дедупликация (для broadcast repeat)
+      if (textIsDuplicate(pkt->sender, pkt->seq)) break;
 
       // Отправить на телефон: 0x08 + RSSI + текст + \0 + sender_id
       size_t textLen = strnlen((char*)pkt->text, 85);
@@ -413,9 +424,39 @@ static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr) 
       snprintf(msgPreview, sizeof(msgPreview), "MSG: %.16s", pkt->text);
       oledShowMessage(msgPreview, "", 3000);
 
-      // ACK
+      // BLE ACK (локально на телефон)
       uint8_t ackBle[2] = {BLE_CMD_MESSAGE_ACK, pkt->seq};
       bleSendNotify(ackBle, 2);
+
+      // LoRa ACK для адресных сообщений
+      {
+        uint16_t d = pkt->dest[0] | (pkt->dest[1] << 8);
+        if (d != 0x0000) {
+          LoRaTextAck ack;
+          ack.type = PKT_TYPE_TEXT_ACK;
+          ack.channel = currentChannel;
+          ack.seq = pkt->seq;
+          memcpy(ack.sender, senderMac, 2);
+          memcpy(ack.dest, pkt->sender, 2); // обратно отправителю
+          loraSend((uint8_t*)&ack, sizeof(ack));
+          loraStartReceive();
+        }
+      }
+      break;
+    }
+
+    case PKT_TYPE_TEXT_ACK: {
+      if (len < (int)sizeof(LoRaTextAck)) break;
+      LoRaTextAck* pkt = (LoRaTextAck*)data;
+      if (pkt->channel != currentChannel) break;
+      // Проверить что ACK для нас
+      uint16_t d = pkt->dest[0] | (pkt->dest[1] << 8);
+      uint16_t me = senderMac[0] | (senderMac[1] << 8);
+      if (d != me) break;
+      // Уведомить телефон: MESSAGE_ACK с seq
+      uint8_t ackBle[2] = {BLE_CMD_MESSAGE_ACK, pkt->seq};
+      bleSendNotify(ackBle, 2);
+      LOG_F("[Text] ACK received for seq %d\n", pkt->seq);
       break;
     }
 
@@ -423,11 +464,11 @@ static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr) 
       if (len < (int)sizeof(LoRaFileHeader)) break;
       LoRaFileHeader* pkt = (LoRaFileHeader*)data;
       if (pkt->channel != currentChannel) break;
-      // Проверить адресат: broadcast (0x0000) или наш MAC
+      // Проверить адресат: только наш MAC (broadcast не поддерживается для файлов)
       {
         uint16_t d = pkt->dest[0] | (pkt->dest[1] << 8);
         uint16_t me = senderMac[0] | (senderMac[1] << 8);
-        if (d != 0x0000 && d != me) break; // не нам
+        if (d != me) break; // не нам
       }
 
       // Инициировать приём файла
@@ -460,11 +501,11 @@ static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr) 
       if (len < 8 || !fileRxActive) break;
       LoRaFileChunk* pkt = (LoRaFileChunk*)data;
       if (pkt->session_id != fileSessionId) break;
-      // Проверить адресат
+      // Проверить адресат (только адресные)
       {
         uint16_t d = pkt->dest[0] | (pkt->dest[1] << 8);
         uint16_t me = senderMac[0] | (senderMac[1] << 8);
-        if (d != 0x0000 && d != me) break;
+        if (d != me) break;
       }
 
       uint16_t idx = pkt->chunk_index;
@@ -506,6 +547,16 @@ static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr) 
           fileRxName, fileRxSize, fileRxUniqueCount, fileRxChunksTotal);
         fileRxActive = false;
         fileRxComplete = true;
+        // Отправить ACK (всё получено)
+        LoRaFileAck ack;
+        memset(&ack, 0, sizeof(ack));
+        ack.type = PKT_TYPE_FILE_ACK;
+        ack.session_id = fileSessionId;
+        ack.status = 0x00; // OK
+        memcpy(ack.dest, fileRxSender, 2);
+        ack.missing_count = 0;
+        loraSend((uint8_t*)&ack, 7); // type+session+status+dest+missing_count
+        loraStartReceive();
       }
       break;
     }
@@ -515,37 +566,72 @@ static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr) 
       LoRaFileEnd* pkt = (LoRaFileEnd*)data;
       if (pkt->session_id != fileSessionId) break;
 
-      // Проверить CRC
-      uint16_t calcCrc = crc16_ccitt(fileRxBuffer, fileRxSize);
-      if (calcCrc == pkt->crc16) {
-        LOG_F("[File] RX complete: %s (%d bytes) CRC OK\n",
-          fileRxName, fileRxSize);
-
-        // Отправить на телефон
-        uint8_t header[2] = {BLE_CMD_FILE_RECV, fileRxType};
-        bleSendNotify(header, 2);
-        // Данные отправляются чанками через BLE
-        size_t offset = 0;
-        while (offset < fileRxSize) {
-          size_t chunk = fileRxSize - offset;
-          if (chunk > 120) chunk = 120; // MTU ограничение
-          bleSendNotify(fileRxBuffer + offset, chunk);
-          offset += chunk;
-          vTaskDelay(pdMS_TO_TICKS(20));
-        }
-
-        char oledBuf[22];
-        snprintf(oledBuf, sizeof(oledBuf), "FILE: %s %dKB",
-          fileRxName, (int)(fileRxSize / 1024));
-        oledShowMessage(oledBuf, "", 3000);
+      // Проверить что все чанки получены
+      if (fileRxUniqueCount >= fileRxChunksTotal) {
+        // Всё получено — ACK
+        LOG_F("[File] RX complete via FILE_END: %s (%d bytes)\n", fileRxName, fileRxSize);
+        fileRxActive = false;
+        fileRxComplete = true;
+        LoRaFileAck ack;
+        memset(&ack, 0, sizeof(ack));
+        ack.type = PKT_TYPE_FILE_ACK;
+        ack.session_id = fileSessionId;
+        ack.status = 0x00;
+        memcpy(ack.dest, fileRxSender, 2);
+        ack.missing_count = 0;
+        loraSend((uint8_t*)&ack, 7);
+        loraStartReceive();
       } else {
-        LOG_F("[File] CRC FAIL: got 0x%04X, calc 0x%04X\n",
-          pkt->crc16, calcCrc);
+        // Есть пропуски — NACK с индексами пропущенных
+        LoRaFileAck nack;
+        memset(&nack, 0, sizeof(nack));
+        nack.type = PKT_TYPE_FILE_ACK;
+        nack.session_id = fileSessionId;
+        nack.status = 0x01; // NACK
+        memcpy(nack.dest, fileRxSender, 2);
+        uint16_t cnt = 0;
+        for (uint16_t i = 0; i < fileRxChunksTotal && cnt < 50; i++) {
+          if (!(fileRxBitmap[i >> 3] & (1 << (i & 7)))) {
+            nack.missing[cnt++] = i;
+          }
+        }
+        nack.missing_count = cnt;
+        size_t nackLen = 7 + cnt * 2; // header + missing indices
+        loraSend((uint8_t*)&nack, nackLen);
+        loraStartReceive();
+        LOG_F("[File] NACK: %d missing chunks\n", cnt);
+        // Не завершаем — ждём досылку
+        fileRxLastChunkMs = millis(); // сбросить таймаут
       }
+      break;
+    }
 
-      free(fileRxBuffer);
-      fileRxBuffer = nullptr;
-      fileRxActive = false;
+    case PKT_TYPE_FILE_ACK: {
+      // Входящий ACK/NACK для наших отправленных файлов
+      if (len < 7) break;
+      LoRaFileAck* pkt = (LoRaFileAck*)data;
+      uint16_t d = pkt->dest[0] | (pkt->dest[1] << 8);
+      uint16_t me = senderMac[0] | (senderMac[1] << 8);
+      if (d != me) break;
+      if (pkt->status == 0x00) {
+        LOG_F("[File] TX ACK received — file delivered\n");
+        // Уведомить телефон
+        uint8_t progress[6];
+        progress[0] = BLE_CMD_FILE_PROGRESS;
+        progress[1] = pkt->session_id;
+        progress[2] = 0xFF; progress[3] = 0xFF; // done marker
+        progress[4] = 0xFF; progress[5] = 0xFF;
+        bleSendNotify(progress, 6);
+      } else {
+        LOG_F("[File] TX NACK: %d missing chunks — forwarding to phone\n", pkt->missing_count);
+        // Переслать NACK на телефон для досылки
+        // BLE: FILE_PROGRESS с missing_count в special формате
+        uint8_t nackBle[3];
+        nackBle[0] = BLE_CMD_FILE_PROGRESS;
+        nackBle[1] = pkt->session_id;
+        nackBle[2] = 0xFE; // NACK marker
+        bleSendNotify(nackBle, 3);
+      }
       break;
     }
 
@@ -664,7 +750,7 @@ static void bleTaskFunc(void* param) {
     oledShowMain(currentChannel, loraGetFrequency(currentChannel),
                  lastRssi, lastSnr, loraGetTxPower(), bleIsConnected(),
                  loraIsDutyCycleEnabled(), pttActive,
-                 voxEnabled && voxIsActive(), getCachedBattery());
+                 false, getCachedBattery());
 
     // === Передать принятый файл на телефон ===
     if (fileRxComplete && fileRxBuffer && bleIsConnected()) {
@@ -722,51 +808,16 @@ static void bleTaskFunc(void* param) {
 // Отправка STATUS_UPDATE (0x06)
 // ================================================================
 static void sendStatusUpdate() {
-  uint8_t data[5];
+  uint8_t data[6];
   data[0] = BLE_CMD_STATUS_UPDATE;
   data[1] = currentChannel;
   data[2] = (uint8_t)(lastRssi & 0xFF);
   data[3] = (uint8_t)((lastRssi >> 8) & 0xFF);
   data[4] = (uint8_t)lastSnr;
-  bleSendNotify(data, 5);
-}
-
-// ================================================================
-// Roger Beep — отправить после PTT_END
-// ================================================================
-static void sendRogerBeep() {
-  if (rogerBeepType == BEEP_NONE) return;
-
-  static int16_t pcmBuf[6400]; // static — не на стеке! макс ~800мс
-  int samples = rogerBeepGenerate(rogerBeepType, pcmBuf, 6400);
-  if (samples <= 0) return;
-
-  // Кодировать и отправить по 8 фреймов (64 байт = 1 LoRa пакет)
-  int totalFrames = samples / CODEC2_FRAME_SAMPLES;
-  uint8_t encoded[CODEC2_PKT_BYTES];
-
-  for (int f = 0; f < totalFrames; f += CODEC2_FRAMES_PER_PKT) {
-    int framesInPkt = totalFrames - f;
-    if (framesInPkt > CODEC2_FRAMES_PER_PKT) framesInPkt = CODEC2_FRAMES_PER_PKT;
-
-    memset(encoded, 0, sizeof(encoded));
-    for (int i = 0; i < framesInPkt; i++) {
-      codecEncode(pcmBuf + (f + i) * CODEC2_FRAME_SAMPLES,
-                  encoded + i * CODEC2_FRAME_BYTES);
-    }
-
-    LoRaAudioPacket pkt;
-    pkt.type = PKT_TYPE_AUDIO;
-    pkt.channel = currentChannel;
-    pkt.seq = audioSeqNum++;
-    pkt.flags = PKT_FLAG_ROGER_BEEP | PKT_FLAG_PTT_END;
-    pkt.ttl = TTL_DEFAULT;
-    memcpy(pkt.sender, senderMac, 2);
-    memcpy(pkt.payload, encoded, CODEC2_PKT_BYTES);
-
-    loraSend((uint8_t*)&pkt, sizeof(pkt));
-  }
-  loraStartReceive();
+  // Батарея: вольты × 10 (напр. 3.85V → 38, 4.20V → 42), 0 = нет данных
+  float batV = getCachedBattery();
+  data[5] = (batV > 0.5f) ? (uint8_t)(batV * 10.0f) : 0;
+  bleSendNotify(data, 6);
 }
 
 // ================================================================
@@ -779,16 +830,16 @@ static void handleBleData(uint8_t* data, size_t len) {
   switch (cmd) {
     case BLE_CMD_AUDIO_TX: {
       // Аудио данные от телефона → в очередь TX
-      if (len < 1 + 64) break;
+      if (len < 1 + CODEC2_PKT_BYTES) break;
       LoRaAudioPacket pkt;
       pkt.type = PKT_TYPE_AUDIO;
       pkt.channel = currentChannel;
       pkt.seq = audioSeqNum++;
-      pkt.flags = voxEnabled ? PKT_FLAG_VOX : 0;
+      pkt.flags = 0;
       if (pttActive && audioSeqNum == 1) pkt.flags |= PKT_FLAG_PTT_START;
       pkt.ttl = TTL_DEFAULT;
       memcpy(pkt.sender, senderMac, 2);
-      memcpy(pkt.payload, data + 1, 64);
+      memcpy(pkt.payload, data + 1, CODEC2_PKT_BYTES);
       xQueueSend(txAudioQueue, &pkt, 0);
       break;
     }
@@ -834,14 +885,15 @@ static void handleBleData(uint8_t* data, size_t len) {
 
         oledShowMain(currentChannel, loraGetFrequency(currentChannel),
                      lastRssi, lastSnr, loraGetTxPower(), bleIsConnected(),
-                     loraIsDutyCycleEnabled(), pttActive, voxEnabled && voxIsActive(),
+                     loraIsDutyCycleEnabled(), pttActive, false,
                      getCachedBattery());
       }
       break;
     }
 
     case BLE_CMD_SEND_MESSAGE: {
-      if (len < 3) break;
+      // Формат: [0x07, seq, dest_lo, dest_hi, text...]
+      if (len < 5) break;
       LoRaTextPacket pkt;
       memset(&pkt, 0, sizeof(pkt));
       pkt.type = PKT_TYPE_TEXT;
@@ -849,11 +901,28 @@ static void handleBleData(uint8_t* data, size_t len) {
       pkt.seq = data[1];
       pkt.ttl = TTL_DEFAULT;
       memcpy(pkt.sender, senderMac, 2);
-      size_t textLen = len - 2;
+      pkt.dest[0] = data[2];
+      pkt.dest[1] = data[3];
+      size_t textLen = len - 4;
       if (textLen > 84) textLen = 84;
-      memcpy(pkt.text, data + 2, textLen);
+      memcpy(pkt.text, data + 4, textLen);
       pkt.text[textLen] = 0;
-      xQueueSend(txTextQueue, &pkt, pdMS_TO_TICKS(100));
+
+      uint16_t destId = pkt.dest[0] | (pkt.dest[1] << 8);
+      size_t pktLen = 8 + textLen + 1; // header(8) + text + null
+
+      if (destId == 0x0000) {
+        // Broadcast: отправить дважды с рандомной задержкой
+        loraSend((uint8_t*)&pkt, pktLen);
+        loraStartReceive();
+        vTaskDelay(pdMS_TO_TICKS(100 + (esp_random() % 200))); // 100-300мс
+        loraSend((uint8_t*)&pkt, pktLen);
+        loraStartReceive();
+      } else {
+        // Адресный: отправить один раз (retry на стороне Android)
+        loraSend((uint8_t*)&pkt, pktLen);
+        loraStartReceive();
+      }
       break;
     }
 
@@ -886,25 +955,6 @@ static void handleBleData(uint8_t* data, size_t len) {
         loraSetTxPower(txp);
         prefs.putChar("tx_power", txp);
       }
-      if (doc["vox_enabled"].is<bool>()) {
-        voxEnabled = doc["vox_enabled"];
-        prefs.putBool("vox_enabled", voxEnabled);
-        if (!voxEnabled) voxReset();
-      }
-      if (doc["vox_threshold"].is<int>()) {
-        uint16_t vt = doc["vox_threshold"];
-        voxSetThreshold(vt);
-        prefs.putUShort("vox_threshold", vt);
-      }
-      if (doc["vox_hangtime"].is<int>()) {
-        uint32_t vh = doc["vox_hangtime"];
-        voxSetHangtime(vh);
-        prefs.putUInt("vox_hangtime", vh);
-      }
-      if (doc["roger_beep"].is<int>()) {
-        rogerBeepType = (RogerBeepType)(int)doc["roger_beep"];
-        prefs.putUChar("roger_beep", (uint8_t)rogerBeepType);
-      }
       if (doc["callsign"].is<const char*>()) {
         const char* cs = doc["callsign"];
         beaconSetCallSign(cs);
@@ -920,14 +970,9 @@ static void handleBleData(uint8_t* data, size_t len) {
       // Отправить текущие настройки
       char jsonBuf[160];
       snprintf(jsonBuf, sizeof(jsonBuf),
-        "{\"duty_cycle\":%s,\"tx_power\":%d,\"vox_enabled\":%s,"
-        "\"vox_threshold\":%d,\"vox_hangtime\":%d,\"roger_beep\":%d,"
-        "\"beacon_interval\":%d}",
+        "{\"duty_cycle\":%s,\"tx_power\":%d,\"beacon_interval\":%d}",
         loraIsDutyCycleEnabled() ? "true" : "false",
         loraGetTxPower(),
-        voxEnabled ? "true" : "false",
-        voxGetThreshold(), (int)voxGetHangtime(),
-        (int)rogerBeepType,
         (int)beaconGetInterval());
 
       uint8_t resp[1 + 160];
@@ -973,46 +1018,6 @@ static void handleBleData(uint8_t* data, size_t len) {
         loraStartReceive();
         fileTxLedUntil = millis() + 2000;
         vTaskDelay(pdMS_TO_TICKS(10)); // дать другим задачам время
-      }
-      break;
-    }
-
-    case BLE_CMD_SET_TX_MODE: {
-      if (len < 2) break;
-      voxEnabled = (data[1] == 0x01);
-      if (!voxEnabled) voxReset();
-      Preferences prefs;
-      prefs.begin("settings", false);
-      prefs.putBool("vox_enabled", voxEnabled);
-      prefs.end();
-      LOG_F("[BLE] TX mode → %s\n", voxEnabled ? "VOX" : "PTT");
-      break;
-    }
-
-    case BLE_CMD_VOX_LEVEL: {
-      if (len < 3 || !voxEnabled) break;
-      uint16_t rms = data[1] | (data[2] << 8);
-      VoxState prevState = voxGetState();
-      voxProcess(rms);
-      VoxState newState = voxGetState();
-
-      // Переход: стал активным
-      if (!voxWasActive && voxIsActive()) {
-        voxWasActive = true;
-        pttActive = true;
-        audioSeqNum = 0;
-        LOG_D("[VOX] TX activated");
-        uint8_t status[2] = {BLE_CMD_VOX_STATUS, 1};
-        bleSendNotify(status, 2);
-      }
-      // Переход: стал неактивным
-      if (voxWasActive && !voxIsActive()) {
-        voxWasActive = false;
-        pttActive = false;
-        LOG_D("[VOX] TX deactivated");
-        sendRogerBeep();
-        uint8_t status[2] = {BLE_CMD_VOX_STATUS, 0};
-        bleSendNotify(status, 2);
       }
       break;
     }

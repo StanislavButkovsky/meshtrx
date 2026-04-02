@@ -267,6 +267,7 @@ class FilesFragment : Fragment() {
     /** Показать выбор получателя, затем отправить */
     private fun showDestPicker(fileName: String, fileType: Int, data: ByteArray) {
         val sheet = FileDestPickerSheet()
+        sheet.showBroadcast = false // файлы — только адресная передача
         sheet.onSelected = { destMac, destName ->
             service?.sendFile(fileName, fileType, data, destMac, destName)
             Toast.makeText(requireContext(), getString(R.string.sending, fileName, destName), Toast.LENGTH_SHORT).show()

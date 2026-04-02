@@ -444,14 +444,16 @@ class MeshTRXService : Service() {
 
     fun sendTextMessage(text: String, destId: String? = null, destName: String? = null) {
         val seq = msgSeq++
-        bleManager.sendMessage(seq, text)
+        bleManager.sendMessage(seq, destId, text)
         val now = System.currentTimeMillis()
+        val isAddressed = destId != null && destId.isNotEmpty()
         val msg = ChatMessage(
             id = now,
             text = text, isOutgoing = true, senderId = "me",
             senderName = ServiceState.callSign.value ?: "",
             destId = destId, destName = destName,
-            rssi = null, status = MessageStatus.SENDING,
+            rssi = null,
+            status = if (isAddressed) MessageStatus.SENDING else MessageStatus.SENT,
             time = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
                 .format(java.util.Date()),
             timeMs = now
@@ -460,6 +462,67 @@ class MeshTRXService : Service() {
         list.add(msg)
         ServiceState.messages.postValue(list)
         saveMessages()
+
+        // Адресное: retry до 3 раз с таймаутом 2 сек
+        if (isAddressed) {
+            val msgId = now
+            Thread {
+                for (attempt in 1..3) {
+                    Thread.sleep(2000)
+                    // Проверить получен ли ACK
+                    val current = ServiceState.messages.value?.find { it.id == msgId }
+                    if (current?.status == MessageStatus.DELIVERED) return@Thread
+                    // Повтор
+                    Log.d(TAG, "[Text] Retry #$attempt for seq=$seq")
+                    bleManager.sendMessage(seq, destId, text)
+                }
+                // После 3 попыток без ACK — пометить как FAILED
+                val current = ServiceState.messages.value?.find { it.id == msgId }
+                if (current?.status != MessageStatus.DELIVERED) {
+                    updateMessageStatus(msgId, MessageStatus.FAILED)
+                }
+            }.start()
+        }
+    }
+
+    fun saveVoiceData(name: String, timeMs: Long, data: ByteArray): String {
+        return saveFileData(name, timeMs, data)
+    }
+
+    fun playVoiceMessage(data: ByteArray) {
+        ServiceState.isPlayingVoice.postValue(true)
+        Thread {
+            val codec2 = Codec2Wrapper()
+            codec2.init(Codec2Wrapper.MODE_3200)
+            val totalFrames = data.size / Codec2Wrapper.FRAME_BYTES
+            val pcm = ShortArray(totalFrames * Codec2Wrapper.FRAME_SAMPLES)
+            for (i in 0 until totalFrames) {
+                val frame = ByteArray(Codec2Wrapper.FRAME_BYTES)
+                System.arraycopy(data, i * Codec2Wrapper.FRAME_BYTES, frame, 0, Codec2Wrapper.FRAME_BYTES)
+                val decoded = codec2.decode(frame) ?: ShortArray(Codec2Wrapper.FRAME_SAMPLES)
+                System.arraycopy(decoded, 0, pcm, i * Codec2Wrapper.FRAME_SAMPLES, Codec2Wrapper.FRAME_SAMPLES)
+            }
+            codec2.destroy()
+            audioEngine.playPcmDirect(pcm)
+            // Подождать окончания воспроизведения
+            Thread.sleep((pcm.size * 1000L / 8000) + 200)
+            ServiceState.isPlayingVoice.postValue(false)
+        }.start()
+    }
+
+    fun playVoiceFile(path: String) {
+        val data = java.io.File(path).readBytes()
+        playVoiceMessage(data)
+    }
+
+    private fun updateMessageStatus(msgId: Long, status: MessageStatus) {
+        val list = ServiceState.messages.value?.toMutableList() ?: return
+        val idx = list.indexOfFirst { it.id == msgId }
+        if (idx >= 0) {
+            list[idx] = list[idx].copy(status = status)
+            ServiceState.messages.postValue(list)
+            saveMessages()
+        }
     }
 
     // === BLE data handling ===
@@ -468,11 +531,12 @@ class MeshTRXService : Service() {
         if (data.isEmpty()) return
         when (data[0].toInt() and 0xFF) {
             BleManager.CMD_AUDIO_RX -> {
-                // cmd(1) + flags(1) + sender(2) + payload(64) = 68 байт
-                if (data.size >= 68) {
+                // cmd(1) + flags(1) + sender(2) + payload(32) = 36 байт
+                val pktSize = 4 + Codec2Wrapper.PACKET_BYTES // 36
+                if (data.size >= pktSize) {
                     val flags = data[1].toInt() and 0xFF
                     val senderId = String.format("%02X%02X", data[2], data[3])
-                    val audio = data.copyOfRange(4, 68)
+                    val audio = data.copyOfRange(4, pktSize)
                     val isLast = (flags and 0x02) != 0 // PKT_FLAG_PTT_END
                     // Воспроизводить если: слушаем всех ИЛИ вызов принят
                     val listen = ServiceState.listenMode.value == ListenMode.ALL
@@ -480,20 +544,22 @@ class MeshTRXService : Service() {
                     if (listen || active) {
                         audioEngine.playEncodedPacket(audio, isLast)
                     }
+                    // Обновить инфо абонента на PTT экране
+                    if (senderId != "0000") {
+                        val currentRssi = ServiceState.rssi.value ?: 0
+                        val currentSnr = ServiceState.snr.value ?: 0
+                        val peerName = ServiceState.peers.value
+                            ?.find { it.deviceId.endsWith(senderId) }?.callSign ?: "TX-$senderId"
+                        ServiceState.lastRxCallSign.postValue(peerName)
+                        ServiceState.lastRxDeviceId.postValue(senderId)
+                        ServiceState.lastRxRssi.postValue(currentRssi)
+                        ServiceState.lastRxSnr.postValue(currentSnr)
+                        ServiceState.isReceiving.postValue(!isLast)
+                    }
                     // При PTT_END обновить peer
                     if (isLast && senderId != "0000") {
                         val currentRssi = ServiceState.rssi.value ?: 0
                         addMinimalPeer(senderId, currentRssi)
-                    }
-                } else if (data.size >= 66) {
-                    // Совместимость со старой прошивкой (без senderId)
-                    val flags = data[1].toInt() and 0xFF
-                    val audio = data.copyOfRange(2, 66)
-                    val isLast = (flags and 0x02) != 0
-                    val listen = ServiceState.listenMode.value == ListenMode.ALL
-                    val active = ServiceState.callActive.value == true
-                    if (listen || active) {
-                        audioEngine.playEncodedPacket(audio, isLast)
                     }
                 }
             }
@@ -503,6 +569,12 @@ class MeshTRXService : Service() {
                     val r = (data[2].toInt() and 0xFF) or ((data[3].toInt() and 0xFF) shl 8)
                     ServiceState.rssi.postValue(r.toShort().toInt())
                     ServiceState.snr.postValue(data[4].toInt())
+                    if (data.size >= 6) {
+                        val batRaw = data[5].toInt() and 0xFF
+                        if (batRaw > 0) {
+                            ServiceState.batteryVoltage.postValue(batRaw / 10.0f)
+                        }
+                    }
                 }
             }
             BleManager.CMD_RECV_MESSAGE -> {
@@ -538,7 +610,17 @@ class MeshTRXService : Service() {
                 }
             }
             BleManager.CMD_MESSAGE_ACK -> {
-                Log.d(TAG, "Message ACK seq=${data[1]}")
+                val ackSeq = data[1].toInt() and 0xFF
+                Log.d(TAG, "Message ACK seq=$ackSeq")
+                // Найти сообщение с этим seq и пометить как доставленное
+                val list = ServiceState.messages.value?.toMutableList() ?: return
+                val idx = list.indexOfLast { it.isOutgoing && it.status == MessageStatus.SENDING &&
+                    ((it.id % 256).toInt() == ackSeq || (it.timeMs % 256).toInt() == ackSeq) }
+                if (idx >= 0) {
+                    list[idx] = list[idx].copy(status = MessageStatus.DELIVERED)
+                    ServiceState.messages.postValue(list)
+                    saveMessages()
+                }
             }
             BleManager.CMD_PEER_SEEN -> {
                 if (data.size >= 28) {
@@ -689,16 +771,51 @@ class MeshTRXService : Service() {
                         val timeMs = System.currentTimeMillis()
                         val localPath = saveFileData(recvFileName, timeMs, fileData)
 
-                        val transfer = FileTransfer(
-                            sessionId = 0, fileName = "$recvFileName от $senderName", fileType = fileType,
-                            totalSize = fileData.size, chunksTotal = 0, chunksDone = 0,
-                            isOutgoing = false, status = FileStatus.DONE, timeMs = timeMs,
-                            data = fileData, localPath = localPath
-                        )
-                        val list = ServiceState.fileTransfers.value?.toMutableList() ?: mutableListOf()
-                        list.add(0, transfer)
-                        ServiceState.fileTransfers.postValue(list)
-                        saveFileTransfers()
+                        if (fileType == 0x05) {
+                            // PTT адресный голос — автовоспроизведение, не хранить
+                            val expectedSize = incomingFileSize
+                            val isPartial = fileData.size < expectedSize
+                            if (isPartial) {
+                                Log.w(TAG, "PTT voice partial: ${fileData.size}/$expectedSize bytes from $senderName")
+                                // Показать "ошибка" но попытаться воспроизвести
+                                ServiceState.statusMessage.postValue("ошибка приёма")
+                            } else {
+                                Log.d(TAG, "PTT voice received: ${fileData.size} bytes from $senderName")
+                            }
+                            // Воспроизвести в любом случае (даже битый)
+                            playVoiceMessage(fileData)
+                            deleteFileData(localPath)
+                        } else if (fileType == 0x04) {
+                            // Голосовое сообщение из чата — добавить в чат, не в файлы
+                            val durationSec = fileData.size / Codec2Wrapper.FRAME_BYTES *
+                                Codec2Wrapper.FRAME_SAMPLES / 8000
+                            val msg = ChatMessage(
+                                id = timeMs, text = "\uD83C\uDFA4 ${durationSec}s",
+                                isOutgoing = false, senderId = incomingFileSender.ifEmpty { "??" },
+                                senderName = senderName, destId = null, destName = null,
+                                rssi = ServiceState.rssi.value,
+                                status = MessageStatus.DELIVERED,
+                                time = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+                                    .format(java.util.Date()),
+                                timeMs = timeMs,
+                                voicePath = localPath
+                            )
+                            val msgList = ServiceState.messages.value?.toMutableList() ?: mutableListOf()
+                            msgList.add(msg)
+                            ServiceState.messages.postValue(msgList)
+                            saveMessages()
+                        } else {
+                            val transfer = FileTransfer(
+                                sessionId = 0, fileName = "$recvFileName от $senderName", fileType = fileType,
+                                totalSize = fileData.size, chunksTotal = 0, chunksDone = 0,
+                                isOutgoing = false, status = FileStatus.DONE, timeMs = timeMs,
+                                data = fileData, localPath = localPath
+                            )
+                            val list = ServiceState.fileTransfers.value?.toMutableList() ?: mutableListOf()
+                            list.add(0, transfer)
+                            ServiceState.fileTransfers.postValue(list)
+                            saveFileTransfers()
+                        }
 
                         incomingFileBuffer = null
                     }
@@ -779,7 +896,7 @@ class MeshTRXService : Service() {
             "${p.deviceId},${p.callSign},${p.rssi},${p.snr},${p.txPower}," +
             "${p.batteryPct ?: -1},${p.lastSeenMs},${p.lat ?: ""},${p.lon ?: ""}"
         }
-        prefs.edit().putString("saved_peers", json).apply()
+        prefs.edit().putString("saved_peers", json).commit()
     }
 
     private fun loadSavedPeers() {
@@ -852,7 +969,7 @@ class MeshTRXService : Service() {
         val json = calls.joinToString("\n") { c ->
             "${c.deviceId}\t${c.callSign}\t${c.isOutgoing}\t${c.callType}\t${c.groupName ?: ""}\t${c.rssi ?: ""}\t${c.timeMs}"
         }
-        prefs.edit().putString("recent_calls", json).apply()
+        prefs.edit().putString("recent_calls", json).commit()
     }
 
     private fun loadRecentCalls() {
@@ -882,7 +999,7 @@ class MeshTRXService : Service() {
                 status = newStatus ?: list[idx].status
             )
             ServiceState.fileTransfers.postValue(list)
-            if (newStatus == FileStatus.DONE) saveFileTransfers()
+            if (newStatus == FileStatus.DONE || newStatus == FileStatus.FAILED) saveFileTransfers()
         }
     }
 
@@ -894,7 +1011,7 @@ class MeshTRXService : Service() {
                 "${t.chunksDone}\t${t.isOutgoing}\t${t.status.name}\t${t.timeMs}\t${t.localPath ?: ""}\t" +
                 "${t.destMac?.joinToString(",") { (it.toInt() and 0xFF).toString() } ?: ""}\t${t.destName ?: ""}"
             }
-        prefs.edit().putString("file_transfers", json).apply()
+        prefs.edit().putString("file_transfers", json).commit() // commit вместо apply — гарантирует запись
     }
 
     private fun loadFileTransfers() {
@@ -1010,9 +1127,9 @@ class MeshTRXService : Service() {
         val json = msgs.joinToString("\n") { m ->
             "${m.id}\t${m.text.replace("\t", " ").replace("\n", " ")}\t${m.isOutgoing}\t${m.senderId}\t" +
             "${m.senderName}\t${m.destId ?: ""}\t${m.destName ?: ""}\t${m.rssi ?: ""}\t" +
-            "${m.status.name}\t${m.time}\t${m.timeMs}"
+            "${m.status.name}\t${m.time}\t${m.timeMs}\t${m.voicePath ?: ""}"
         }
-        prefs.edit().putString("saved_messages", json).apply()
+        prefs.edit().putString("saved_messages", json).commit()
     }
 
     private fun loadMessages() {
@@ -1024,6 +1141,9 @@ class MeshTRXService : Service() {
             if (p.size < 11) return@mapNotNull null
             val timeMs = p[10].toLongOrNull() ?: return@mapNotNull null
             if (now - timeMs > maxAgeMs) return@mapNotNull null
+            val voicePath = p.getOrNull(11)?.ifEmpty { null }
+            // Проверить что voice файл существует
+            val validVoice = if (voicePath != null && java.io.File(voicePath).exists()) voicePath else null
             ChatMessage(
                 id = p[0].toLongOrNull() ?: 0,
                 text = p[1],
@@ -1035,7 +1155,8 @@ class MeshTRXService : Service() {
                 rssi = p[7].toIntOrNull(),
                 status = try { MessageStatus.valueOf(p[8]) } catch (_: Exception) { MessageStatus.DELIVERED },
                 time = p[9],
-                timeMs = timeMs
+                timeMs = timeMs,
+                voicePath = validVoice
             )
         }
         if (msgs.isNotEmpty()) {

@@ -13,6 +13,8 @@ import com.meshtrx.app.model.Peer
 class FileDestPickerSheet : BottomSheetDialogFragment() {
 
     var onSelected: ((destMac: ByteArray?, destName: String) -> Unit)? = null
+    var showBroadcast: Boolean = true // false для файлов (только адресная)
+    var customTitle: String? = null
 
     override fun onCreateView(inflater: LayoutInflater, c: ViewGroup?, s: Bundle?): View {
         val ctx = requireContext()
@@ -23,7 +25,7 @@ class FileDestPickerSheet : BottomSheetDialogFragment() {
         }
 
         val title = TextView(ctx).apply {
-            text = getString(R.string.send_to)
+            text = customTitle ?: getString(R.string.send_to)
             textSize = 18f
             setTextColor(0xFFe8e8e8.toInt())
             setPadding(32, 16, 32, 16)
@@ -67,8 +69,10 @@ class FileDestPickerSheet : BottomSheetDialogFragment() {
             return VH(view)
         }
 
+        private val offset = if (showBroadcast) 1 else 0
+
         override fun onBindViewHolder(holder: VH, position: Int) {
-            if (position == 0) {
+            if (showBroadcast && position == 0) {
                 holder.tvName.text = getString(R.string.all)
                 holder.tvInfo.text = getString(R.string.broadcast_channel)
                 holder.itemView.setOnClickListener {
@@ -76,7 +80,7 @@ class FileDestPickerSheet : BottomSheetDialogFragment() {
                     dismiss()
                 }
             } else {
-                val peer = peers[position - 1]
+                val peer = peers[position - offset]
                 holder.tvName.text = peer.callSign
                 val ago = (System.currentTimeMillis() - peer.lastSeenMs) / 1000
                 val agoStr = when {
@@ -92,6 +96,6 @@ class FileDestPickerSheet : BottomSheetDialogFragment() {
             }
         }
 
-        override fun getItemCount() = peers.size + 1
+        override fun getItemCount() = peers.size + offset
     }
 }

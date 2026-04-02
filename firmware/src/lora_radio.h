@@ -33,7 +33,7 @@
 // === Радио параметры ===
 #define LORA_BW          250.0   // кГц
 #define LORA_SF          7
-#define LORA_CR          5       // 4/5
+#define LORA_CR          7       // 4/7 — больше FEC для надёжности
 #define LORA_SYNCWORD    0x34
 #define LORA_PREAMBLE    8
 

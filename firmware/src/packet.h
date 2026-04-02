@@ -4,6 +4,7 @@
 // === Типы пакетов ===
 #define PKT_TYPE_AUDIO      0xA0
 #define PKT_TYPE_TEXT       0xB0
+#define PKT_TYPE_TEXT_ACK   0xB1
 #define PKT_TYPE_FILE_START 0xC0
 #define PKT_TYPE_FILE_CHUNK 0xC1
 #define PKT_TYPE_FILE_ACK   0xC2
@@ -27,6 +28,8 @@
 #define FILE_TYPE_PHOTO     0x01
 #define FILE_TYPE_TEXT      0x02
 #define FILE_TYPE_BINARY    0x03
+#define FILE_TYPE_VOICE     0x04
+#define FILE_TYPE_PTT_VOICE 0x05  // адресный PTT — автовоспроизведение, не хранить
 #define CHUNK_SIZE          120
 
 // === TTL ===
@@ -64,11 +67,11 @@ struct LoRaAudioPacket {
   uint8_t  flags;       // PTT_START/END, ROGER_BEEP, VOX
   uint8_t  ttl;
   uint8_t  sender[2];   // последние 2 байта MAC
-  uint8_t  payload[64]; // Codec2 3200: 8 фреймов × 8 байт
+  uint8_t  payload[32]; // Codec2 3200: 4 фрейма × 8 байт
 };
 #pragma pack(pop)
 
-// === Текстовый пакет (до 91 байт) ===
+// === Текстовый пакет (до 93 байт) ===
 #pragma pack(push, 1)
 struct LoRaTextPacket {
   uint8_t  type;        // 0xB0
@@ -76,7 +79,19 @@ struct LoRaTextPacket {
   uint8_t  seq;
   uint8_t  ttl;
   uint8_t  sender[2];
+  uint8_t  dest[2];     // 0x0000 = broadcast, иначе последние 2 байта MAC
   uint8_t  text[85];    // UTF-8, null-terminated
+};
+#pragma pack(pop)
+
+// === Текстовый ACK (7 байт) ===
+#pragma pack(push, 1)
+struct LoRaTextAck {
+  uint8_t  type;        // 0xB1
+  uint8_t  channel;
+  uint8_t  seq;         // seq подтверждаемого сообщения
+  uint8_t  sender[2];   // кто подтверждает
+  uint8_t  dest[2];     // кому подтверждение (= sender оригинала)
 };
 #pragma pack(pop)
 
@@ -109,13 +124,15 @@ struct LoRaFileChunk {
 };
 #pragma pack(pop)
 
-// === Файл: ACK/NACK ===
+// === Файл: ACK (всё получено) или NACK bitmap (пропущенные чанки) ===
 #pragma pack(push, 1)
 struct LoRaFileAck {
   uint8_t  type;         // 0xC2
   uint8_t  session_id;
-  uint8_t  status;       // 0x00=OK, 0x01=NACK
-  uint16_t chunk_index;
+  uint8_t  status;       // 0x00=OK (всё получено), 0x01=NACK (есть пропуски)
+  uint8_t  dest[2];      // кому (= sender оригинала)
+  uint16_t missing_count; // кол-во пропущенных чанков
+  uint16_t missing[50];  // индексы пропущенных (макс 50)
 };
 #pragma pack(pop)
 

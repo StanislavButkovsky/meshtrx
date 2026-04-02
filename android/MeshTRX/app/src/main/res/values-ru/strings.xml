@@ -50,6 +50,7 @@
     <string name="to_all">Кому: Всем</string>
     <string name="msg_hint">Сообщение (макс 84)</string>
     <string name="send_to">Отправить кому?</string>
+    <string name="select_subscriber">Выбрать абонента</string>
     <string name="broadcast_channel">Broadcast на канал</string>
 
     <!-- Files -->
@@ -118,6 +119,7 @@
     <string name="ptt_release">отпустить</string>
     <string name="ptt_receive">ПРИЁМ</string>
     <string name="ptt_vox_auto">авто</string>
+    <string name="ptt_sending">ОТПРАВКА</string>
     <string name="call_general">Общий вызов</string>
     <string name="sos_title">ЭКСТРЕННЫЙ ВЫЗОВ SOS</string>
     <string name="sos_confirm">Отправить сигнал бедствия ВСЕМ?</string>

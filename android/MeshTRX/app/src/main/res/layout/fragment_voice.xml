@@ -57,12 +57,32 @@
         </LinearLayout>
     </LinearLayout>
 
-    <!-- PTT КНОПКА -->
+    <!-- PTT КНОПКА + ИНФО АБОНЕНТА -->
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
         android:layout_marginBottom="4dp">
+
+        <!-- Инфо входящего broadcast вызова — пузырёк слева вверху -->
+        <LinearLayout
+            android:id="@+id/layoutRxInfo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_gravity="start|top"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/bubble_incoming"
+            android:padding="8dp"
+            android:visibility="gone">
+            <TextView android:id="@+id/tvRxCallSign"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="13sp" android:textColor="#4ade80" />
+            <TextView android:id="@+id/tvRxSignal"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="10sp" android:textColor="#888888"
+                android:layout_marginTop="2dp" />
+        </LinearLayout>
 
         <com.meshtrx.app.ui.PttButtonView
             android:id="@+id/pttButton"
@@ -97,21 +117,54 @@
         android:paddingTop="4dp" android:paddingBottom="4dp"
         android:layout_marginBottom="4dp" />
 
-    <!-- КНОПКИ ВЫЗОВОВ -->
+    <!-- ПАНЕЛЬ АДРЕСАТА + ВЫЗОВ -->
     <LinearLayout
         android:layout_width="match_parent" android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:paddingStart="16dp" android:paddingEnd="16dp"
+        android:gravity="center_vertical"
+        android:paddingStart="12dp" android:paddingEnd="12dp"
         android:layout_marginBottom="8dp">
-        <Button android:id="@+id/btnCallAll"
-            android:layout_width="0dp" android:layout_height="44dp" android:layout_weight="1"
-            android:text="@string/call_all" android:textSize="13sp" android:textColor="#5ba3e8"
-            android:backgroundTint="#1e3a5f" android:enabled="false" />
-        <Button android:id="@+id/btnCallPrivate"
-            android:layout_width="0dp" android:layout_height="44dp" android:layout_weight="1"
-            android:text="@string/call" android:textSize="13sp" android:textColor="#4ade80"
-            android:backgroundTint="#1e3a1e" android:enabled="false"
-            android:layout_marginStart="8dp" />
+
+        <!-- @ кнопка выбора адресата -->
+        <ImageButton android:id="@+id/btnSelectTarget"
+            android:layout_width="40dp" android:layout_height="40dp"
+            android:src="@drawable/ic_at"
+            android:background="@drawable/btn_blue"
+            android:scaleType="centerInside"
+            android:contentDescription="@string/callsign"
+            android:enabled="false" />
+
+        <!-- Инфо адресата -->
+        <LinearLayout android:id="@+id/layoutTargetInfo"
+            android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:layout_marginStart="8dp" android:layout_marginEnd="8dp">
+            <TextView android:id="@+id/tvTargetName"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="@string/general_channel"
+                android:textSize="14sp" android:textColor="#5ba3e8" />
+            <TextView android:id="@+id/tvTargetSignal"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="10sp" android:textColor="#888888"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <!-- Статус доставки (для буферизованного PTT) -->
+        <TextView android:id="@+id/tvDeliveryStatus"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:textSize="11sp" android:textColor="#555555"
+            android:visibility="gone"
+            android:layout_marginEnd="8dp" />
+
+        <!-- Кнопка вызова -->
+        <ImageButton android:id="@+id/btnCall"
+            android:layout_width="40dp" android:layout_height="40dp"
+            android:src="@drawable/ic_call"
+            android:background="@drawable/btn_circle_green"
+            android:scaleType="centerInside"
+            android:contentDescription="Call"
+            android:enabled="false" />
     </LinearLayout>
 
     <!-- ПОСЛЕДНИЕ ВЫЗОВЫ (скроллируемый список) -->

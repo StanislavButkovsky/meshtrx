@@ -38,6 +38,14 @@ object ServiceState {
     val incomingCall = MutableLiveData<IncomingCall?>(null)
     val callActive = MutableLiveData(false)
 
+    // Последний принятый абонент (PTT экран)
+    val lastRxCallSign = MutableLiveData("")
+    val lastRxDeviceId = MutableLiveData("")
+    val lastRxRssi = MutableLiveData(0)
+    val lastRxSnr = MutableLiveData(0)
+    val isReceiving = MutableLiveData(false)
+    val isPlayingVoice = MutableLiveData(false) // воспроизведение адресного голосового
+
     // Events (one-shot) — UI подписывается
     val showPinDialog = MutableLiveData(false)
     val showDevicePicker = MutableLiveData(false)

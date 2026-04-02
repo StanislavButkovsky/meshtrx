@@ -11,8 +11,8 @@ class AudioEngine {
         private const val TAG = "AudioEngine"
         const val SAMPLE_RATE = 8000
         const val FRAME_SAMPLES = 160 // 20ms (Codec2 3200)
-        const val FRAMES_PER_PACKET = 8
-        const val PACKET_SAMPLES = FRAME_SAMPLES * FRAMES_PER_PACKET // 1280
+        const val FRAMES_PER_PACKET = 4
+        const val PACKET_SAMPLES = FRAME_SAMPLES * FRAMES_PER_PACKET // 640
     }
 
     private val codec2 = Codec2Wrapper()
@@ -219,6 +219,37 @@ class AudioEngine {
             beep[i] = sample.toInt().coerceIn(-32768, 32767).toShort()
         }
         playbackQueue.offer(beep)
+    }
+
+    /** Воспроизвести PCM напрямую (для голосовых сообщений) */
+    fun playPcmDirect(pcm: ShortArray) {
+        val at = android.media.AudioTrack.Builder()
+            .setAudioAttributes(android.media.AudioAttributes.Builder()
+                .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+                .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SPEECH)
+                .build())
+            .setAudioFormat(android.media.AudioFormat.Builder()
+                .setSampleRate(SAMPLE_RATE)
+                .setChannelMask(android.media.AudioFormat.CHANNEL_OUT_MONO)
+                .setEncoding(android.media.AudioFormat.ENCODING_PCM_16BIT)
+                .build())
+            .setBufferSizeInBytes(pcm.size * 2)
+            .setTransferMode(android.media.AudioTrack.MODE_STATIC)
+            .build()
+        // Усиление
+        val amplified = if (volumeBoost != 1.0f) {
+            ShortArray(pcm.size) { i ->
+                (pcm[i] * volumeBoost).toInt().coerceIn(-32768, 32767).toShort()
+            }
+        } else pcm
+        at.write(amplified, 0, amplified.size)
+        at.play()
+        // Освободить после воспроизведения
+        Thread {
+            Thread.sleep((pcm.size * 1000L / SAMPLE_RATE) + 100)
+            at.stop()
+            at.release()
+        }.start()
     }
 
     fun destroy() {

@@ -154,12 +154,19 @@ class BleManager(private val context: Context) {
     fun sendPttEnd() = send(byteArrayOf(CMD_PTT_END.toByte()))
     fun setChannel(ch: Int) = send(byteArrayOf(CMD_SET_CHANNEL.toByte(), ch.toByte()))
 
-    fun sendMessage(seq: Int, text: String) {
+    fun sendMessage(seq: Int, destId: String?, text: String) {
         val textBytes = text.toByteArray(Charsets.UTF_8)
-        val pkt = ByteArray(2 + textBytes.size)
+        val pkt = ByteArray(4 + textBytes.size)
         pkt[0] = CMD_SEND_MESSAGE.toByte()
         pkt[1] = seq.toByte()
-        System.arraycopy(textBytes, 0, pkt, 2, textBytes.size)
+        // dest: 2 байта (0x0000 = broadcast)
+        if (destId != null && destId.length >= 4) {
+            pkt[2] = destId.substring(0, 2).toInt(16).toByte()
+            pkt[3] = destId.substring(2, 4).toInt(16).toByte()
+        } else {
+            pkt[2] = 0; pkt[3] = 0 // broadcast
+        }
+        System.arraycopy(textBytes, 0, pkt, 4, textBytes.size)
         send(pkt)
     }
 

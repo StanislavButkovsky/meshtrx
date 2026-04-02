@@ -50,6 +50,7 @@
     <string name="to_all">To: All</string>
     <string name="msg_hint">Message (max 84)</string>
     <string name="send_to">Send to?</string>
+    <string name="select_subscriber">Select subscriber</string>
     <string name="broadcast_channel">Broadcast to channel</string>
 
     <!-- Files -->
@@ -118,6 +119,7 @@
     <string name="ptt_release">release</string>
     <string name="ptt_receive">RECEIVE</string>
     <string name="ptt_vox_auto">auto</string>
+    <string name="ptt_sending">SENDING</string>
     <string name="call_general">General call</string>
     <string name="sos_title">EMERGENCY SOS CALL</string>
     <string name="sos_confirm">Send distress signal to ALL?</string>

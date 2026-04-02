@@ -8,8 +8,8 @@ class Codec2Wrapper {
         const val MODE_3200 = 1
         const val FRAME_SAMPLES = 160   // 20ms @ 8000Hz (Codec2 3200)
         const val FRAME_BYTES = 8       // Codec2 3200bps = 64 bits = 8 bytes
-        const val FRAMES_PER_PACKET = 8
-        const val PACKET_BYTES = FRAME_BYTES * FRAMES_PER_PACKET // 64
+        const val FRAMES_PER_PACKET = 4
+        const val PACKET_BYTES = FRAME_BYTES * FRAMES_PER_PACKET // 32
 
         init {
             System.loadLibrary("codec2jni")

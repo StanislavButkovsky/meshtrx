@@ -92,6 +92,51 @@
                 android:scaleType="centerInside"
                 android:contentDescription="@string/send"
                 android:enabled="false" />
+
+            <ImageButton android:id="@+id/btnVoice"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@drawable/ic_mic"
+                android:background="@drawable/btn_circle_gray"
+                android:scaleType="centerInside"
+                android:contentDescription="Voice"
+                android:layout_marginStart="4dp"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <!-- Панель записи (скрыта по умолчанию) -->
+        <LinearLayout android:id="@+id/layoutRecording"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:visibility="gone"
+            android:layout_marginTop="4dp">
+            <View android:id="@+id/viewRecDot"
+                android:layout_width="10dp"
+                android:layout_height="10dp"
+                android:background="#ff4444" />
+            <TextView android:id="@+id/tvRecTime"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0:00"
+                android:textColor="#ff4444"
+                android:textSize="14sp"
+                android:layout_marginStart="8dp" />
+            <ProgressBar android:id="@+id/pbRecLevel"
+                style="@android:style/Widget.ProgressBar.Horizontal"
+                android:layout_width="0dp"
+                android:layout_height="6dp"
+                android:layout_weight="1"
+                android:layout_marginHorizontal="12dp"
+                android:max="5000" />
+            <TextView android:id="@+id/tvRecCancel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/cancel"
+                android:textColor="#888888"
+                android:textSize="12sp"
+                android:padding="8dp" />
         </LinearLayout>
     </LinearLayout>
 

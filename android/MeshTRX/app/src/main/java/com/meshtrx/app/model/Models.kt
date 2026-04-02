@@ -18,7 +18,8 @@ data class ChatMessage(
     val rssi: Int?,
     val status: MessageStatus,
     val time: String,
-    val timeMs: Long = System.currentTimeMillis()
+    val timeMs: Long = System.currentTimeMillis(),
+    val voicePath: String? = null  // путь к .c2 файлу голосового сообщения
 )
 
 data class Peer(
