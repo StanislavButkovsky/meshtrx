@@ -1,7 +1,7 @@
 # MeshTRX — Лог проекта
 
 > Файл обновляется автоматически по мере работы над проектом.
-> Последнее обновление: 2026-03-21 (v4.2)
+> Последнее обновление: 2026-04-02 (v4.3.1)
 
 ---
 
@@ -672,7 +672,42 @@
 - LoRaFileAck переработан: status + dest + missing_count + missing[50]
 - Android: "Отправить всем" скрыт в FileDestPickerSheet для файлов (showBroadcast=false)
 
-### 29. Голосовые сообщения (Voice Messages) — В РАБОТЕ
+### 29. v4.3.1 — Адресные вызовы, callSign sync, UI фиксы — ГОТОВО ✓
+
+**Дата**: 2026-04-02
+
+**Критический баг: String.format byte sign extension:**
+- `String.format("%02X", data[N])` для байтов >= 0x80 давал "FFFFFFXX" вместо "XX"
+- Все deviceId были искажены, matching между peers/calls мог не работать
+- Исправлено во всех 5 местах (CMD_AUDIO_RX, CMD_RECV_MESSAGE, CMD_PEER_SEEN, CMD_FILE_RECV, CMD_INCOMING_CALL): добавлено `.toInt() and 0xFF`
+- При загрузке старые peers с "FFFFFF" в ID отфильтровываются
+
+**Адресный вызов (CALL_PRIVATE) не доходил:**
+- targetId хранился как 4 hex (2 байта MAC), при отправке padStart → `[00,00,XX,XX]`
+- ESP32 сравнивает memcmp все 4 байта → не совпадало с реальным deviceId
+- Исправлено: targetId теперь полный 8 hex (4 байта), FileDestPickerSheet возвращает полный deviceId через onSelectedFull callback
+- Исправлены все зависимые места: redial, incoming call auto-target, isReceiving matching, destMac для PTT файлов
+
+**CallSign синхронизация телефон ↔ ESP32:**
+- Firmware GET_SETTINGS теперь возвращает `callsign` в JSON ответе
+- Android при SETTINGS_RESP: сверяет callsign телефона с ESP32, если отличается — синхронизирует
+- Если на телефоне пусто — берёт callsign с устройства
+- В CMD_PEER_SEEN: сохраняет существующий callSign если beacon приходит с пустым полем
+- Убрана двойная отправка callsign в SettingsFragment (было setCallSign + sendSettings)
+
+**UI улучшения:**
+- Экран входящего вызова: одна кнопка OK (закрыть + стоп зумер), таймаут 10 сек (было 30)
+- PTT кнопка блокируется при приёме адресного голосового файла (новое состояние isReceivingFile)
+- Текст под PTT возвращается в "ожидание" после воспроизведения голосового
+- PTT кнопка переходит в RX при воспроизведении адресного голосового
+- Позывной адресата обновляется live при получении beacon от peers
+- Stale-индикатор в списке звонков: если peer не виден >15 мин — ✗ красным
+- Кнопка "Очистить список абонентов" в настройках (peers + recent calls)
+- Дедупликация recent calls: один ALL, один PRIVATE на deviceId
+
+**Файлы**: MeshTRXService.kt, ServiceState.kt, VoiceFragment.kt, FileDestPickerSheet.kt, SettingsFragment.kt, IncomingCallActivity.kt, fragment_settings.xml, strings.xml (en/ru), firmware/main.cpp
+
+### 30. Голосовые сообщения (Voice Messages) — В РАБОТЕ
 
 **Концепция**: кнопка 🎤 в чате → запись до 10 сек → Codec2 → отправка через файловый протокол → воспроизведение в чате.
 
@@ -723,6 +758,9 @@
 - `8fbca94` v4.0 — Public website meshtrx.com + meshtrx.ru, i18n RU/EN
 - `e34d2f2` v4.1 — Power optimization, BLE auto-reconnect, GPS beacon fix
 - `xxxxxxx` v4.2 — Radar improvements, GPS in calls, splash screen, app icon
+- `166b3ef` v4.3 — Voice reliability, addressed PTT, voice messages, UI overhaul
+- `bf7538b` v4.3.0 — Version bump, deploy to meshtrx.com
+- `b4cb82d` v4.3.1 — Addressed calls fix, callSign sync, UI improvements
 
 ---
 

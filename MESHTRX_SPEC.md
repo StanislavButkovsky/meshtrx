@@ -483,7 +483,7 @@ MTU: запросить 128 байт при подключении
                    байт 25=tx_power, байт 26=battery, байт 27=flags,
                    байты 28-31=uptime_sec
     0x18 = CALL_ALL       (телефон→ESP: отправить общий вызов; байты 1-8=message)
-    0x19 = CALL_PRIVATE   (телефон→ESP: байты 1-4=target_id, байты 5-12=message)
+    0x19 = CALL_PRIVATE   (телефон→ESP: байты 1-4=target_id (полный 4-байтовый deviceId), байты 5-12=message)
     0x1A = CALL_GROUP     (телефон→ESP: байт 1=group_index или 0xFF=ad-hoc,
                            если ad-hoc: байт 2=count, байты 3..=device_ids)
     0x1B = CALL_EMERGENCY (телефон→ESP: активировать SOS; байты 1-4=lat_e7, 5-8=lon_e7)
@@ -513,13 +513,24 @@ SET_SETTINGS JSON формат:
   {
     "duty_cycle": false,       // ENFORCE_DUTY_CYCLE
     "tx_power": 14,            // дБм, 1–22
-    "region": "EU868",         // "EU868" | "US915" | "AS923"
-    "vox_enabled": false,      // VOX режим (true) или PTT (false)
-    "vox_threshold": 800,      // 0–32767, чувствительность VOX
-    "vox_hangtime": 800,       // мс паузы перед концом TX
-    "roger_beep": 1            // 0=нет, 1=короткий, 2=морзе K, 3=two-tone, 4=chirp
+    "beacon_interval": 300,    // интервал beacon в секундах (0=выключен)
+    "callsign": "ALPHA"        // позывной (до 8 символов ASCII)
   }
   ESP32 сохраняет в NVS (Non-Volatile Storage) и применяет немедленно
+
+SETTINGS_RESP JSON формат:
+  {
+    "duty_cycle": false,
+    "tx_power": 14,
+    "beacon_interval": 300,
+    "callsign": "ALPHA"        // текущий позывной на устройстве
+  }
+  Android при подключении сверяет callsign телефона с устройством.
+  Если отличается — синхронизирует на ESP32.
+
+**ВАЖНО**: При форматировании deviceId из байтов в hex-строку (Kotlin/Java),
+  обязательно использовать `data[N].toInt() and 0xFF` для избежания sign extension.
+  Без этого байты >= 0x80 дают "FFFFFFXX" вместо "XX"
 ```
 
 ### 4.5 Логика main.cpp
@@ -567,6 +578,7 @@ SET_SETTINGS JSON формат:
         0x0A SET_SETTINGS → распарсить JSON, применить duty_cycle/tx_power/region,
                             сохранить в NVS через Preferences library
         0x0B GET_SETTINGS → отправить 0x0C SETTINGS_RESP с текущим JSON
+                            (включает duty_cycle, tx_power, beacon_interval, callsign)
         0x0D FILE_START   → инициализировать сессию приёма файла, сохранить метаданные
         0x0E FILE_CHUNK   → добавить чанк в буфер txFileBuffer, если набрали 1 пакет LoRa → TX
     - Каждые 500мс отправлять STATUS_UPDATE (0x06) если телефон подключён
@@ -1557,8 +1569,9 @@ target_link_libraries(codec2jni android log)
   → Notification actions: Mute, Disconnect
 
 Шаг 5: Система вызовов в Android
-  → IncomingCallOverlay (полноэкранный)
-  → Зумер/вибрация по AudioManager
+  → IncomingCallActivity (полноэкранный, поверх lockscreen)
+  → Зумер/вибрация через CallRinger, авто-закрытие через 10 сек
+  → Одна кнопка OK (закрыть + стоп зумер)
   → Режимы: "Слушать всех" / "Только мои" с управлением громкостью
 
 Шаг 6: Roger Beep (асинхронный)
