@@ -155,7 +155,7 @@
     <string name="photo_too_big">Фото слишком большое (%d КБ, макс 100 КБ)</string>
     <string name="error_msg">Ошибка: %s</string>
     <string name="no_data_retry">Данные файла отсутствуют — выберите заново</string>
-    <string name="device_label">Устройство: %s\nMeshTRX v4.2</string>
+    <string name="device_label">Устройство: %s\nMeshTRX v4.3</string>
     <string name="me_label">Я</string>
     <string name="fab_me">Я</string>
     <string name="fab_all">Все</string>

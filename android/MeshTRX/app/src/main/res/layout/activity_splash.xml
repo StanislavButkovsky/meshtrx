@@ -28,7 +28,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|center_horizontal"
         android:layout_marginBottom="48dp"
-        android:text="v4.2"
+        android:text="v4.3"
         android:textColor="#4ade80"
         android:textSize="14sp" />
 

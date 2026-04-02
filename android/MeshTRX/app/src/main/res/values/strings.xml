@@ -155,7 +155,7 @@
     <string name="photo_too_big">Photo too large (%d KB, max 100 KB)</string>
     <string name="error_msg">Error: %s</string>
     <string name="no_data_retry">Data unavailable — select file again</string>
-    <string name="device_label">Device: %s\nMeshTRX v4.2</string>
+    <string name="device_label">Device: %s\nMeshTRX v4.3</string>
     <string name="me_label">Me</string>
     <string name="fab_me">Me</string>
     <string name="fab_all">All</string>
