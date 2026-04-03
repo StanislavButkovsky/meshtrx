@@ -15,7 +15,9 @@ class ServerCallbacks : public NimBLEServerCallbacks {
   void onConnect(NimBLEServer* pServer, ble_gap_conn_desc* desc) override {
     bleConnected = true;
     Serial.println("[BLE] Client connected");
-    pServer->updateConnParams(desc->conn_handle, 12, 12, 0, 200);
+    // min=60ms, max=100ms, latency=2 (skip 2 events), timeout=500ms
+    // Экономит ~5-8 мА vs старые 12ms/12ms/0/200
+    pServer->updateConnParams(desc->conn_handle, 48, 80, 2, 500);
     oledWake();
     oledShowMessage("BLE CONNECTED", "", 3000);
   }
@@ -54,7 +56,7 @@ void bleInit() {
 
   NimBLEDevice::init(nameBuf);
   NimBLEDevice::setMTU(128);
-  NimBLEDevice::setPower(ESP_PWR_LVL_P9);
+  NimBLEDevice::setPower(ESP_PWR_LVL_P6);  // +6dBm (вместо +9), экономия ~1мА
 
   // Без BLE security — PIN проверяется на уровне приложения
   pServer = NimBLEDevice::createServer();
@@ -80,7 +82,9 @@ void bleInit() {
   // Advertising
   NimBLEAdvertising* pAdvertising = NimBLEDevice::getAdvertising();
   pAdvertising->addServiceUUID(SERVICE_UUID);
-  pAdvertising->setScanResponse(true);
+  pAdvertising->setScanResponse(false);  // экономия ~1-2 мА
+  pAdvertising->setMinPreferred(160);    // 100мс (вместо default ~100)
+  pAdvertising->setMaxPreferred(320);    // 200мс
   pAdvertising->start();
 
   // PIN на OLED

@@ -37,9 +37,19 @@
 #define LORA_SYNCWORD    0x34
 #define LORA_PREAMBLE    8
 
+// === Power modes ===
+#define LORA_PREAMBLE_SHORT  8    // для голоса/файлов (active mode)
+#define LORA_PREAMBLE_LONG   32   // для будящих пакетов (idle wake)
+
+enum LoRaPowerMode {
+    LORA_POWER_CONTINUOUS_RX,   // постоянный RX (active voice/file)
+    LORA_POWER_DUTY_CYCLE_RX,   // duty cycle RX (idle)
+};
+
 extern SX1262 radio;
 extern volatile bool loraRxFlag;
 extern volatile bool loraTxDone;
+extern TaskHandle_t loraTaskHandle;  // для task notification из ISR
 
 void loraInit();
 bool loraSetChannel(uint8_t ch);
@@ -53,3 +63,8 @@ void loraSetDutyCycle(bool enabled);
 bool loraIsDutyCycleEnabled();
 int8_t loraGetTxPower();
 uint8_t loraGetChannel();
+
+// Power management
+void loraSetPowerMode(LoRaPowerMode mode);
+LoRaPowerMode loraGetPowerMode();
+bool loraSendWake(uint8_t* data, size_t len);  // с длинной преамбулой

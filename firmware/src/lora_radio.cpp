@@ -25,8 +25,17 @@ static float channelFreq(uint8_t ch) {
 // }
 // #endif
 
+static LoRaPowerMode currentPowerMode = LORA_POWER_CONTINUOUS_RX;
+TaskHandle_t loraTaskHandle = nullptr;
+
 static void IRAM_ATTR onRxDone(void) {
   loraRxFlag = true;
+  // Будим loraTask через task notification (вместо busy polling)
+  if (loraTaskHandle) {
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    vTaskNotifyGiveFromISR(loraTaskHandle, &xHigherPriorityTaskWoken);
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+  }
 }
 
 static void IRAM_ATTR onTxDone(void) {
@@ -178,4 +187,45 @@ int8_t loraGetTxPower() {
 
 uint8_t loraGetChannel() {
   return currentChannel;
+}
+
+// === Power management ===
+
+void loraSetPowerMode(LoRaPowerMode mode) {
+  if (mode == currentPowerMode) return;
+
+  if (mode == LORA_POWER_DUTY_CYCLE_RX) {
+    // RX Duty Cycle — радио само чередует RX окна и sleep
+    radio.setDio1Action(onRxDone);
+    int state = radio.startReceiveDutyCycleAuto(LORA_PREAMBLE_LONG, 8);
+    if (state == RADIOLIB_ERR_NONE) {
+      currentPowerMode = LORA_POWER_DUTY_CYCLE_RX;
+      Serial.println("[LoRa] Power: DUTY_CYCLE_RX");
+    } else {
+      // Fallback на постоянный RX
+      Serial.printf("[LoRa] Duty cycle failed (%d), fallback continuous\n", state);
+      loraStartReceive();
+      currentPowerMode = LORA_POWER_CONTINUOUS_RX;
+    }
+  } else {
+    // Постоянный RX
+    loraStartReceive();
+    currentPowerMode = LORA_POWER_CONTINUOUS_RX;
+    Serial.println("[LoRa] Power: CONTINUOUS_RX");
+  }
+}
+
+LoRaPowerMode loraGetPowerMode() {
+  return currentPowerMode;
+}
+
+bool loraSendWake(uint8_t* data, size_t len) {
+  // Отправка с длинной преамбулой — будит устройства в duty cycle mode
+  radio.setPreambleLength(LORA_PREAMBLE_LONG);
+  bool ok = loraSend(data, len);
+  // Восстановить преамбулу
+  radio.setPreambleLength(
+    currentPowerMode == LORA_POWER_DUTY_CYCLE_RX ? LORA_PREAMBLE_LONG : LORA_PREAMBLE_SHORT
+  );
+  return ok;
 }

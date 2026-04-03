@@ -130,7 +130,7 @@ bool beaconSendNow() {
   // CRC16 от байтов 0..33 (всё кроме самого crc16)
   pkt.crc16 = crc16_ccitt((uint8_t*)&pkt, sizeof(pkt) - 2);
 
-  bool ok = loraSend((uint8_t*)&pkt, sizeof(pkt));
+  bool ok = loraSendWake((uint8_t*)&pkt, sizeof(pkt));  // длинная преамбула — будит спящих
   if (ok) {
     Serial.printf("[Beacon] Sent seq=%d\n", pkt.beacon_seq);
     // Уведомить телефон

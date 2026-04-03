@@ -251,7 +251,9 @@ void oledRepeaterTxBlink(bool on) {
 
 void oledWake() {
   if (!oledAwake) {
-    u8g2.setPowerSave(0);  // включить дисплей
+    digitalWrite(36, LOW);   // включить Vext
+    delay(50);
+    u8g2.setPowerSave(0);    // включить дисплей
     oledAwake = true;
   }
   oledSleepAt = millis() + OLED_TIMEOUT_MS;
@@ -263,7 +265,9 @@ bool oledIsAwake() {
 
 void oledSleepTick() {
   if (oledAwake && oledSleepAt > 0 && millis() >= oledSleepAt) {
-    u8g2.setPowerSave(1);  // выключить дисплей
+    u8g2.setPowerSave(1);   // выключить дисплей
+    delay(50);
+    digitalWrite(36, HIGH); // отключить Vext полностью (экономия ~1-5 мА)
     oledAwake = false;
     oledSleepAt = 0;
   }
@@ -271,6 +275,8 @@ void oledSleepTick() {
 
 void oledOff() {
   u8g2.setPowerSave(1);
+  delay(50);
+  digitalWrite(36, HIGH);   // отключить Vext полностью
   oledAwake = false;
   oledSleepAt = 0;
 }

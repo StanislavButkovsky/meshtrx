@@ -17,14 +17,7 @@
 #include "battery.h"
 #include "wifi_monitor.h"
 
-// === Debug logging ===
-#ifdef NDEBUG
-  #define LOG_D(...)   ((void)0)
-  #define LOG_F(...)   ((void)0)
-#else
-  #define LOG_D(msg)       Serial.println(msg)
-  #define LOG_F(fmt, ...)  Serial.printf(fmt, ##__VA_ARGS__)
-#endif
+#include "debug.h"
 
 // === Пины ===
 #define PIN_LED       35
@@ -132,8 +125,10 @@ static void handleUserButton();
 // SETUP
 // ================================================================
 void setup() {
+#ifndef NDEBUG
   Serial.begin(115200);
   delay(500);
+#endif
   LOG_D("\n=== MeshTRX Starting ===");
 
   // Инициализация NVS
@@ -221,7 +216,7 @@ void setup() {
                  false, false, getCachedBattery());
 
     // FreeRTOS задачи
-    xTaskCreatePinnedToCore(loraTaskFunc, "lora", 16384, nullptr, 5, nullptr, 0);
+    xTaskCreatePinnedToCore(loraTaskFunc, "lora", 16384, nullptr, 5, &loraTaskHandle, 0);
     xTaskCreatePinnedToCore(bleTaskFunc, "ble", 4096, nullptr, 5, nullptr, 1);
     xTaskCreatePinnedToCore(beaconTask, "beacon", 4096, nullptr, 2, nullptr, 1);
   }
@@ -240,7 +235,7 @@ void loop() {
     callTick();
   }
 
-  delay(50);
+  delay(200);  // 200мс (было 50мс) — экономия CPU, кнопка реагирует приемлемо
 }
 
 // ================================================================
@@ -317,13 +312,18 @@ static void handleUserButton() {
 // loraTask — приём и отправка LoRa
 // ================================================================
 static void loraTaskFunc(void* param) {
-  LOG_D("[LoRa Task] Started on Core 0");
+  LOG_D("[LoRa Task] Started on Core 0 (event-driven)");
 
   uint8_t rxBuf[222];
   LoRaAudioPacket txAudioPkt;
   LoRaTextPacket txTextPkt;
 
   while (true) {
+    // Ждём: DIO1 interrupt (RX done), TX queue, или таймаут 50мс
+    // При PTT active — чаще проверяем TX очередь
+    uint32_t waitMs = pttActive ? 5 : 50;
+    ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(waitMs));
+
     // Проверить входящий LoRa пакет
     if (loraRxFlag) {
       loraRxFlag = false;
@@ -357,8 +357,6 @@ static void loraTaskFunc(void* param) {
         loraStartReceive();
       }
     }
-
-    vTaskDelay(pdMS_TO_TICKS(1));
   }
 }
 

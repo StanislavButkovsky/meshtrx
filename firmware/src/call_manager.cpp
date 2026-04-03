@@ -138,7 +138,7 @@ void callSendAll(const uint8_t* message, size_t msgLen) {
   memcpy(pkt.call_sign, beaconGetCallSign(), 9);
   pkt.lat_e7 = beaconGetLat();
   pkt.lon_e7 = beaconGetLon();
-  loraSend((uint8_t*)&pkt, sizeof(pkt));
+  loraSendWake((uint8_t*)&pkt, sizeof(pkt));  // длинная преамбула — будит спящих
   loraStartReceive();
   Serial.println("[Call] ALL CALL sent");
 }
@@ -157,7 +157,7 @@ void callSendPrivate(const uint8_t* targetId, const uint8_t* message, size_t msg
   pkt.lat_e7 = beaconGetLat();
   pkt.lon_e7 = beaconGetLon();
 
-  loraSend((uint8_t*)&pkt, sizeof(pkt));
+  loraSendWake((uint8_t*)&pkt, sizeof(pkt));  // длинная преамбула — будит спящих
   loraStartReceive();
   callState = CALL_OUTGOING;
   callTimerStart = millis();
@@ -180,7 +180,7 @@ void callSendGroup(uint8_t groupIndex, const uint8_t* adhocMembers, uint8_t memb
   pkt.lat_e7 = beaconGetLat();
   pkt.lon_e7 = beaconGetLon();
 
-  loraSend((uint8_t*)&pkt, sizeof(pkt));
+  loraSendWake((uint8_t*)&pkt, sizeof(pkt));  // длинная преамбула
   loraStartReceive();
   Serial.printf("[Call] GROUP sent, %d members\n", pkt.member_count);
 }
@@ -203,7 +203,7 @@ void callSendEmergency(int32_t lat_e7, int32_t lon_e7) {
   sosLon = lon_e7;
   sosSentCount = 1;
 
-  loraSend((uint8_t*)&pkt, sizeof(pkt));
+  loraSendWake((uint8_t*)&pkt, sizeof(pkt));  // длинная преамбула
   loraStartReceive();
   callState = CALL_EMERGENCY_TX;
   callTimerStart = millis();
