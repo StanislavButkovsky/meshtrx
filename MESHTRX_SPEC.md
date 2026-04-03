@@ -1661,6 +1661,8 @@ target_link_libraries(codec2jni android log)
 | Jitter LoRa | Jitter buffer на 3 пакета в AudioEngine |
 | Android BLE на разных версиях | minSdk 26, обрабатывать оба API |
 | EU868 duty cycle 1% | ENFORCE_DUTY_CYCLE=false по умолчанию; управляется из настроек |
+| Энергопотребление idle | Event-driven LoRa task (DIO1 interrupt), BLE interval 60-100мс, OLED Vext off. См. docs/POWER_OPTIMIZATION.md |
+| LoRa RX duty cycle | API готов: loraSetPowerMode(DUTY_CYCLE_RX) + loraSendWake() с преамбулой 32. Beacons/calls используют длинную преамбулу |
 | TX мощность > 14 дБм нарушает EU | Предупреждение в UI при значениях 15–22 дБм |
 | Текст теряется при плохом сигнале | ACK + повтор до 3 раз с таймаутом 2 сек |
 | Коллизия аудио и файла | Файловая передача ждёт окончания PTT; приоритет: аудио > текст > файл |

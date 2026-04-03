@@ -1,7 +1,7 @@
 # MeshTRX — Лог проекта
 
 > Файл обновляется автоматически по мере работы над проектом.
-> Последнее обновление: 2026-04-02 (v4.3.1)
+> Последнее обновление: 2026-04-03 (v4.3.1 + power optimization)
 
 ---
 
@@ -707,7 +707,47 @@
 
 **Файлы**: MeshTRXService.kt, ServiceState.kt, VoiceFragment.kt, FileDestPickerSheet.kt, SettingsFragment.kt, IncomingCallActivity.kt, fragment_settings.xml, strings.xml (en/ru), firmware/main.cpp
 
-### 30. Голосовые сообщения (Voice Messages) — В РАБОТЕ
+### 30. Оптимизация энергопотребления (Power Optimization) — ГОТОВО ✓
+
+**Дата**: 2026-04-03
+
+**Исследование**: полный анализ потребления всех компонентов (LoRa, CPU, BLE, OLED, Serial).
+Текущее idle: ~70-130 мА. Документация: `docs/POWER_OPTIMIZATION.md`, `docs/HELTEC_V4_SPECS.md`.
+
+**Event-driven LoRa task (экономия 15-30 мА):**
+- Заменён busy polling 1мс на `ulTaskNotifyTake()` — задача спит до прерывания DIO1
+- ISR `onRxDone` будит задачу через `vTaskNotifyGiveFromISR()`
+- При PTT active — таймаут 5мс (для TX очереди), иначе 50мс
+
+**BLE tuning (экономия 7-12 мА):**
+- Connection interval: 12мс/12мс → 60мс/100мс, slave latency 0→2
+- Advertising: scan response отключён, interval увеличен (100-200мс)
+- TX power: P9 → P6 (+6dBm вместо +9dBm)
+
+**OLED Vext полное отключение (экономия 1-5 мА):**
+- При sleep: `digitalWrite(36, HIGH)` — полностью снимает питание Vext
+- При wake: `digitalWrite(36, LOW)` + delay 50мс перед инициализацией дисплея
+
+**Serial conditional (экономия 5-10 мА при NDEBUG):**
+- `Serial.begin()` обёрнут в `#ifndef NDEBUG`
+- Создан `debug.h` с макросами LOG_D/LOG_F/DBG_PRINT
+- В platformio.ini: раскомментировать `-DNDEBUG` для release
+
+**Main loop delay (экономия 3-5 мА):**
+- `delay(50)` → `delay(200)` — кнопка реагирует 200мс (приемлемо)
+
+**LoRa RX Duty Cycle API (реализовано, не активировано):**
+- `loraSetPowerMode(LORA_POWER_DUTY_CYCLE_RX)` — аппаратный duty cycle SX1262
+- `loraSendWake()` — отправка с длинной преамбулой 32 символа
+- Beacons и все вызовы (ALL/PRIVATE/GROUP/EMERGENCY) уже используют `loraSendWake()`
+- Для активации нужен idle state machine (когда нет активного голоса/файла)
+- Оценка: ~1.8 мА вместо 5 мА в RX при активации
+
+**Итого idle после оптимизации: ~10-20 мА** (было ~70-130 мА, экономия ~80%)
+
+**Файлы**: debug.h (новый), main.cpp, lora_radio.h, lora_radio.cpp, ble_service.cpp, oled_display.cpp, beacon.cpp, call_manager.cpp
+
+### 31. Голосовые сообщения (Voice Messages) — В РАБОТЕ
 
 **Концепция**: кнопка 🎤 в чате → запись до 10 сек → Codec2 → отправка через файловый протокол → воспроизведение в чате.
 
@@ -761,6 +801,8 @@
 - `166b3ef` v4.3 — Voice reliability, addressed PTT, voice messages, UI overhaul
 - `bf7538b` v4.3.0 — Version bump, deploy to meshtrx.com
 - `b4cb82d` v4.3.1 — Addressed calls fix, callSign sync, UI improvements
+- `4745dfd` Docs: power optimization research + Heltec V4 specs
+- `faffaea` Firmware: power optimization — event-driven LoRa, BLE tuning, OLED Vext off
 
 ---
 
