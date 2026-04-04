@@ -1,6 +1,7 @@
 'use client';
 
 import ApkDownload from '@/components/download/ApkDownload';
+import FirmwareDownload from '@/components/download/FirmwareDownload';
 import QrCode from '@/components/download/QrCode';
 import InstallSteps from '@/components/download/InstallSteps';
 import Changelog from '@/components/download/Changelog';
@@ -21,6 +22,7 @@ export default function DownloadPage() {
           </div>
           <QrCode />
         </div>
+        <FirmwareDownload />
         <InstallSteps />
         <Changelog />
       </div>

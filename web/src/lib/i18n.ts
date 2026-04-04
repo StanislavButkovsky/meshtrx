@@ -97,6 +97,8 @@ export const translations = {
   'dl.step3.desc': { ru: 'Откройте скачанный файл и следуйте инструкции установки.', en: 'Open the downloaded file and follow the installation instructions.' },
   'dl.step4.title': { ru: 'Подключите модуль', en: 'Connect the module' },
   'dl.step4.desc': { ru: 'Включите Bluetooth, откройте MeshTRX и подключитесь к Heltec V3.', en: 'Enable Bluetooth, open MeshTRX and connect to Heltec V3.' },
+  'dl.firmware': { ru: 'Прошивка LoRa-модуля', en: 'LoRa module firmware' },
+  'dl.firmware_hint': { ru: 'V3 — стабильная. V4 с GC1109 PA — beta, требует тестирования.', en: 'V3 — stable. V4 with GC1109 PA — beta, needs testing.' },
 
   // Flash page
   'flash.title': { ru: 'Прошивка модуля', en: 'Flash Firmware' },

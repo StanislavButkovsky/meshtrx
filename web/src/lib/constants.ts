@@ -78,4 +78,5 @@ export const NAV_LINKS = [
 export const DOWNLOAD_LINKS = {
   apk: '/downloads/meshtrx-latest.apk',
   firmware: '/downloads/firmware.bin',
+  firmwareV4: '/downloads/firmware-v4.bin',
 };
