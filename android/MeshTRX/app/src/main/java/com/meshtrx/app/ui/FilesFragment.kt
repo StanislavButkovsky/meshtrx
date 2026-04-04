@@ -123,8 +123,9 @@ class FilesFragment : Fragment() {
         }
 
         ServiceState.fileTransfers.observe(viewLifecycleOwner) { transfers ->
-            Log.d("FilesFragment", "fileTransfers updated: ${transfers.size} items")
-            rvFiles.adapter = FileAdapter(transfers)
+            // Не показывать голосовые (0x04=voice msg, 0x05=PTT voice)
+            val filtered = transfers.filter { it.fileType != 0x04 && it.fileType != 0x05 }
+            rvFiles.adapter = FileAdapter(filtered)
         }
 
         return v
@@ -142,7 +143,8 @@ class FilesFragment : Fragment() {
 
     private fun refreshList() {
         val transfers = ServiceState.fileTransfers.value ?: emptyList()
-        view?.findViewById<RecyclerView>(R.id.rvFiles)?.adapter = FileAdapter(transfers)
+        val filtered = transfers.filter { it.fileType != 0x04 && it.fileType != 0x05 }
+        view?.findViewById<RecyclerView>(R.id.rvFiles)?.adapter = FileAdapter(filtered)
     }
 
     private fun showPreview(data: ByteArray) {

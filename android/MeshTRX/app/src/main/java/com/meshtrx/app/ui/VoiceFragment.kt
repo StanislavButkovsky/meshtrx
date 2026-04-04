@@ -293,26 +293,18 @@ class VoiceFragment : Fragment() {
         val rxHideRunnable = Runnable { layoutRxInfo.visibility = View.GONE }
 
         ServiceState.isReceiving.observe(viewLifecycleOwner) { receiving ->
-            val senderId = ServiceState.lastRxDeviceId.value ?: ""
-            val isAddressed = targetId != null && senderId.isNotEmpty() &&
-                (targetId!!.endsWith(senderId) || senderId.endsWith(targetId!!.takeLast(4)))
-
             if (receiving) {
-                if (isAddressed) {
-                    // Адресный — не показывать пузырёк, PTT в RX
-                    pttButton.state = PttButtonView.State.RX
-                    tvStatusLine.text = "● приём"
-                    tvStatusLine.setTextColor(Colors.blueAccent)
-                } else {
-                    // Broadcast — показать пузырёк, авто-скрыть через 5 сек
-                    layoutRxInfo.visibility = View.VISIBLE
-                    rxHideHandler.removeCallbacks(rxHideRunnable)
-                    pttButton.state = PttButtonView.State.RX
-                    tvStatusLine.text = "● приём"
-                    tvStatusLine.setTextColor(Colors.blueAccent)
-                }
-            } else if (ServiceState.isPttActive.value != true) {
-                pttButton.state = PttButtonView.State.IDLE
+                // Показать пузырёк с инфо абонента при любом приёме
+                layoutRxInfo.visibility = View.VISIBLE
+                rxHideHandler.removeCallbacks(rxHideRunnable)
+                pttButton.state = PttButtonView.State.RX
+                tvStatusLine.text = "● приём"
+                tvStatusLine.setTextColor(Colors.blueAccent)
+            } else if (ServiceState.isPttActive.value != true
+                       && ServiceState.isPlayingVoice.value != true
+                       && ServiceState.isReceivingFile.value != true) {
+                val isVox = ServiceState.txMode.value == TxMode.VOX
+                pttButton.state = if (isVox) PttButtonView.State.VOX_IDLE else PttButtonView.State.IDLE
                 tvStatusLine.text = "● ожидание"
                 tvStatusLine.setTextColor(Colors.greenDim)
                 // Скрыть пузырёк через 5 сек

@@ -26,8 +26,9 @@
 
 // === GC1109 PA (только V4) ===
 #ifdef BOARD_V4
-  #define PA_FEM_EN  2    // GC1109 enable (CSD)
-  #define PA_FEM_CTX 46   // GC1109 TX/RX switch (CTX)
+  #define PA_FEM_POWER 7   // GC1109 power supply (HIGH = вкл)
+  #define PA_FEM_EN    2   // GC1109 enable (CSD)
+  #define PA_FEM_CTX   46  // GC1109 TX/RX switch (CTX)
 #endif
 
 // === Радио параметры ===
@@ -35,7 +36,7 @@
 #define LORA_SF          7
 #define LORA_CR          7       // 4/7 — больше FEC для надёжности
 #define LORA_SYNCWORD    0x34
-#define LORA_PREAMBLE    8
+#define LORA_PREAMBLE    32   // длинная преамбула для RX Duty Cycle совместимости
 
 // === Power modes ===
 #define LORA_PREAMBLE_SHORT  8    // для голоса/файлов (active mode)
@@ -43,7 +44,8 @@
 
 enum LoRaPowerMode {
     LORA_POWER_CONTINUOUS_RX,   // постоянный RX (active voice/file)
-    LORA_POWER_DUTY_CYCLE_RX,   // duty cycle RX (idle)
+    LORA_POWER_DUTY_CYCLE_RX,   // duty cycle RX (idle, BLE connected)
+    LORA_POWER_SLEEP,           // radio sleep (BLE disconnected, только beacon TX)
 };
 
 extern SX1262 radio;
@@ -68,3 +70,5 @@ uint8_t loraGetChannel();
 void loraSetPowerMode(LoRaPowerMode mode);
 LoRaPowerMode loraGetPowerMode();
 bool loraSendWake(uint8_t* data, size_t len);  // с длинной преамбулой
+void loraPaEnable();   // включить PA (V4)
+void loraPaDisable();  // выключить PA (V4) — экономия ~5-10 мА

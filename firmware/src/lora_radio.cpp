@@ -70,11 +70,11 @@ void loraInit() {
   radio.setDio1Action(onRxDone);
 
 #ifdef BOARD_V4
-  // Включить GC1109 PA, RX mode по умолчанию
+  // GC1109 PA: power + enable + TX/RX switch
+  pinMode(PA_FEM_POWER, OUTPUT);
   pinMode(PA_FEM_EN, OUTPUT);
   pinMode(PA_FEM_CTX, OUTPUT);
-  digitalWrite(PA_FEM_EN, HIGH);
-  digitalWrite(PA_FEM_CTX, LOW);
+  loraPaEnable();  // включить PA, RX mode
   Serial.println("[LoRa] GC1109 PA enabled (V4)");
 #endif
 
@@ -194,7 +194,13 @@ uint8_t loraGetChannel() {
 void loraSetPowerMode(LoRaPowerMode mode) {
   if (mode == currentPowerMode) return;
 
-  if (mode == LORA_POWER_DUTY_CYCLE_RX) {
+  if (mode == LORA_POWER_SLEEP) {
+    // Radio sleep — минимальное потребление, только beacon TX
+    radio.sleep();
+    loraPaDisable();  // отключить PA полностью (V4)
+    currentPowerMode = LORA_POWER_SLEEP;
+    Serial.println("[LoRa] Power: SLEEP (beacon-only)");
+  } else if (mode == LORA_POWER_DUTY_CYCLE_RX) {
     // RX Duty Cycle — радио само чередует RX окна и sleep
     radio.setDio1Action(onRxDone);
     int state = radio.startReceiveDutyCycleAuto(LORA_PREAMBLE_LONG, 8);
@@ -209,6 +215,7 @@ void loraSetPowerMode(LoRaPowerMode mode) {
     }
   } else {
     // Постоянный RX
+    loraPaEnable();  // включить PA (V4) — был выключен в sleep
     loraStartReceive();
     currentPowerMode = LORA_POWER_CONTINUOUS_RX;
     Serial.println("[LoRa] Power: CONTINUOUS_RX");
@@ -219,13 +226,37 @@ LoRaPowerMode loraGetPowerMode() {
   return currentPowerMode;
 }
 
+void loraPaEnable() {
+#ifdef BOARD_V4
+  digitalWrite(PA_FEM_POWER, HIGH);  // питание PA
+  digitalWrite(PA_FEM_EN, HIGH);     // enable
+  digitalWrite(PA_FEM_CTX, LOW);     // RX mode
+  Serial.println("[LoRa] PA ON");
+#endif
+}
+
+void loraPaDisable() {
+#ifdef BOARD_V4
+  digitalWrite(PA_FEM_CTX, LOW);
+  digitalWrite(PA_FEM_EN, LOW);
+  digitalWrite(PA_FEM_POWER, LOW);   // полностью снять питание PA
+  Serial.println("[LoRa] PA OFF");
+#endif
+}
+
 bool loraSendWake(uint8_t* data, size_t len) {
   // Отправка с длинной преамбулой — будит устройства в duty cycle mode
+  // Также работает из sleep mode (RadioLib пробудит радио для TX)
+  bool wasSleeping = (currentPowerMode == LORA_POWER_SLEEP);
+  if (wasSleeping) {
+    loraPaEnable();  // временно включить PA для TX (V4)
+  }
   radio.setPreambleLength(LORA_PREAMBLE_LONG);
   bool ok = loraSend(data, len);
-  // Восстановить преамбулу
-  radio.setPreambleLength(
-    currentPowerMode == LORA_POWER_DUTY_CYCLE_RX ? LORA_PREAMBLE_LONG : LORA_PREAMBLE_SHORT
-  );
+  // После TX — вернуть в текущий режим
+  if (wasSleeping) {
+    loraPaDisable();  // выключить PA обратно
+    radio.sleep();    // обратно в sleep после beacon TX
+  }
   return ok;
 }

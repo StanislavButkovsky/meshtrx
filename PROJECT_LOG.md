@@ -1,7 +1,7 @@
 # MeshTRX — Лог проекта
 
 > Файл обновляется автоматически по мере работы над проектом.
-> Последнее обновление: 2026-04-03 (v4.3.1 + power optimization)
+> Последнее обновление: 2026-04-04 (v4.3.1 + power optimization + PA management)
 
 ---
 
@@ -709,10 +709,10 @@
 
 ### 30. Оптимизация энергопотребления (Power Optimization) — ГОТОВО ✓
 
-**Дата**: 2026-04-03
+**Дата**: 2026-04-03 — 2026-04-04
 
-**Исследование**: полный анализ потребления всех компонентов (LoRa, CPU, BLE, OLED, Serial).
-Текущее idle: ~70-130 мА. Документация: `docs/POWER_OPTIMIZATION.md`, `docs/HELTEC_V4_SPECS.md`.
+**Исследование**: полный анализ потребления всех компонентов (LoRa, CPU, BLE, OLED, Serial, PA).
+Исходное idle: ~70-130 мА. Документация: `docs/POWER_OPTIMIZATION.md`, `docs/HELTEC_V4_SPECS.md`.
 
 **Event-driven LoRa task (экономия 15-30 мА):**
 - Заменён busy polling 1мс на `ulTaskNotifyTake()` — задача спит до прерывания DIO1
@@ -736,14 +736,34 @@
 **Main loop delay (экономия 3-5 мА):**
 - `delay(50)` → `delay(200)` — кнопка реагирует 200мс (приемлемо)
 
+**LoRa sleep при отсутствии BLE (экономия ~5 мА):**
+- BLE не подключен (и не ретранслятор) → LoRa SLEEP (~0 мА)
+- Beacon TX продолжает раз в 5 мин (радио просыпается на ~50мс)
+- При подключении BLE → мгновенный переход в continuous RX
+- Ретранслятор исключён — всегда continuous RX
+
+**Длинная преамбула 32 символа:**
+- `LORA_PREAMBLE` увеличен с 8 до 32 для всех пакетов
+- Добавляет ~12мс к airtime — пренебрежимо
+- Обеспечивает совместимость с RX Duty Cycle (если активируется в будущем)
+
+**GC1109 PA управление для V4 (экономия ~5-10 мА):**
+- Добавлен GPIO7 (PA_FEM_POWER) — питание PA
+- `loraPaEnable()` / `loraPaDisable()` — полное вкл/выкл PA
+- PA автоматически выключается в SLEEP, включается при continuous RX
+- При beacon TX из sleep: PA временно включается и выключается
+- V3 не затронут (#ifdef BOARD_V4)
+
 **LoRa RX Duty Cycle API (реализовано, не активировано):**
 - `loraSetPowerMode(LORA_POWER_DUTY_CYCLE_RX)` — аппаратный duty cycle SX1262
-- `loraSendWake()` — отправка с длинной преамбулой 32 символа
-- Beacons и все вызовы (ALL/PRIVATE/GROUP/EMERGENCY) уже используют `loraSendWake()`
-- Для активации нужен idle state machine (когда нет активного голоса/файла)
-- Оценка: ~1.8 мА вместо 5 мА в RX при активации
+- Оставлен на будущее для автономного ретранслятора без WiFi
 
-**Итого idle после оптимизации: ~10-20 мА** (было ~70-130 мА, экономия ~80%)
+**Итого:**
+- V3 idle BLE connected: **~20-28 мА** (было ~70-130 мА, улучшение **4-5x**)
+- V3 idle BLE disconnected: **~6-10 мА** (улучшение **10-15x**)
+- V4 idle BLE connected: **~25-38 мА** (с PA management)
+- V4 idle BLE disconnected: **~6-10 мА** (PA выключен)
+- Время работы 1200мАч BLE connected: **~43-60 часов** (было ~9-17)
 
 **Файлы**: debug.h (новый), main.cpp, lora_radio.h, lora_radio.cpp, ble_service.cpp, oled_display.cpp, beacon.cpp, call_manager.cpp
 

@@ -93,6 +93,10 @@ static float cachedBatV = 0.0f;
 static uint32_t batReadTimer = 0;
 #define BAT_READ_INTERVAL_MS 5000
 
+// LoRa power mode — idle timer
+static uint32_t lastLoraActivityMs = 0;
+#define LORA_IDLE_TIMEOUT_MS  10000  // 10 сек без активности → duty cycle
+
 static float getCachedBattery() {
   uint32_t now = millis();
   if (cachedBatV == 0.0f || now - batReadTimer >= BAT_READ_INTERVAL_MS) {
@@ -319,6 +323,21 @@ static void loraTaskFunc(void* param) {
   LoRaTextPacket txTextPkt;
 
   while (true) {
+    // BLE не подключен и не ретранслятор — LoRa sleep (beacon отправляется из beaconTask)
+    if (!bleConnected && !repeaterIsEnabled()) {
+      if (loraGetPowerMode() != LORA_POWER_SLEEP) {
+        loraSetPowerMode(LORA_POWER_SLEEP);
+      }
+      vTaskDelay(pdMS_TO_TICKS(1000));  // спим 1 сек, проверяем BLE
+      continue;
+    }
+
+    // BLE подключен, но были в sleep — проснуться
+    if (loraGetPowerMode() == LORA_POWER_SLEEP) {
+      lastLoraActivityMs = millis();
+      loraSetPowerMode(LORA_POWER_CONTINUOUS_RX);
+    }
+
     // Ждём: DIO1 interrupt (RX done), TX queue, или таймаут 50мс
     // При PTT active — чаще проверяем TX очередь
     uint32_t waitMs = pttActive ? 5 : 50;
@@ -327,6 +346,7 @@ static void loraTaskFunc(void* param) {
     // Проверить входящий LoRa пакет
     if (loraRxFlag) {
       loraRxFlag = false;
+      lastLoraActivityMs = millis();
 
       int len = radio.getPacketLength();
       if (len > 0 && len <= (int)sizeof(rxBuf)) {
@@ -342,6 +362,7 @@ static void loraTaskFunc(void* param) {
 
     // Отправка аудио из очереди (приоритет)
     if (pttActive) {
+      lastLoraActivityMs = millis();
       if (xQueueReceive(txAudioQueue, &txAudioPkt, 0) == pdTRUE) {
         loraSend((uint8_t*)&txAudioPkt, sizeof(txAudioPkt));
         loraStartReceive();
@@ -351,12 +372,15 @@ static void loraTaskFunc(void* param) {
     // Отправка текста из очереди
     if (!pttActive) {
       if (xQueueReceive(txTextQueue, &txTextPkt, 0) == pdTRUE) {
+        lastLoraActivityMs = millis();
         size_t textLen = strlen((char*)txTextPkt.text);
         size_t pktLen = 6 + textLen + 1; // header + text + null
         loraSend((uint8_t*)&txTextPkt, pktLen);
         loraStartReceive();
       }
     }
+
+    // Duty cycle отключён — всегда continuous RX при BLE connected
   }
 }
 
@@ -845,6 +869,7 @@ static void handleBleData(uint8_t* data, size_t len) {
     case BLE_CMD_PTT_START: {
       pttActive = true;
       audioSeqNum = 0;
+      lastLoraActivityMs = millis();
       LOG_D("[BLE] PTT START");
       break;
     }

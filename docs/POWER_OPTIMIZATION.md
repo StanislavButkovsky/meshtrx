@@ -1,12 +1,12 @@
-# MeshTRX — Исследование оптимизации энергопотребления
+# MeshTRX — Оптимизация энергопотребления
 
-> Дата: 2026-04-03
+> Дата: 2026-04-04 (обновлено)
 > Платформа: Heltec WiFi LoRa 32 V3/V4 (ESP32-S3 + SX1262)
 > Firmware: RadioLib + NimBLE + FreeRTOS
 
 ---
 
-## 1. Текущее энергопотребление (idle, без оптимизаций)
+## 1. Исходное энергопотребление (до оптимизаций)
 
 | Компонент | Потребление | Примечание |
 |-----------|------------|------------|
@@ -14,327 +14,217 @@
 | LoRa SX1262 в постоянном RX | 5-6 мА | `radio.startReceive()` непрерывно |
 | BLE NimBLE (advertising) | 5-10 мА | Всегда, без остановки |
 | BLE NimBLE (connected, 12мс interval) | 10-15 мА | Агрессивный conn interval |
-| OLED (спящий, Vext запитан) | 1-5 мА | GPIO36 не отключается |
+| OLED (спящий, Vext запитан) | 1-5 мА | GPIO36 не отключался |
 | Serial UART (idle) | 5-10 мА | 115200 baud, всегда включён |
-| Polling overhead (CPU wake) | 15-35 мА | loraTask 1мс, main loop 50мс |
-| **Итого idle** | **~70-130 мА** | |
-
-### Режимы работы
-
-| Режим | Потребление |
-|-------|------------|
-| Idle (BLE connected, LoRa RX) | ~70-130 мА |
-| Активный голос (TX) | +100-150 мА (LoRa TX 22 dBm) |
-| Активный голос (RX) | ~80-140 мА |
-| Repeater (WiFi AP) | ~190-320 мА |
-| Deep sleep ESP32-S3 | <20 мкА |
+| **Итого idle (BLE connected)** | **~70-130 мА** | |
 
 ---
 
-## 2. Безопасные оптимизации (без потери пакетов)
+## 2. Реализованные оптимизации
 
-### 2.1 Event-driven LoRa task (экономия 15-30 мА)
+### 2.1 Event-driven LoRa task (экономия 15-30 мА) ✅
 
-**Проблема**: `loraTaskFunc` опрашивает флаг каждые 1мс:
+Заменён busy polling 1мс на `ulTaskNotifyTake()` — задача спит до прерывания DIO1:
 ```cpp
-while (true) {
-    if (loraRxFlag) { ... }
-    vTaskDelay(pdMS_TO_TICKS(1));  // busy wait
-}
+// ISR: будит loraTask через vTaskNotifyGiveFromISR()
+// loraTask: ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(50))
 ```
+При PTT active — таймаут 5мс (для TX очереди), иначе 50мс.
 
-**Решение**: Использовать `ulTaskNotifyTake()` — задача спит пока DIO1 не разбудит:
-```cpp
-while (true) {
-    ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(5000)); // спит до прерывания
-    if (loraRxFlag) { ... }
-}
-```
+Файлы: `main.cpp`, `lora_radio.cpp`
 
-Файл: `firmware/src/main.cpp`, loraTaskFunc (строка ~361)
+### 2.2 BLE tuning (экономия 7-12 мА) ✅
 
-### 2.2 BLE connection interval (экономия 5-10 мА)
+- Connection interval: 12мс/12мс → **60мс/100мс**
+- Slave latency: 0 → **2** (пропускает 2 события)
+- Supervision timeout: 200мс → **500мс**
+- Advertising: scan response **отключён**, interval увеличен (100-200мс)
+- TX power: P9 → **P6** (+6dBm вместо +9dBm)
 
-**Проблема**: `updateConnParams(handle, 12, 12, 0, 200)` — 83 события/сек.
+Файл: `ble_service.cpp`
 
-**Решение**: Увеличить interval, добавить slave latency:
-```cpp
-updateConnParams(handle, 80, 160, 4, 1000);
-// min=100мс, max=200мс, latency=4 события, timeout=1000мс
-```
+### 2.3 OLED Vext полное отключение (экономия 1-5 мА) ✅
 
-Файл: `firmware/src/ble_service.cpp`, строка ~18
+При sleep: `digitalWrite(36, HIGH)` — полностью снимает питание с OLED через Vext.
+При wake: `digitalWrite(36, LOW)` + delay 50мс перед инициализацией дисплея.
+Таймаут: 30 секунд без активности → экран выключается.
 
-### 2.3 BLE advertising interval (экономия 2-3 мА)
+Файл: `oled_display.cpp`
 
-**Текущее**: NimBLE defaults (~100мс).
+### 2.4 Serial conditional (экономия 5-10 мА) ✅
 
-**Решение**: Увеличить до 300-500мс:
-```cpp
-pAdvertising->setMinPreferred(240);  // 150мс
-pAdvertising->setMaxPreferred(480);  // 300мс
-```
+`Serial.begin()` обёрнут в `#ifndef NDEBUG`. Макросы в `debug.h`:
+- `LOG_D(msg)` → `Serial.println(msg)` или `((void)0)`
+- `LOG_F(fmt, ...)` → `Serial.printf(...)` или `((void)0)`
 
-### 2.4 Serial отключение в release (экономия 5-10 мА)
+Для release: раскомментировать `-DNDEBUG` в `platformio.ini`.
 
-Добавить в platformio.ini:
-```ini
-build_flags = -DNDEBUG -DCORE_DEBUG_LEVEL=0
-```
-Или макрос `#ifdef NDEBUG` вокруг `Serial.begin()`.
+Файлы: `debug.h`, `main.cpp`
 
-### 2.5 OLED полное отключение Vext (экономия 1-5 мА)
-
-**Проблема**: `u8g2.setPowerSave(1)` усыпляет дисплей, но Vext GPIO36 остаётся LOW (питание подано).
-
-**Решение**: 
-```cpp
-void oledOff() {
-    u8g2.setPowerSave(1);
-    delay(50);
-    digitalWrite(36, HIGH);  // полностью отключить Vext
-}
-```
-
-### 2.6 Main loop увеличить delay (экономия 3-5 мА)
+### 2.5 Main loop delay (экономия 3-5 мА) ✅
 
 `delay(50)` → `delay(200)` — кнопка реагирует 200мс (приемлемо).
 
-### Итого безопасных: ~30-60 мА экономии
+Файл: `main.cpp`
 
----
+### 2.6 LoRa sleep при отсутствии BLE (экономия ~5 мА) ✅
 
-## 3. LoRa RX Duty Cycle (продвинутая оптимизация)
+Когда BLE не подключен (и не ретранслятор):
+- LoRa переходит в SLEEP (~0.001 мА)
+- Beacon TX продолжает отправляться раз в 5 мин (радио пробуждается на ~50мс)
+- При подключении BLE — мгновенный переход в continuous RX
 
-### 3.1 Проблема
+Ретранслятор **исключён** — всегда в continuous RX.
 
-LoRa SX1262 в постоянном RX потребляет ~5-6 мА непрерывно.
-Это ~50% от idle потребления.
+Файлы: `main.cpp`, `lora_radio.cpp`
 
-### 3.2 SX1262 RX Duty Cycle (аппаратный режим)
+### 2.7 Длинная преамбула 32 символа ✅
 
-SX1262 имеет встроенный режим RX Duty Cycle:
-- Чип автоматически чередует RX окна и sleep
-- При обнаружении преамбулы — остаётся в RX и принимает пакет
-- MCU не участвует в переключениях
-
-RadioLib API:
-```cpp
-radio.startReceiveDutyCycleAuto(
-    senderPreambleLength,  // длина преамбулы отправителя
-    minSymbols             // мин. символов для обнаружения
-);
-```
-
-### 3.3 Требование: длинная преамбула
-
-Формула: `sleepSymbols = preambleLength - 2 * minSymbols`
-
-С текущей преамбулой 8 и minSymbols=8: `8 - 16 = -8` — **не работает** (RadioLib откатит на постоянный RX).
-
-Нужно **увеличить преамбулу отправителя** для пакетов, которые будят спящий приёмник:
-
-| Преамбула | Sleep символов | Duty cycle | Ток (средний) |
-|-----------|---------------|------------|--------------|
-| 8 (текущая) | — | 100% (постоянный RX) | ~5 мА |
-| 32 | 16 (8.2мс) | ~36% | ~1.8 мА |
-| 64 | 48 (24.6мс) | ~16% | ~0.8 мА |
-
-Дополнительный airtime: преамбула 32 добавляет ~12мс к пакету (при SF7/BW250). Пренебрежимо.
-
-### 3.4 CAD (Channel Activity Detection) — альтернатива
-
-SX1262 CAD: радио сканирует канал ~1.5мс, ищет LoRa chirp-энергию.
+Все пакеты отправляются с преамбулой 32 (было 8). Добавляет ~12мс к airtime — пренебрежимо.
+Обеспечивает надёжный приём любым устройством, включая те что используют duty cycle RX.
 
 ```cpp
-radio.startChannelScan();  // запуск CAD
-// DIO1 → ISR
-int result = radio.getChannelScanResult();
-// RADIOLIB_LORA_DETECTED или RADIOLIB_CHANNEL_FREE
+#define LORA_PREAMBLE  32  // было 8
 ```
 
-Цикл CAD-sleep-CAD при 20мс интервале: **~0.4 мА** — максимальная экономия.
+Файл: `lora_radio.h`
 
-Минусы CAD vs RX Duty Cycle:
-- Ручное переключение CAD → RX (задержка ~2-5мс, риск потери начала пакета)
-- RadioLib хардкодит CAD_GOTO_STDBY (нет автоперехода в RX)
-- Более сложная state machine
+### 2.8 GC1109 PA управление для V4 (экономия ~5-10 мА) ✅
 
-### 3.5 Рекомендуемая гибридная стратегия
+На V4 с GC1109 PA добавлено полное управление питанием PA через GPIO7:
 
-```
-IDLE (нет активного вызова/файла):
-  → RX Duty Cycle с длинной преамбулой (32 символа)
-  → Потребление ~1.8 мА
-  → "Будящие" пакеты: вызовы, beacons, первый текст — шлются с длинной преамбулой
-
-ACTIVE (голос, файл, вызов активен):
-  → Постоянный RX (startReceive, как сейчас)
-  → Потребление ~5 мА
-  → Голосовые пакеты с короткой преамбулой (8) для минимального airtime
-
-Конец вызова / таймаут:
-  → Обратно в RX Duty Cycle
-```
-
-State machine:
-```
-┌───────────────────┐
-│  IDLE (Low Power)  │  startReceiveDutyCycleAuto(32, 8)
-│  RX Duty Cycle     │  ~1.8 мА
-└────────┬──────────┘
-         │ DIO1: пакет принят
-         ▼
-┌───────────────────┐
-│  ACTIVE RX         │  startReceive() — постоянный RX
-│  Continuous RX     │  ~5 мА
-└────────┬──────────┘
-         │ Конец вызова / таймаут 10с без пакетов
-         ▼
-         └──→ Обратно в IDLE
-```
-
-### 3.6 Пакеты с длинной преамбулой (для пробуждения)
-
-| Тип пакета | Преамбула | Причина |
-|------------|-----------|---------|
-| Beacon (PKT_TYPE_BEACON) | 32 | Будит спящих для обнаружения peer |
-| Call ALL/PRIVATE/GROUP | 32 | Будит адресата для вызова |
-| Call EMERGENCY | 32 | Будит всех |
-| Text message (первый) | 32 | Будит адресата |
-| File header (FILE_START) | 32 | Будит адресата |
-
-| Тип пакета | Преамбула | Причина |
-|------------|-----------|---------|
-| Audio (CMD_AUDIO_RX) | 8 | Все уже в continuous RX |
-| File chunks | 8 | Все уже в continuous RX |
-| Text ACK | 8 | Отправитель в continuous RX |
-| Call ACCEPT/REJECT | 8 | Отправитель в continuous RX |
-
-### 3.7 Реализация в коде
+| Состояние | GPIO7 (power) | GPIO2 (enable) | GPIO46 (CTX) | Потребление PA |
+|-----------|:---:|:---:|:---:|---|
+| **RX** (BLE connected) | HIGH | HIGH | LOW | ~5-10 мА |
+| **TX** | HIGH | HIGH | HIGH | ~200-400 мА |
+| **SLEEP** (BLE off) | LOW | LOW | LOW | ~0 мА |
+| **Beacon TX** (из sleep) | HIGH→LOW | HIGH→LOW | LOW→HIGH→LOW | кратковременно |
 
 ```cpp
 // lora_radio.h
-#define LORA_PREAMBLE_SHORT  8    // для голоса/файлов (active mode)
-#define LORA_PREAMBLE_LONG   32   // для будящих пакетов (idle wake)
+#define PA_FEM_POWER 7   // питание PA
+#define PA_FEM_EN    2   // enable (CSD)
+#define PA_FEM_CTX   46  // TX/RX switch (CTX)
 
-enum LoRaPowerMode {
-    LORA_POWER_CONTINUOUS_RX,   // постоянный RX (active)
-    LORA_POWER_DUTY_CYCLE_RX,   // duty cycle RX (idle)
-};
-
-void loraSetPowerMode(LoRaPowerMode mode);
-LoRaPowerMode loraGetPowerMode();
-bool loraSendWakePacket(uint8_t* data, size_t len);  // с длинной преамбулой
-```
-
-```cpp
 // lora_radio.cpp
-void loraSetPowerMode(LoRaPowerMode mode) {
-    if (mode == LORA_POWER_DUTY_CYCLE_RX) {
-        radio.setPreambleLength(LORA_PREAMBLE_LONG);
-        int state = radio.startReceiveDutyCycleAuto(LORA_PREAMBLE_LONG, 8);
-        if (state != RADIOLIB_ERR_NONE) {
-            // fallback на постоянный RX
-            radio.startReceive();
-        }
-    } else {
-        radio.setPreambleLength(LORA_PREAMBLE_SHORT);
-        radio.startReceive();
-    }
-    currentPowerMode = mode;
-}
+void loraPaEnable()  { GPIO7=HIGH, GPIO2=HIGH, GPIO46=LOW }
+void loraPaDisable() { GPIO46=LOW, GPIO2=LOW, GPIO7=LOW }
+```
 
-bool loraSendWakePacket(uint8_t* data, size_t len) {
-    radio.setPreambleLength(LORA_PREAMBLE_LONG);
-    bool ok = loraSend(data, len);
-    // Восстановить преамбулу по текущему режиму
-    radio.setPreambleLength(
-        currentPowerMode == LORA_POWER_DUTY_CYCLE_RX ? LORA_PREAMBLE_LONG : LORA_PREAMBLE_SHORT
-    );
-    return ok;
-}
+PA автоматически:
+- Включается при переходе в CONTINUOUS_RX
+- Выключается при переходе в SLEEP
+- Временно включается для beacon TX из sleep
+
+Файлы: `lora_radio.h`, `lora_radio.cpp`
+
+---
+
+## 3. State machine управления питанием LoRa
+
+```
+┌─────────────────────────────────┐
+│  BLE DISCONNECTED               │
+│  (не ретранслятор)              │
+│                                 │
+│  LoRa: SLEEP (~0 мА)           │
+│  PA: OFF (V4)                   │
+│  Beacon TX: раз в 5 мин        │
+│  loraTask: спит 1 сек           │
+└────────────┬────────────────────┘
+             │ BLE connected
+             ▼
+┌─────────────────────────────────┐
+│  BLE CONNECTED                  │
+│                                 │
+│  LoRa: CONTINUOUS RX (~5 мА)   │
+│  PA: ON (V4)                    │
+│  Полный приём/передача          │
+└────────────┬────────────────────┘
+             │ BLE disconnected
+             ▼
+             └──→ Обратно в SLEEP
+
+┌─────────────────────────────────┐
+│  РЕТРАНСЛЯТОР                   │
+│                                 │
+│  LoRa: CONTINUOUS RX (всегда)  │
+│  PA: ON (V4, всегда)           │
+│  WiFi AP: включён               │
+│  Не зависит от BLE              │
+└─────────────────────────────────┘
 ```
 
 ---
 
-## 4. Итоговая таблица потребления
+## 4. Итоговое энергопотребление
 
-### После всех оптимизаций
+### V3 (без PA)
 
-| Компонент | Сейчас | После | Экономия |
-|-----------|--------|-------|----------|
-| LoRa RX (idle, duty cycle) | 5 мА | 1.8 мА | 3.2 мА |
-| LoRa RX (active, continuous) | 5 мА | 5 мА | — |
-| CPU (event-driven) | 30-50 мА | 5-10 мА | 25-40 мА |
-| BLE (connected) | 10-15 мА | 3-5 мА | 7-10 мА |
-| Serial (disabled) | 5-10 мА | 0 | 5-10 мА |
-| OLED (Vext off) | 1-5 мА | 0 | 1-5 мА |
-| **Итого idle** | **~70-130 мА** | **~10-20 мА** | **~80-85%** |
-| **Итого active voice** | **~80-140 мА** | **~50-80 мА** | **~35-40%** |
+| Режим | Потребление | Время от 1200 мАч |
+|-------|------------|-------------------|
+| BLE connected, idle | ~20-28 мА | **43-60 часов** |
+| BLE connected, голос | ~80-120 мА | ~10-15 часов |
+| BLE disconnected (beacon-only) | ~6-10 мА | **120-200 часов** |
+| Ретранслятор idle | ~25-35 мА | ~34-48 часов |
 
-### Время работы от батареи (LiPo 1000 мАч)
+### V4 (с GC1109 PA)
 
-| Режим | Сейчас | После оптимизации |
-|-------|--------|-------------------|
-| Idle (ожидание) | ~8-14 часов | ~50-100 часов |
-| Активный голос 50% | ~5-8 часов | ~15-25 часов |
-| Deep sleep | ~50000 часов | ~50000 часов |
+| Режим | Потребление | Время от 1200 мАч |
+|-------|------------|-------------------|
+| BLE connected, idle (PA on) | ~25-38 мА | **32-48 часов** |
+| BLE connected, TX 28dBm | ~300-400 мА | ~3-4 часа непрерывно |
+| BLE disconnected (PA off) | ~6-10 мА | **120-200 часов** |
+| Ретранслятор idle (PA on) | ~30-45 мА | ~27-40 часов |
 
----
+### Сравнение с исходным
 
-## 5. Приоритеты реализации
-
-1. **Event-driven LoRa task** — наибольший эффект, простая замена polling на interrupt wait
-2. **BLE conn interval / latency** — одна строка кода
-3. **OLED Vext отключение** — одна строка кода
-4. **Serial отключение** — флаг в platformio.ini
-5. **LoRa RX Duty Cycle** — требует state machine, изменение преамбулы для будящих пакетов
-6. **Main loop delay** — тривиальное изменение
+| Метрика | До оптимизации | После | Улучшение |
+|---------|---------------|-------|-----------|
+| Idle (BLE connected) | ~70-130 мА | ~20-28 мА | **4-5x** |
+| BLE disconnected | ~70-130 мА (всё включено) | ~6-10 мА | **10-15x** |
+| Время idle от 1200мАч | ~9-17 часов | ~43-60 часов | **3-4x** |
 
 ---
 
-## 6. Особенности для Heltec V4
+## 5. Что НЕ реализовано (оставлено на будущее)
 
-### Отличия V4 от V3
+### 5.1 LoRa RX Duty Cycle (аппаратный SX1262)
 
-| Параметр | V3 | V4 |
-|----------|----|----|
-| USB | CP2102 (UART bridge) | Native ESP32-S3 USB (CDC) |
-| Flash | 8 MB integrated | 16 MB external |
-| PA | Нет | GC1109 / KCT8103L (опционально) |
-| Max TX power | 21 dBm | 28 dBm (с PA) |
-| Solar | Нет | SH1.25-2P, 4.7-6V |
-| GNSS | Нет | Разъём SH1.25-8P |
-| OLED driver | SSD1306 | SSD1315 (API-совместим) |
-| Pin count | 36 | 40 |
+API реализован (`loraSetPowerMode(LORA_POWER_DUTY_CYCLE_RX)`), но **не активирован**.
+Причина: все пакеты используют единую преамбулу 32, duty cycle не даёт дополнительной экономии
+при текущей архитектуре (BLE disconnected → sleep, BLE connected → continuous RX).
 
-### PA энергопотребление (V4 с GC1109)
+Может быть полезен в будущем для режима "автономный ретранслятор без WiFi" —
+слушать LoRa с duty cycle вместо continuous RX.
 
-GC1109 PA добавляет:
-- TX: +200-400 мА (в зависимости от выходной мощности)
-- RX (LNA): +5-10 мА
-- Sleep: <1 мкА (при `LORA_PA_POWER` GPIO7 = LOW)
+### 5.2 ESP32-S3 Light Sleep
 
-**Для экономии энергии на V4:**
-- Отключать PA через `GPIO7 = LOW` когда не нужна высокая мощность
-- Использовать SX1262 direct output (21 dBm) для коротких дистанций
-- Включать PA только для дальней связи
+ESP32-S3 может входить в light sleep между задачами (~0.8 мА CPU).
+Требует изменения архитектуры FreeRTOS задач — tickless idle mode.
+Потенциальная экономия: ~5-10 мА дополнительно.
 
-### Пины PA на V4
+### 5.3 NDEBUG release сборка
 
-```cpp
-#define LORA_PA_POWER  7    // Питание PA (HIGH = вкл)
-#define LORA_PA_EN     2    // Enable / CSD
-#define LORA_PA_TX_EN  46   // TX/RX переключатель (HIGH = TX)
-```
+`-DNDEBUG` в platformio.ini **закомментирован** для удобства отладки.
+Раскомментировать для production: экономия ~5-10 мА (отключение Serial UART).
 
-### Upload на V4
+### 5.4 Dynamic TX power
 
-V4 использует native USB (без CP2102):
-```ini
-# platformio.ini для V4
-upload_protocol = esptool
-upload_speed = 921600
-# Не нужен 1200-baud reset
-```
+Снижать мощность TX при хорошем RSSI (близкие устройства).
+Потенциальная экономия при TX: 50-200 мА на каждом пакете.
+
+---
+
+## 6. Файлы прошивки (затронутые оптимизацией)
+
+| Файл | Изменения |
+|------|-----------|
+| `debug.h` | Новый — макросы LOG_D/LOG_F с NDEBUG |
+| `main.cpp` | Event-driven loraTask, BLE sleep logic, Serial conditional |
+| `lora_radio.h` | PA_FEM_POWER pin, LoRaPowerMode enum, loraPaEnable/Disable |
+| `lora_radio.cpp` | Task notification ISR, power mode switching, PA management |
+| `ble_service.cpp` | Conn interval, advertising, TX power |
+| `oled_display.cpp` | Vext GPIO36 full power cut |
+| `beacon.cpp` | loraSendWake() для beacon |
+| `call_manager.cpp` | loraSendWake() для вызовов |
