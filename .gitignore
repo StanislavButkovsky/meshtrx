@@ -31,3 +31,5 @@ ios/MeshTRX/DerivedData/
 
 # Codec2 temp
 /tmp/codec2_src/
+*.keystore
+*.jks

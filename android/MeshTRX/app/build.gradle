@@ -27,8 +27,18 @@ android {
         }
     }
 
+    signingConfigs {
+        release {
+            storeFile file('../meshtrx-release.keystore')
+            storePassword 'meshtrx2026'
+            keyAlias 'meshtrx'
+            keyPassword 'meshtrx2026'
+        }
+    }
+
     buildTypes {
         release {
+            signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
