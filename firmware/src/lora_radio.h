@@ -52,6 +52,7 @@ extern SX1262 radio;
 extern volatile bool loraRxFlag;
 extern volatile bool loraTxDone;
 extern TaskHandle_t loraTaskHandle;  // для task notification из ISR
+extern SemaphoreHandle_t loraRadioMutex;  // mutex для доступа к радио
 
 void loraInit();
 bool loraSetChannel(uint8_t ch);

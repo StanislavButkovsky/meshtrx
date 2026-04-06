@@ -27,6 +27,7 @@ static float channelFreq(uint8_t ch) {
 
 static LoRaPowerMode currentPowerMode = LORA_POWER_CONTINUOUS_RX;
 TaskHandle_t loraTaskHandle = nullptr;
+SemaphoreHandle_t loraRadioMutex = nullptr;
 
 static void IRAM_ATTR onRxDone(void) {
   loraRxFlag = true;
@@ -43,6 +44,7 @@ static void IRAM_ATTR onTxDone(void) {
 }
 
 void loraInit() {
+  loraRadioMutex = xSemaphoreCreateMutex();
   loraSpi.begin(LORA_SCK, LORA_MISO, LORA_MOSI, LORA_NSS);
 
   Serial.print("[LoRa] Initializing... ");
@@ -105,6 +107,10 @@ float loraGetFrequency(uint8_t ch) {
 }
 
 bool loraSend(uint8_t* data, size_t len) {
+  if (!xSemaphoreTake(loraRadioMutex, pdMS_TO_TICKS(1000))) {
+    Serial.println("[LoRa] TX mutex timeout");
+    return false;
+  }
   loraTxDone = false;
 
 #ifdef BOARD_V4
@@ -118,6 +124,7 @@ bool loraSend(uint8_t* data, size_t len) {
   if (state != RADIOLIB_ERR_NONE) {
     Serial.printf("[LoRa] TX start FAIL: %d\n", state);
     radio.setDio1Action(onRxDone);
+    xSemaphoreGive(loraRadioMutex);
     return false;
   }
 
@@ -136,16 +143,20 @@ bool loraSend(uint8_t* data, size_t len) {
 
   if (!loraTxDone) {
     Serial.println("[LoRa] TX timeout");
+    xSemaphoreGive(loraRadioMutex);
     return false;
   }
 
+  xSemaphoreGive(loraRadioMutex);
   return true;
 }
 
 bool loraStartReceive() {
+  if (!xSemaphoreTake(loraRadioMutex, pdMS_TO_TICKS(500))) return false;
   loraRxFlag = false;
   radio.setDio1Action(onRxDone);
   int state = radio.startReceive();
+  xSemaphoreGive(loraRadioMutex);
   if (state != RADIOLIB_ERR_NONE) {
     Serial.printf("[LoRa] RX start FAIL: %d\n", state);
     return false;

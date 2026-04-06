@@ -401,16 +401,15 @@ class MeshTRXService : Service() {
                 System.arraycopy(data, offset, chunk, 1, len)
                 bleManager.send(chunk)
                 offset += len
-                Thread.sleep(30) // BLE пропускная способность (NimBLE MTU 128)
+                Thread.sleep(50) // BLE пропускная способность (NimBLE MTU 128)
             }
             Log.d(TAG, "File uploaded to ESP32: $fileName (${data.size} bytes)")
 
             // Ждать UPLOAD_STATUS = DELIVERED(3) или FAILED(4) или таймаут
-            val timeoutMs = prefs.getInt("file_timeout", 60) * 1000L
+            val timeoutMs = prefs.getInt("file_timeout", 120) * 1000L  // 120 сек по умолчанию
             val start = System.currentTimeMillis()
             while (System.currentTimeMillis() - start < timeoutMs) {
                 Thread.sleep(500)
-                // Проверяем статус по fileTransfers — ESP32 обновит через UPLOAD_STATUS
                 val current = ServiceState.fileTransfers.value?.find {
                     it.fileName == fileName && it.isOutgoing
                 }
@@ -418,7 +417,7 @@ class MeshTRXService : Service() {
                     break
                 }
             }
-            // Если таймаут и не DONE — пометить ошибку
+            // Если таймаут и статус не обновился — ошибка
             val current = ServiceState.fileTransfers.value?.find {
                 it.fileName == fileName && it.isOutgoing
             }

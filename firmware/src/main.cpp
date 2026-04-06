@@ -61,6 +61,13 @@ static volatile bool fileRxComplete = false;
 static uint8_t fileRxBitmap[128]; // макс 1024 чанков
 static uint16_t fileRxUniqueCount = 0;
 
+// Кеш последнего ответа на FILE_END (ACK или NACK)
+static uint8_t lastFileRespSessionId = 0xFF;
+static uint32_t lastFileRespTimeMs = 0;
+static uint8_t lastFileRespData[107]; // max: 7 + 50*2 = 107 байт
+static size_t lastFileRespLen = 0;
+#define FILE_RESP_CACHE_TTL_MS 30000  // помнить 30 сек
+
 // TX буфер (загрузка от телефона → отправка по LoRa)
 static uint8_t* fileTxBuffer = nullptr;
 static uint32_t fileTxSize = 0;
@@ -81,6 +88,10 @@ static TaskHandle_t fileSendTaskHandle = nullptr;
 // LED
 static volatile bool fileTxActive = false;
 static volatile uint32_t fileTxLedUntil = 0;
+
+// Pending BLE upload status (для отправки из bleTask)
+static volatile uint8_t pendingUploadStatus = 0xFF; // 0xFF = нет
+static volatile uint8_t pendingUploadSession = 0;
 
 // LED RX индикация
 static volatile uint32_t rxLedUntil = 0;
@@ -257,7 +268,7 @@ void setup() {
     xTaskCreatePinnedToCore(loraTaskFunc, "lora", 16384, nullptr, 5, &loraTaskHandle, 0);
     xTaskCreatePinnedToCore(bleTaskFunc, "ble", 4096, nullptr, 5, nullptr, 1);
     xTaskCreatePinnedToCore(beaconTask, "beacon", 4096, nullptr, 2, nullptr, 1);
-    xTaskCreatePinnedToCore(fileSendTask, "filesend", 8192, nullptr, 3, &fileSendTaskHandle, 0);
+    xTaskCreatePinnedToCore(fileSendTask, "filesend", 8192, nullptr, 3, &fileSendTaskHandle, 1);
   }
 
   LOG_D("=== MeshTRX Ready ===");
@@ -428,6 +439,7 @@ static void loraTaskFunc(void* param) {
 // ================================================================
 static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr) {
   if (len < 1) return;
+  LOG_F("[LoRa RX] type=0x%02X len=%d rssi=%d\n", data[0], len, rssi);
   uint8_t pktType = data[0];
 
   // LED на 500мс при любом принятом пакете
@@ -616,8 +628,23 @@ static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr) 
     }
 
     case PKT_TYPE_FILE_END: {
-      if (len < (int)sizeof(LoRaFileEnd) || !(fileState == FILE_STATE_RECEIVING)) break;
+      if (len < (int)sizeof(LoRaFileEnd)) break;
       LoRaFileEnd* pkt = (LoRaFileEnd*)data;
+
+      // Повторный FILE_END — переотправить кешированный ответ (ACK или NACK)
+      if (pkt->session_id == lastFileRespSessionId &&
+          lastFileRespLen > 0 &&
+          millis() - lastFileRespTimeMs < FILE_RESP_CACHE_TTL_MS) {
+        if (fileState != FILE_STATE_RECEIVING) {
+          LOG_F("[File] Resending cached response for session %d (%d bytes)\n",
+            pkt->session_id, lastFileRespLen);
+          loraSendWake(lastFileRespData, lastFileRespLen);
+          loraStartReceive();
+          break;
+        }
+      }
+
+      if (!(fileState == FILE_STATE_RECEIVING)) break;
       if (pkt->session_id != fileSessionId) break;
 
       // Проверить что все чанки получены
@@ -626,6 +653,7 @@ static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr) 
         LOG_F("[File] RX complete via FILE_END: %s (%d bytes)\n", fileRxName, fileRxSize);
         fileState = FILE_STATE_IDLE;
         fileRxComplete = true;
+        // ACK
         LoRaFileAck ack;
         memset(&ack, 0, sizeof(ack));
         ack.type = PKT_TYPE_FILE_ACK;
@@ -633,7 +661,13 @@ static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr) 
         ack.status = 0x00;
         memcpy(ack.dest, fileRxSender, 2);
         ack.missing_count = 0;
-        loraSend((uint8_t*)&ack, 7);
+        // Кешировать для повторной отправки
+        lastFileRespSessionId = fileSessionId;
+        lastFileRespTimeMs = millis();
+        lastFileRespLen = 7;
+        memcpy(lastFileRespData, &ack, 7);
+        LOG_D("[File] Sending ACK (long preamble)");
+        loraSendWake((uint8_t*)&ack, 7);
         loraStartReceive();
       } else {
         // Есть пропуски — NACK с индексами пропущенных
@@ -651,9 +685,14 @@ static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr) 
         }
         nack.missing_count = cnt;
         size_t nackLen = 7 + cnt * 2; // header + missing indices
-        loraSend((uint8_t*)&nack, nackLen);
+        // Кешировать для повторной отправки
+        lastFileRespSessionId = fileSessionId;
+        lastFileRespTimeMs = millis();
+        lastFileRespLen = nackLen;
+        memcpy(lastFileRespData, &nack, nackLen);
+        loraSendWake((uint8_t*)&nack, nackLen);
         loraStartReceive();
-        LOG_F("[File] NACK: %d missing chunks\n", cnt);
+        LOG_F("[File] NACK (long preamble): %d missing chunks\n", cnt);
         // Не завершаем — ждём досылку
         fileRxLastChunkMs = millis(); // сбросить таймаут
       }
@@ -859,6 +898,19 @@ static void bleTaskFunc(void* param) {
       LOG_D("[File] Sent to phone OK");
     }
 
+    // === Pending upload status — дублировать из bleTask ===
+    if (pendingUploadStatus != 0xFF && bleIsConnected()) {
+      vTaskDelay(pdMS_TO_TICKS(200)); // дать BLE обработать
+      uint8_t spkt[4];
+      spkt[0] = BLE_CMD_FILE_UPLOAD_STATUS;
+      spkt[1] = pendingUploadStatus;
+      spkt[2] = pendingUploadSession;
+      spkt[3] = 0;
+      bleSendNotify(spkt, 4);
+      LOG_F("[BLE] Resent UPLOAD_STATUS=%d session=%d\n", pendingUploadStatus, pendingUploadSession);
+      pendingUploadStatus = 0xFF;
+    }
+
     // === BLE статус — раз в 2 сек (было 500мс) ===
     static uint32_t lastStatusMs = 0;
     uint32_t nowMs = millis();
@@ -892,12 +944,18 @@ static void sendStatusUpdate() {
 // ================================================================
 // === File Transfer v2: утилиты ===
 static void sendUploadStatus(uint8_t status, uint8_t sessionId = 0) {
+  // Отправить сразу + сохранить для повторной отправки из bleTask
   uint8_t pkt[4];
   pkt[0] = BLE_CMD_FILE_UPLOAD_STATUS;
   pkt[1] = status;
   pkt[2] = sessionId;
   pkt[3] = 0;
   bleSendNotify(pkt, 4);
+  // Для финальных статусов — дублировать через bleTask
+  if (status == 3 || status == 4) {
+    pendingUploadStatus = status;
+    pendingUploadSession = sessionId;
+  }
 }
 
 // === File Transfer v2: задача отправки из RAM по LoRa ===
@@ -960,34 +1018,20 @@ static void fileSendTask(void* param) {
       endPkt.ttl = TTL_DEFAULT;
       loraSend((uint8_t*)&endPkt, sizeof(endPkt));
       loraStartReceive();
+      LOG_D("[FileSend] FILE_END sent, waiting for ACK...");
     }
 
     // Ждать ACK/NACK — макс 3 раунда NACK
     bool delivered = false;
+    fileTxAckReceived = false;
     while (fileTxNackRound < 3 && (millis() - startMs < (uint32_t)fileTimeoutSec * 1000)) {
-      fileTxAckReceived = false;
-      // Ждать ACK до 10 сек
-      for (int w = 0; w < 100 && !fileTxAckReceived; w++) {
+      // Ждать ACK до 30 сек (без retry FILE_END — чтобы не конфликтовать с ACK по mutex)
+      for (int w = 0; w < 300 && !fileTxAckReceived; w++) {
         vTaskDelay(pdMS_TO_TICKS(100));
       }
       if (!fileTxAckReceived) {
-        LOG_D("[FileSend] ACK timeout — retrying FILE_END");
-        // Повторить FILE_END
-        LoRaFileEnd retryEnd;
-        memset(&retryEnd, 0, sizeof(retryEnd));
-        retryEnd.type = PKT_TYPE_FILE_END;
-        retryEnd.session_id = fileTxSessionId;
-        retryEnd.ttl = TTL_DEFAULT;
-        loraSend((uint8_t*)&retryEnd, sizeof(retryEnd));
-        loraStartReceive();
-        // Ждать ещё 5 сек
-        for (int w2 = 0; w2 < 50 && !fileTxAckReceived; w2++) {
-          vTaskDelay(pdMS_TO_TICKS(100));
-        }
-        if (!fileTxAckReceived) {
-          LOG_D("[FileSend] ACK timeout final");
-          break;
-        }
+        LOG_D("[FileSend] ACK timeout");
+        break;
       }
       if (fileTxAckStatus == 0x00) {
         // ACK — доставлено!
@@ -1027,6 +1071,7 @@ static void fileSendTask(void* param) {
         loraStartReceive();
       }
       fileTxNackRound++;
+      fileTxAckReceived = false; // сбросить перед следующим раундом
     }
 
     // Результат

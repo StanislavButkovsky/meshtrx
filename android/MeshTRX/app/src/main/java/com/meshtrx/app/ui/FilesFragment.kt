@@ -325,10 +325,10 @@ class FilesFragment : Fragment() {
 
             when (t.status) {
                 FileStatus.PENDING, FileStatus.TRANSFERRING -> {
-                    holder.progressFile.visibility = View.VISIBLE
-                    holder.tvFileStatus.visibility = View.GONE
-                    val pct = if (t.chunksTotal > 0) t.chunksDone * 100 / t.chunksTotal else 0
-                    holder.progressFile.progress = pct
+                    holder.progressFile.visibility = View.GONE
+                    holder.tvFileStatus.visibility = View.VISIBLE
+                    holder.tvFileStatus.text = "⏳"
+                    holder.tvFileStatus.setTextColor(Colors.amberAccent)
                 }
                 FileStatus.DONE -> {
                     holder.progressFile.visibility = View.GONE
