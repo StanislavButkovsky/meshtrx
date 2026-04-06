@@ -196,6 +196,9 @@ void setup() {
     // === НОРМАЛЬНЫЙ РЕЖИМ ===
     LOG_D("[Main] === NORMAL MODE ===");
 
+    // WiFi не инициализируется в нормальном режиме (только в ретранслятор)
+    // CPU остаётся 240 МГц — setCpuFrequencyMhz() ломает SPI/BLE тайминги
+
     // Инициализация модулей
     loraInit();
     codecInit();
@@ -752,8 +755,8 @@ static void bleTaskFunc(void* param) {
       digitalWrite(PIN_LED, HIGH);
       ledState = true;
     } else if (bleIsConnected()) {
-      // BLE подключён: короткая вспышка каждые 5 сек
-      if (!ledState && millis() - ledBlinkTimer > 5000) {
+      // BLE подключён: короткая вспышка каждые 30 сек (было 5)
+      if (!ledState && millis() - ledBlinkTimer > 30000) {
         digitalWrite(PIN_LED, HIGH);
         ledState = true;
         ledBlinkTimer = millis();
@@ -768,11 +771,13 @@ static void bleTaskFunc(void* param) {
       ledState = false;
     }
 
-    // === Обновить OLED ===
-    oledShowMain(currentChannel, loraGetFrequency(currentChannel),
-                 lastRssi, lastSnr, loraGetTxPower(), bleIsConnected(),
-                 loraIsDutyCycleEnabled(), pttActive,
-                 false, getCachedBattery());
+    // === Обновить OLED (только когда экран включён) ===
+    if (oledIsAwake()) {
+      oledShowMain(currentChannel, loraGetFrequency(currentChannel),
+                   lastRssi, lastSnr, loraGetTxPower(), bleIsConnected(),
+                   loraIsDutyCycleEnabled(), pttActive,
+                   false, getCachedBattery());
+    }
 
     // === Передать принятый файл на телефон ===
     if (fileRxComplete && fileRxBuffer && bleIsConnected()) {
@@ -817,12 +822,17 @@ static void bleTaskFunc(void* param) {
       LOG_D("[File] Sent to phone OK");
     }
 
-    // === BLE статус ===
-    if (bleIsConnected()) {
+    // === BLE статус — раз в 2 сек (было 500мс) ===
+    static uint32_t lastStatusMs = 0;
+    uint32_t nowMs = millis();
+    if (bleIsConnected() && nowMs - lastStatusMs >= 2000) {
       sendStatusUpdate();
+      lastStatusMs = nowMs;
     }
 
-    vTaskDelay(pdMS_TO_TICKS(500));
+    // Idle → спать дольше (1 сек), active → 500мс
+    bool isActive = pttActive || fileTxActive || fileRxActive || oledIsAwake();
+    vTaskDelay(pdMS_TO_TICKS(isActive ? 500 : 1000));
   }
 }
 

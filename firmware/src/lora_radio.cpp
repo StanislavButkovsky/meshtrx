@@ -195,11 +195,12 @@ void loraSetPowerMode(LoRaPowerMode mode) {
   if (mode == currentPowerMode) return;
 
   if (mode == LORA_POWER_SLEEP) {
-    // Radio sleep — минимальное потребление, только beacon TX
-    radio.sleep();
+    // Radio standby — низкое потребление (~1.5 мА), можно быстро выйти в RX/TX
+    // НЕ используем radio.sleep() — после него startReceive() возвращает -705
+    radio.standby();
     loraPaDisable();  // отключить PA полностью (V4)
     currentPowerMode = LORA_POWER_SLEEP;
-    Serial.println("[LoRa] Power: SLEEP (beacon-only)");
+    Serial.println("[LoRa] Power: STANDBY (beacon-only)");
   } else if (mode == LORA_POWER_DUTY_CYCLE_RX) {
     // RX Duty Cycle — радио само чередует RX окна и sleep
     radio.setDio1Action(onRxDone);
@@ -255,8 +256,8 @@ bool loraSendWake(uint8_t* data, size_t len) {
   bool ok = loraSend(data, len);
   // После TX — вернуть в текущий режим
   if (wasSleeping) {
-    loraPaDisable();  // выключить PA обратно
-    radio.sleep();    // обратно в sleep после beacon TX
+    loraPaDisable();    // выключить PA обратно
+    radio.standby();    // обратно в standby после beacon TX
   }
   return ok;
 }
