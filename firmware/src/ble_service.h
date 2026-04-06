@@ -47,6 +47,7 @@
 #define BLE_CMD_PIN_RESULT    0x26  // ESP→телефон: байт 1: 0=FAIL, 1=OK
 #define BLE_CMD_FILE_DATA     0x27  // ESP→телефон: чанк данных принятого файла
 #define BLE_CMD_SET_REPEATER  0x28  // телефон→ESP: [enable, ssid...\0, pass...\0]
+#define BLE_CMD_FILE_END     0x29  // телефон→ESP: [session_id, ttl] → отправить LoRa FILE_END
 
 extern bool bleConnected;
 

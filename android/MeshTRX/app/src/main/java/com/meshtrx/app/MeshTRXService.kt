@@ -424,6 +424,15 @@ class MeshTRXService : Service() {
 
                 Thread.sleep(100)
             }
+            // Отправить FILE_END чтобы приёмник запустил NACK/retry
+            Thread.sleep(500) // подождать чтобы последние чанки прошли через BLE
+            val endPkt = ByteArray(3)
+            endPkt[0] = BleManager.CMD_FILE_END.toByte()
+            endPkt[1] = sessionId.toByte()
+            endPkt[2] = 2 // TTL
+            bleManager.send(endPkt)
+            Log.d(TAG, "FILE_END sent: session=$sessionId")
+
             // Завершено
             updateFileProgress(sessionId, totalChunks, FileStatus.DONE)
             Log.d(TAG, "File sent: $fileName ($totalChunks chunks)")

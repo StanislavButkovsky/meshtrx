@@ -36,7 +36,7 @@
 #define LORA_SF          7
 #define LORA_CR          7       // 4/7 — больше FEC для надёжности
 #define LORA_SYNCWORD    0x34
-#define LORA_PREAMBLE    32   // длинная преамбула для RX Duty Cycle совместимости
+#define LORA_PREAMBLE    8    // стандартная преамбула для голоса/файлов/чанков
 
 // === Power modes ===
 #define LORA_PREAMBLE_SHORT  8    // для голоса/файлов (active mode)

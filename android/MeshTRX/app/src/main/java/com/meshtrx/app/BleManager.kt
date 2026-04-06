@@ -55,6 +55,7 @@ class BleManager(private val context: Context) {
         const val CMD_PIN_RESULT = 0x26
         const val CMD_FILE_DATA = 0x27
         const val CMD_SET_REPEATER = 0x28
+        const val CMD_FILE_END = 0x29
     }
 
     private val bluetoothAdapter: BluetoothAdapter? =

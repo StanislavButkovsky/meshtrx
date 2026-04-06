@@ -1027,7 +1027,7 @@ static void handleBleData(uint8_t* data, size_t len) {
       hdr->type = PKT_TYPE_FILE_START;
       memcpy(hdr->sender, senderMac, 2); // заполнить sender
       fileSessionId = hdr->session_id;    // сохранить для чанков!
-      loraSend((uint8_t*)hdr, sizeof(LoRaFileHeader));
+      loraSendWake((uint8_t*)hdr, sizeof(LoRaFileHeader));  // длинная преамбула — будит получателя
       loraStartReceive();
       fileTxActive = true;
       fileTxLedUntil = millis() + 2000;
@@ -1054,7 +1054,24 @@ static void handleBleData(uint8_t* data, size_t len) {
         loraSend((uint8_t*)&pkt, 8 + dataLen);
         loraStartReceive();
         fileTxLedUntil = millis() + 2000;
-        vTaskDelay(pdMS_TO_TICKS(10)); // дать другим задачам время
+        vTaskDelay(pdMS_TO_TICKS(50)); // 50мс пауза между чанками
+      }
+      break;
+    }
+
+    case BLE_CMD_FILE_END: {
+      // Отправить LoRa FILE_END
+      LOG_F("[BLE] FILE_END received, len=%d\n", len);
+      if (len >= 3) {
+        LoRaFileEnd pkt;
+        memset(&pkt, 0, sizeof(pkt));
+        pkt.type = PKT_TYPE_FILE_END;
+        pkt.session_id = data[1];
+        pkt.ttl = data[2];
+        pkt.crc16 = 0; // TODO: реальный CRC
+        loraSend((uint8_t*)&pkt, sizeof(pkt));
+        loraStartReceive();
+        LOG_F("[File] TX end: session=%d\n", pkt.session_id);
       }
       break;
     }

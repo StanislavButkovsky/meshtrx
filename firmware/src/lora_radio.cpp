@@ -254,6 +254,7 @@ bool loraSendWake(uint8_t* data, size_t len) {
   }
   radio.setPreambleLength(LORA_PREAMBLE_LONG);
   bool ok = loraSend(data, len);
+  radio.setPreambleLength(LORA_PREAMBLE);  // восстановить стандартную преамбулу
   // После TX — вернуть в текущий режим
   if (wasSleeping) {
     loraPaDisable();    // выключить PA обратно
