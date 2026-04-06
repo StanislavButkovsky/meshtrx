@@ -1,7 +1,7 @@
 # MeshTRX — Лог проекта
 
 > Файл обновляется автоматически по мере работы над проектом.
-> Последнее обновление: 2026-04-04 (v4.3.1 + power optimization + PA management)
+> Последнее обновление: 2026-04-06 (v4.3.1 + power optimization + file transfer v2)
 
 ---
 
@@ -767,7 +767,67 @@
 
 **Файлы**: debug.h (новый), main.cpp, lora_radio.h, lora_radio.cpp, ble_service.cpp, oled_display.cpp, beacon.cpp, call_manager.cpp
 
-### 31. Голосовые сообщения (Voice Messages) — В РАБОТЕ
+### 31. File Transfer v2 — буферизация на ESP32 — ГОТОВО ✓
+
+**Дата**: 2026-04-06
+
+**Проблема**: старый протокол терял ~30% чанков — телефон слал BLE→LoRa напрямую, ESP32 был прозрачным мостом без контроля.
+
+**Решение**: файл загружается в RAM ESP32 (~230 КБ свободно), ESP32 автономно управляет LoRa отправкой с retry.
+
+**Новый BLE протокол:**
+- `FILE_UPLOAD_START` (0x30): телефон→ESP32, заголовок файла (тип, dest, размер, имя)
+- `FILE_UPLOAD_DATA` (0x31): телефон→ESP32, чанки данных по 120 байт (BLE delay 50мс)
+- `FILE_UPLOAD_STATUS` (0x32): ESP32→телефон, статус (ACCEPTED/BUSY/SENDING/DELIVERED/FAILED/NO_MEMORY)
+
+**Автономная LoRa отправка (fileSendTask, Core 1):**
+- FILE_START с длинной преамбулой 32 (loraSendWake)
+- Чанки с паузой 50мс, стандартная преамбула 8
+- FILE_END после последнего чанка
+- Ожидание ACK/NACK до 30 сек
+- При NACK: досылка пропущенных чанков (макс 3 раунда)
+- При ACK: DELIVERED на телефон
+- При таймауте: FAILED на телефон
+
+**ACK/NACK надёжность:**
+- ACK/NACK отправляются с длинной преамбулой (loraSendWake) — решило проблему потери ACK
+- Кеш ответа на приёмнике (30 сек) — при повторном FILE_END переотправляет из кеша
+- DELIVERED дублируется через bleTask (pendingUploadStatus)
+
+**Radio mutex (loraRadioMutex):**
+- SemaphoreHandle_t защищает loraSend() и loraStartReceive()
+- Предотвращает SPI конфликт между fileSendTask (Core 1) и loraTask (Core 0)
+- PTT голос и текст работают во время файловой передачи (mutex serializes)
+
+**State machine:**
+- FILE_STATE_IDLE → UPLOADING → SENDING → IDLE
+- FILE_STATE_RECEIVING (приём из LoRa)
+- BUSY при попытке отправки/приёма в занятом состоянии
+- Приём имеет приоритет над отправкой
+
+**Настраиваемый таймаут:**
+- `file_timeout` в NVS (30-180 сек, по умолчанию 60)
+- Доступен через JSON settings (GET/SET)
+- Android: 120 сек таймаут по умолчанию
+
+**UI:**
+- Прогресс: ⏳ (песочные часы, жёлтый) при передаче
+- Доставлено: ✓ (зелёный)
+- Ошибка: ✗ (красный)
+- Голосовые файлы (0x04, 0x05) скрыты из вкладки "Файлы"
+
+**Тестирование:**
+- 21 КБ фото: 179/179 чанков, 0 потерь, ACK подтверждён (RSSI -19)
+- 23 КБ фото: 194/194 чанков, 0 потерь, ACK подтверждён (RSSI -31)
+- Тест на минимальной мощности (1 dBm): доставлено успешно
+- NACK при потере: 2 чанка пропущено → NACK отправлен (проверено)
+
+**Файлы:**
+- Firmware: main.cpp (fileSendTask, state machine, BLE handlers, ACK cache), lora_radio.h/cpp (mutex, loraSendWake), ble_service.h (0x30-0x32)
+- Android: BleManager.kt (CMD_FILE_UPLOAD_*), MeshTRXService.kt (sendFile v2, UPLOAD_STATUS handler), FilesFragment.kt (⏳ иконка)
+- Документация: docs/TASK_FILE_TRANSFER_V2.md
+
+### 32. Голосовые сообщения (Voice Messages) — В РАБОТЕ
 
 **Концепция**: кнопка 🎤 в чате → запись до 10 сек → Codec2 → отправка через файловый протокол → воспроизведение в чате.
 
@@ -823,6 +883,12 @@
 - `b4cb82d` v4.3.1 — Addressed calls fix, callSign sync, UI improvements
 - `4745dfd` Docs: power optimization research + Heltec V4 specs
 - `faffaea` Firmware: power optimization — event-driven LoRa, BLE tuning, OLED Vext off
+- `6542052` Power optimization: LoRa sleep without BLE, PA management V4, preamble 32
+- `7597f57` Fix: signed release APK for website download
+- `7414a9e` File transfer: FILE_END support, preamble fix, chunk delay tuning
+- `7273685` Task: file transfer v2 protocol design
+- `3fd25ce` File Transfer v2: ESP32 RAM buffering, autonomous LoRa TX with NACK retry
+- `70ee714` File Transfer v2: ACK delivery fixed, radio mutex, full working pipeline
 
 ---
 

@@ -507,6 +507,14 @@ MTU: запросить 128 байт при подключении
     0x28 = SET_REPEATER   (телефон→ESP: байт 1=enable, далее ssid\0, pass\0, ip\0)
            Устройство сохраняет WiFi config в NVS и перезагружается
            В режиме ретранслятора: LoRa+BLE+WiFi, веб-монитор на http://IP
+    0x29 = FILE_END       (телефон→ESP: [session_id, ttl] → отправить LoRa FILE_END)
+    // === File Transfer v2 — буферизация на ESP32 ===
+    0x30 = FILE_UPLOAD_START  (телефон→ESP: загрузить файл в RAM)
+           Формат: cmd(1) + file_type(1) + dest(2) + size(4) + name(20) = 28 байт
+    0x31 = FILE_UPLOAD_DATA   (телефон→ESP: чанк данных, cmd(1) + data(до 120 байт))
+    0x32 = FILE_UPLOAD_STATUS (ESP→телефон: статус)
+           Формат: cmd(1) + status(1) + session_id(1) + reserved(1)
+           status: 0=ACCEPTED, 1=BUSY, 2=SENDING, 3=DELIVERED, 4=FAILED, 5=NO_MEMORY
   Байты 1–N: данные
 
 SET_SETTINGS JSON формат:
