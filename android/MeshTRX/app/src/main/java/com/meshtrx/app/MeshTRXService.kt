@@ -351,91 +351,80 @@ class MeshTRXService : Service() {
     }
 
     /** destMac: последние 2 байта MAC получателя, или null для broadcast */
+    /** File Transfer v2: загрузить файл в ESP32 RAM → ESP32 сам отправит по LoRa */
     fun sendFile(fileName: String, fileType: Int, data: ByteArray, destMac: ByteArray? = null, destName: String? = null) {
-        val sessionId = (++fileSessionCounter) and 0xFF
-        val chunkSize = 120
-        val totalChunks = (data.size + chunkSize - 1) / chunkSize
-        fileDest = destMac ?: byteArrayOf(0, 0)
+        val dest = destMac ?: byteArrayOf(0, 0)
+        val timeMs = System.currentTimeMillis()
+        val localPath = saveFileData(fileName, timeMs, data)
 
-        // FILE_START header (cmd + LoRaFileHeader с dest)
-        val header = ByteArray(1 + 35) // cmd + struct size (33 + 2 dest)
-        header[0] = BleManager.CMD_FILE_START.toByte()
-        header[1] = 0xC0.toByte() // PKT_TYPE_FILE_START
-        header[2] = ServiceState.currentChannel.value?.toByte() ?: 0
-        header[3] = sessionId.toByte()
-        header[4] = 2 // TTL
-        header[5] = 0; header[6] = 0 // sender (ESP32 заполнит)
-        header[7] = fileDest[0]; header[8] = fileDest[1] // dest
-        header[9] = fileType.toByte()
-        header[10] = (totalChunks and 0xFF).toByte()
-        header[11] = ((totalChunks shr 8) and 0xFF).toByte()
-        // total_size int32 LE
-        header[12] = (data.size and 0xFF).toByte()
-        header[13] = ((data.size shr 8) and 0xFF).toByte()
-        header[14] = ((data.size shr 16) and 0xFF).toByte()
-        header[15] = ((data.size shr 24) and 0xFF).toByte()
-        // name — обрезать с сохранением расширения (макс 19 байт)
+        // Имя файла — обрезать с сохранением расширения (макс 19 байт)
         val shortName = if (fileName.length > 19) {
             val ext = fileName.substringAfterLast('.', "")
             if (ext.isNotEmpty() && ext.length < 6) {
                 fileName.take(19 - ext.length - 1) + "." + ext
             } else fileName.take(19)
         } else fileName
-        val nameBytes = shortName.toByteArray(Charsets.UTF_8)
-        System.arraycopy(nameBytes, 0, header, 16, nameBytes.size.coerceAtMost(19))
 
+        // FILE_UPLOAD_START: cmd(1) + type(1) + dest(2) + size(4) + name(20) = 28
+        val header = ByteArray(28)
+        header[0] = BleManager.CMD_FILE_UPLOAD_START.toByte()
+        header[1] = fileType.toByte()
+        header[2] = dest[0]; header[3] = dest[1]
+        header[4] = (data.size and 0xFF).toByte()
+        header[5] = ((data.size shr 8) and 0xFF).toByte()
+        header[6] = ((data.size shr 16) and 0xFF).toByte()
+        header[7] = ((data.size shr 24) and 0xFF).toByte()
+        val nameBytes = shortName.toByteArray(Charsets.UTF_8)
+        System.arraycopy(nameBytes, 0, header, 8, nameBytes.size.coerceAtMost(20))
         bleManager.send(header)
 
-        // Сохранить данные на диск
-        val timeMs = System.currentTimeMillis()
-        val localPath = saveFileData(fileName, timeMs, data)
-
-        // Запись в список — обновить существующий или добавить новый
+        // Запись в список
+        val sessionId = (++fileSessionCounter) and 0xFF
+        val totalChunks = (data.size + 120 - 1) / 120
         val transfer = FileTransfer(sessionId, fileName, fileType, data.size,
             totalChunks, 0, true, FileStatus.TRANSFERRING, timeMs = timeMs,
             data = data, localPath = localPath, destMac = destMac, destName = destName)
         val initList = ArrayList(ServiceState.fileTransfers.value ?: emptyList())
         val existIdx = initList.indexOfFirst { it.fileName == fileName && it.isOutgoing }
-        if (existIdx >= 0) {
-            // Обновить существующий — новая дата, сброс прогресса
-            initList[existIdx] = transfer
-        } else {
-            initList.add(0, transfer)
-        }
+        if (existIdx >= 0) initList[existIdx] = transfer else initList.add(0, transfer)
         ServiceState.fileTransfers.value = initList
 
-        // Отправить чанки с задержкой + локальный прогресс (задержка чтобы setValue прошёл)
+        // Загрузить данные в ESP32 по BLE чанками (120 байт)
         Thread {
-            Thread.sleep(100)
-            for (i in 0 until totalChunks) {
-                val offset = i * chunkSize
-                val len = minOf(chunkSize, data.size - offset)
-                val chunk = ByteArray(5 + len)
-                chunk[0] = BleManager.CMD_FILE_CHUNK.toByte()
-                chunk[1] = (i and 0xFF).toByte()
-                chunk[2] = ((i shr 8) and 0xFF).toByte()
-                chunk[3] = fileDest[0]
-                chunk[4] = fileDest[1]
-                System.arraycopy(data, offset, chunk, 5, len)
+            Thread.sleep(50) // дать время ESP32 аллоцировать буфер
+            val bleChunkSize = 120
+            var offset = 0
+            while (offset < data.size) {
+                val len = minOf(bleChunkSize, data.size - offset)
+                val chunk = ByteArray(1 + len)
+                chunk[0] = BleManager.CMD_FILE_UPLOAD_DATA.toByte()
+                System.arraycopy(data, offset, chunk, 1, len)
                 bleManager.send(chunk)
-
-                // Обновить прогресс — новый список каждый раз
-                updateFileProgress(sessionId, i + 1, null)
-
-                Thread.sleep(100)
+                offset += len
+                Thread.sleep(30) // BLE пропускная способность (NimBLE MTU 128)
             }
-            // Отправить FILE_END чтобы приёмник запустил NACK/retry
-            Thread.sleep(500) // подождать чтобы последние чанки прошли через BLE
-            val endPkt = ByteArray(3)
-            endPkt[0] = BleManager.CMD_FILE_END.toByte()
-            endPkt[1] = sessionId.toByte()
-            endPkt[2] = 2 // TTL
-            bleManager.send(endPkt)
-            Log.d(TAG, "FILE_END sent: session=$sessionId")
+            Log.d(TAG, "File uploaded to ESP32: $fileName (${data.size} bytes)")
 
-            // Завершено
-            updateFileProgress(sessionId, totalChunks, FileStatus.DONE)
-            Log.d(TAG, "File sent: $fileName ($totalChunks chunks)")
+            // Ждать UPLOAD_STATUS = DELIVERED(3) или FAILED(4) или таймаут
+            val timeoutMs = prefs.getInt("file_timeout", 60) * 1000L
+            val start = System.currentTimeMillis()
+            while (System.currentTimeMillis() - start < timeoutMs) {
+                Thread.sleep(500)
+                // Проверяем статус по fileTransfers — ESP32 обновит через UPLOAD_STATUS
+                val current = ServiceState.fileTransfers.value?.find {
+                    it.fileName == fileName && it.isOutgoing
+                }
+                if (current?.status == FileStatus.DONE || current?.status == FileStatus.FAILED) {
+                    break
+                }
+            }
+            // Если таймаут и не DONE — пометить ошибку
+            val current = ServiceState.fileTransfers.value?.find {
+                it.fileName == fileName && it.isOutgoing
+            }
+            if (current?.status != FileStatus.DONE) {
+                updateFileProgress(sessionId, 0, FileStatus.FAILED)
+            }
             saveFileTransfers()
         }.start()
     }
@@ -739,6 +728,36 @@ class MeshTRXService : Service() {
                     val idx = list.indexOfFirst { it.sessionId == sid }
                     if (idx >= 0) {
                         list[idx] = list[idx].copy(chunksDone = done, status = FileStatus.TRANSFERRING)
+                        ServiceState.fileTransfers.postValue(list)
+                    }
+                }
+            }
+            BleManager.CMD_FILE_UPLOAD_STATUS -> {
+                // File v2: статус от ESP32 — 0=ACCEPTED, 1=BUSY, 2=SENDING, 3=DELIVERED, 4=FAILED, 5=NO_MEMORY
+                if (data.size >= 3) {
+                    val status = data[1].toInt() and 0xFF
+                    val sid = data[2].toInt() and 0xFF
+                    Log.d(TAG, "UPLOAD_STATUS: status=$status session=$sid")
+                    val list = ServiceState.fileTransfers.value?.toMutableList() ?: mutableListOf()
+                    // Найти по последнему исходящему файлу
+                    val idx = list.indexOfLast { it.isOutgoing && it.status == FileStatus.TRANSFERRING }
+                    if (idx >= 0) {
+                        when (status) {
+                            1 -> { // BUSY
+                                list[idx] = list[idx].copy(status = FileStatus.FAILED)
+                                ServiceState.statusMessage.postValue("Устройство занято")
+                            }
+                            3 -> { // DELIVERED
+                                list[idx] = list[idx].copy(status = FileStatus.DONE)
+                            }
+                            4 -> { // FAILED
+                                list[idx] = list[idx].copy(status = FileStatus.FAILED)
+                            }
+                            5 -> { // NO_MEMORY
+                                list[idx] = list[idx].copy(status = FileStatus.FAILED)
+                                ServiceState.statusMessage.postValue("Файл слишком большой")
+                            }
+                        }
                         ServiceState.fileTransfers.postValue(list)
                     }
                 }

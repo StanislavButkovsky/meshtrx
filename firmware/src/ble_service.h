@@ -48,6 +48,11 @@
 #define BLE_CMD_FILE_DATA     0x27  // ESP→телефон: чанк данных принятого файла
 #define BLE_CMD_SET_REPEATER  0x28  // телефон→ESP: [enable, ssid...\0, pass...\0]
 #define BLE_CMD_FILE_END     0x29  // телефон→ESP: [session_id, ttl] → отправить LoRa FILE_END
+// === File Transfer v2 — буферизация на ESP32 ===
+#define BLE_CMD_FILE_UPLOAD_START  0x30  // телефон→ESP: заголовок файла для загрузки в RAM
+#define BLE_CMD_FILE_UPLOAD_DATA   0x31  // телефон→ESP: чанк данных файла
+#define BLE_CMD_FILE_UPLOAD_STATUS 0x32  // ESP→телефон: статус загрузки/отправки
+// UPLOAD_STATUS values: 0=ACCEPTED, 1=BUSY, 2=SENDING, 3=DELIVERED, 4=FAILED, 5=NO_MEMORY
 
 extern bool bleConnected;
 

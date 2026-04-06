@@ -56,6 +56,10 @@ class BleManager(private val context: Context) {
         const val CMD_FILE_DATA = 0x27
         const val CMD_SET_REPEATER = 0x28
         const val CMD_FILE_END = 0x29
+        // File Transfer v2
+        const val CMD_FILE_UPLOAD_START = 0x30
+        const val CMD_FILE_UPLOAD_DATA = 0x31
+        const val CMD_FILE_UPLOAD_STATUS = 0x32
     }
 
     private val bluetoothAdapter: BluetoothAdapter? =
