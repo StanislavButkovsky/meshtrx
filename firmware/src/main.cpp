@@ -16,6 +16,7 @@
 #include "call_manager.h"
 #include "battery.h"
 #include "wifi_monitor.h"
+#include <WiFi.h>
 
 #include "debug.h"
 
@@ -196,8 +197,10 @@ void setup() {
     // === НОРМАЛЬНЫЙ РЕЖИМ ===
     LOG_D("[Main] === NORMAL MODE ===");
 
-    // WiFi не инициализируется в нормальном режиме (только в ретранслятор)
-    // CPU остаётся 240 МГц — setCpuFrequencyMhz() ломает SPI/BLE тайминги
+    // Отключить WiFi модем — не нужен без ретранслятора
+    // WiFi.mode(WIFI_OFF) безопасен для BLE (в отличие от esp_wifi_deinit)
+    WiFi.mode(WIFI_OFF);
+    LOG_D("[Main] WiFi OFF");
 
     // Инициализация модулей
     loraInit();
