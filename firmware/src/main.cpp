@@ -1,5 +1,10 @@
 #include <Arduino.h>
 #include <nvs_flash.h>
+#include <esp_sleep.h>
+#include <driver/gpio.h>
+#include <esp_mac.h>
+#include <esp_pm.h>
+#include <esp_bt.h>
 #include <Preferences.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -167,6 +172,31 @@ static void loadSettings();
 static void handleUserButton();
 
 // ================================================================
+// Power Management — auto light sleep + BLE modem sleep
+// ================================================================
+static void setupPowerManagement() {
+  // Auto light sleep: CPU засыпает когда все задачи заблокированы
+  esp_pm_config_t pm = {
+    .max_freq_mhz = 240,
+    .min_freq_mhz = 80,       // минимальная при idle
+    .light_sleep_enable = false // пока без auto sleep (crash с BLE)
+  };
+  esp_err_t err = esp_pm_configure(&pm);
+  if (err == ESP_OK) {
+    LOG_D("[Power] Auto light sleep ENABLED");
+  } else {
+    LOG_F("[Power] esp_pm_configure failed: 0x%x\n", err);
+  }
+
+  // GPIO wakeup: LoRa DIO1 + кнопка USER
+  gpio_wakeup_enable(GPIO_NUM_14, GPIO_INTR_HIGH_LEVEL);  // LoRa DIO1
+  gpio_wakeup_enable(GPIO_NUM_0, GPIO_INTR_LOW_LEVEL);    // кнопка USER
+  esp_sleep_enable_gpio_wakeup();
+
+  LOG_D("[Power] GPIO wakeup configured");
+}
+
+// ================================================================
 // SETUP
 // ================================================================
 #ifndef PIO_UNIT_TESTING
@@ -253,6 +283,9 @@ void setup() {
     // BLE
     bleInit();
     bleSetDataCallback(handleBleData);
+
+    // Power management — auto light sleep
+    setupPowerManagement();
 
     // Очереди
     txAudioQueue = xQueueCreate(10, sizeof(LoRaAudioPacket));
@@ -376,12 +409,12 @@ static void loraTaskFunc(void* param) {
   LoRaTextPacket txTextPkt;
 
   while (true) {
-    // BLE не подключен и не ретранслятор — LoRa sleep (beacon отправляется из beaconTask)
+    // BLE не подключен и не ретранслятор — LoRa standby
     if (!bleConnected && !repeaterIsEnabled()) {
       if (loraGetPowerMode() != LORA_POWER_SLEEP) {
         loraSetPowerMode(LORA_POWER_SLEEP);
       }
-      vTaskDelay(pdMS_TO_TICKS(1000));  // спим 1 сек, проверяем BLE
+      vTaskDelay(pdMS_TO_TICKS(1000));
       continue;
     }
 

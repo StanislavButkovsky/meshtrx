@@ -1,5 +1,6 @@
 #include "call_manager.h"
 #include "lora_radio.h"
+#include <esp_mac.h>
 #include "ble_service.h"
 #include "oled_display.h"
 #include "beacon.h"
