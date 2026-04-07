@@ -175,18 +175,7 @@ static void handleUserButton();
 // Power Management — auto light sleep + BLE modem sleep
 // ================================================================
 static void setupPowerManagement() {
-  // Auto light sleep: CPU засыпает когда все задачи заблокированы
-  esp_pm_config_t pm = {
-    .max_freq_mhz = 240,
-    .min_freq_mhz = 80,       // минимальная при idle
-    .light_sleep_enable = false // пока без auto sleep (crash с BLE)
-  };
-  esp_err_t err = esp_pm_configure(&pm);
-  if (err == ESP_OK) {
-    LOG_D("[Power] Auto light sleep ENABLED");
-  } else {
-    LOG_F("[Power] esp_pm_configure failed: 0x%x\n", err);
-  }
+  // DFS не работает на Arduino 2.x (esp_pm_configure — заглушка)
 
   // GPIO wakeup: LoRa DIO1 + кнопка USER
   gpio_wakeup_enable(GPIO_NUM_14, GPIO_INTR_HIGH_LEVEL);  // LoRa DIO1

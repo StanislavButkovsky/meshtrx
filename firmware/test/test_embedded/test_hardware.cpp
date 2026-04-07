@@ -220,11 +220,23 @@ void test_gpio_vext() {
 // Main
 // ================================================================
 
+void test_cpu_160mhz() {
+    setCpuFrequencyMhz(160);
+    TEST_ASSERT_EQUAL(160, getCpuFrequencyMhz());
+}
+
 void setup() {
-    delay(2000);  // дать Serial стабилизироваться
+    // Понизить частоту ДО всех инициализаций
+    setCpuFrequencyMhz(160);
+
+    delay(2000);
     Serial.begin(115200);
+    Serial.printf("\n=== CPU: %d MHz ===\n", getCpuFrequencyMhz());
 
     UNITY_BEGIN();
+
+    // CPU
+    RUN_TEST(test_cpu_160mhz);
 
     // GPIO
     RUN_TEST(test_gpio_led);
