@@ -19,6 +19,7 @@
 #include <WiFi.h>
 
 #include "debug.h"
+#include "utils.h"
 
 // === Пины ===
 #define PIN_LED       35
@@ -559,7 +560,7 @@ static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr) 
       }
       fileState = FILE_STATE_RECEIVING;
       fileRxLastChunkMs = millis();
-      memset(fileRxBitmap, 0, sizeof(fileRxBitmap));
+      bitmap_clear(fileRxBitmap, sizeof(fileRxBitmap));
       fileRxUniqueCount = 0;
 
       // Аллоцировать буфер
@@ -597,13 +598,9 @@ static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr) 
       loraStartReceive();
 
       // Считать только уникальные чанки
-      if (idx < 1024) {
-        uint8_t bit = 1 << (idx & 7);
-        if (!(fileRxBitmap[idx >> 3] & bit)) {
-          fileRxBitmap[idx >> 3] |= bit;
-          fileRxUniqueCount++;
-          fileRxChunksDone = fileRxUniqueCount;
-        }
+      if (idx < 1024 && bitmap_set(fileRxBitmap, idx)) {
+        fileRxUniqueCount++;
+        fileRxChunksDone = fileRxUniqueCount;
       }
 
       // Прогресс каждые 5 чанков
@@ -677,12 +674,7 @@ static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr) 
         nack.session_id = fileSessionId;
         nack.status = 0x01; // NACK
         memcpy(nack.dest, fileRxSender, 2);
-        uint16_t cnt = 0;
-        for (uint16_t i = 0; i < fileRxChunksTotal && cnt < 50; i++) {
-          if (!(fileRxBitmap[i >> 3] & (1 << (i & 7)))) {
-            nack.missing[cnt++] = i;
-          }
-        }
+        uint16_t cnt = bitmap_find_missing(fileRxBitmap, fileRxChunksTotal, nack.missing, 50);
         nack.missing_count = cnt;
         size_t nackLen = 7 + cnt * 2; // header + missing indices
         // Кешировать для повторной отправки

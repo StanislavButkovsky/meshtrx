@@ -22,8 +22,8 @@ bool beaconSendNow();
 // Обработка входящего beacon от другого устройства
 void beaconProcessIncoming(const LoRaBeaconPacket* pkt, int16_t rssi, int8_t snr);
 
-// CRC16-CCITT
-uint16_t crc16_ccitt(const uint8_t* data, size_t len);
+// CRC16-CCITT — определён в utils.h
+#include "utils.h"
 
 // Задача FreeRTOS
 void beaconTask(void* param);
