@@ -102,6 +102,9 @@ static volatile uint8_t pendingUploadSession = 0;
 // LED RX индикация
 static volatile uint32_t rxLedUntil = 0;
 
+// Флаг: fileSendTask просит loraTask перезапустить RX (после loraSend с Core 1)
+static volatile bool loraNeedRxRestart = false;
+
 // Дедупликация текстовых сообщений
 #define TEXT_DEDUP_SIZE 16
 #define TEXT_DEDUP_TTL_MS 30000
@@ -175,14 +178,28 @@ static void handleUserButton();
 // Power Management — auto light sleep + BLE modem sleep
 // ================================================================
 static void setupPowerManagement() {
-  // DFS не работает на Arduino 2.x (esp_pm_configure — заглушка)
+  // Auto light sleep: CPU засыпает когда все задачи заблокированы
+  esp_pm_config_t pm = {
+    .max_freq_mhz = 240,
+    .min_freq_mhz = 80,
+    .light_sleep_enable = true
+  };
+  esp_err_t err = esp_pm_configure(&pm);
+  if (err == ESP_OK) {
+    LOG_D("[Power] Auto light sleep ENABLED (240/80 MHz)");
+  } else {
+    LOG_F("[Power] esp_pm_configure failed: 0x%x\n", err);
+  }
 
   // GPIO wakeup: LoRa DIO1 + кнопка USER
   gpio_wakeup_enable(GPIO_NUM_14, GPIO_INTR_HIGH_LEVEL);  // LoRa DIO1
   gpio_wakeup_enable(GPIO_NUM_0, GPIO_INTR_LOW_LEVEL);    // кнопка USER
   esp_sleep_enable_gpio_wakeup();
 
-  LOG_D("[Power] GPIO wakeup configured");
+  // BLE wakeup
+  esp_sleep_enable_bt_wakeup();
+
+  LOG_D("[Power] GPIO + BT wakeup configured");
 }
 
 // ================================================================
@@ -309,7 +326,7 @@ void loop() {
     callTick();
   }
 
-  delay(200);  // 200мс (было 50мс) — экономия CPU, кнопка реагирует приемлемо
+  delay(500);  // 500мс — экономия CPU, кнопка реагирует приемлемо
 }
 #endif // PIO_UNIT_TESTING
 
@@ -413,15 +430,34 @@ static void loraTaskFunc(void* param) {
       loraSetPowerMode(LORA_POWER_CONTINUOUS_RX);
     }
 
-    // Ждём: DIO1 interrupt (RX done), TX queue, или таймаут 50мс
-    // При PTT active — чаще проверяем TX очередь
-    uint32_t waitMs = pttActive ? 5 : 50;
+    // Idle → duty cycle RX (экономия ~30-40 мА)
+    if (loraGetPowerMode() == LORA_POWER_CONTINUOUS_RX &&
+        !pttActive && fileState == FILE_STATE_IDLE &&
+        millis() - lastLoraActivityMs > LORA_IDLE_TIMEOUT_MS) {
+      loraSetPowerMode(LORA_POWER_DUTY_CYCLE_RX);
+    }
+
+    // Ждём: DIO1 interrupt (RX done), TX queue, или таймаут
+    // PTT active → 5мс (быстрый TX), idle → 500мс (экономия CPU)
+    uint32_t waitMs = pttActive ? 5 : 500;
     ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(waitMs));
 
-    // Проверить входящий LoRa пакет
+    // fileSendTask просит перезапустить RX (после loraSend с Core 1)
+    if (loraNeedRxRestart) {
+      loraNeedRxRestart = false;
+      loraStartReceive();
+      LOG_D("[LoRa] RX restarted by loraTask");
+    }
+
+    // Проверить входящий LoRа пакет
     if (loraRxFlag) {
       loraRxFlag = false;
       lastLoraActivityMs = millis();
+
+      // Пакет получен — вернуться в continuous RX (из duty cycle)
+      if (loraGetPowerMode() != LORA_POWER_CONTINUOUS_RX) {
+        loraSetPowerMode(LORA_POWER_CONTINUOUS_RX);
+      }
 
       int len = radio.getPacketLength();
       if (len > 0 && len <= (int)sizeof(rxBuf)) {
@@ -455,7 +491,6 @@ static void loraTaskFunc(void* param) {
       }
     }
 
-    // Duty cycle отключён — всегда continuous RX при BLE connected
   }
 }
 
@@ -927,10 +962,10 @@ static void bleTaskFunc(void* param) {
       pendingUploadStatus = 0xFF;
     }
 
-    // === BLE статус — раз в 2 сек (было 500мс) ===
+    // === BLE статус — раз в 10 сек (было 2 сек) ===
     static uint32_t lastStatusMs = 0;
     uint32_t nowMs = millis();
-    if (bleIsConnected() && nowMs - lastStatusMs >= 2000) {
+    if (bleIsConnected() && nowMs - lastStatusMs >= 10000) {
       sendStatusUpdate();
       lastStatusMs = nowMs;
     }
@@ -982,6 +1017,8 @@ static void fileSendTask(void* param) {
     if (!fileTxBuffer || fileTxSize == 0) continue;
 
     LOG_F("[FileSend] Starting: %s (%d bytes, %d chunks)\n", fileTxName, fileTxSize, fileTxChunksTotal);
+    lastLoraActivityMs = millis();  // prevent duty cycle during file TX
+    loraSetPowerMode(LORA_POWER_CONTINUOUS_RX);
     sendUploadStatus(2, fileTxSessionId); // SENDING
     fileTxNackRound = 0;
     uint32_t startMs = millis();
@@ -1001,7 +1038,8 @@ static void fileSendTask(void* param) {
       hdr.total_size = fileTxSize;
       strncpy((char*)hdr.name, fileTxName, 19);
       loraSendWake((uint8_t*)&hdr, sizeof(hdr));
-      loraStartReceive();
+      loraNeedRxRestart = true;
+      if (loraTaskHandle) xTaskNotifyGive(loraTaskHandle);
       vTaskDelay(pdMS_TO_TICKS(100)); // дать приёмнику подготовиться
     }
 
@@ -1021,7 +1059,7 @@ static void fileSendTask(void* param) {
       if (dataLen > CHUNK_SIZE) dataLen = CHUNK_SIZE;
       memcpy(pkt.data, fileTxBuffer + offset, dataLen);
       loraSend((uint8_t*)&pkt, 8 + dataLen);
-      loraStartReceive();
+      // loraTask перезапустит RX через loraNeedRxRestart
       vTaskDelay(pdMS_TO_TICKS(50));
     }
 
@@ -1033,7 +1071,10 @@ static void fileSendTask(void* param) {
       endPkt.session_id = fileTxSessionId;
       endPkt.ttl = TTL_DEFAULT;
       loraSend((uint8_t*)&endPkt, sizeof(endPkt));
-      loraStartReceive();
+      // Сигнализировать loraTask вернуть радио в RX (не трогаем радио с Core 1)
+      lastLoraActivityMs = millis();
+      loraNeedRxRestart = true;
+      if (loraTaskHandle) xTaskNotifyGive(loraTaskHandle);
       LOG_D("[FileSend] FILE_END sent, waiting for ACK...");
     }
 
@@ -1041,9 +1082,14 @@ static void fileSendTask(void* param) {
     bool delivered = false;
     fileTxAckReceived = false;
     while (fileTxNackRound < 3 && (millis() - startMs < (uint32_t)fileTimeoutSec * 1000)) {
-      // Ждать ACK до 30 сек (без retry FILE_END — чтобы не конфликтовать с ACK по mutex)
+      // Ждать ACK до 30 сек, периодически перезапускать RX через loraTask
       for (int w = 0; w < 300 && !fileTxAckReceived; w++) {
         vTaskDelay(pdMS_TO_TICKS(100));
+        // Каждые 2 сек — перезапустить RX на всякий случай
+        if (w % 20 == 19) {
+          loraNeedRxRestart = true;
+          if (loraTaskHandle) xTaskNotifyGive(loraTaskHandle);
+        }
       }
       if (!fileTxAckReceived) {
         LOG_D("[FileSend] ACK timeout");
@@ -1073,7 +1119,6 @@ static void fileSendTask(void* param) {
         if (dataLen > CHUNK_SIZE) dataLen = CHUNK_SIZE;
         memcpy(pkt.data, fileTxBuffer + offset, dataLen);
         loraSend((uint8_t*)&pkt, 8 + dataLen);
-        loraStartReceive();
         vTaskDelay(pdMS_TO_TICKS(50));
       }
       // Повторный FILE_END
@@ -1084,7 +1129,8 @@ static void fileSendTask(void* param) {
         endPkt.session_id = fileTxSessionId;
         endPkt.ttl = TTL_DEFAULT;
         loraSend((uint8_t*)&endPkt, sizeof(endPkt));
-        loraStartReceive();
+        loraNeedRxRestart = true;
+        if (loraTaskHandle) xTaskNotifyGive(loraTaskHandle);
       }
       fileTxNackRound++;
       fileTxAckReceived = false; // сбросить перед следующим раундом
@@ -1132,6 +1178,20 @@ static void handleBleData(uint8_t* data, size_t len) {
       audioSeqNum = 0;
       lastLoraActivityMs = millis();
       LOG_D("[BLE] PTT START");
+
+      // Wake-пакет с длинной преамбулой — будит приёмники из duty cycle
+      {
+        LoRaAudioPacket wakePkt;
+        memset(&wakePkt, 0, sizeof(wakePkt));
+        wakePkt.type = PKT_TYPE_AUDIO;
+        wakePkt.channel = currentChannel;
+        wakePkt.seq = audioSeqNum++;
+        wakePkt.flags = PKT_FLAG_PTT_START;
+        wakePkt.ttl = TTL_DEFAULT;
+        memcpy(wakePkt.sender, senderMac, 2);
+        loraSendWake((uint8_t*)&wakePkt, sizeof(wakePkt));
+        loraStartReceive();
+      }
       break;
     }
 

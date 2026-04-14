@@ -13,31 +13,28 @@ static uint32_t blePin = 0;
 
 // === Server callbacks ===
 class ServerCallbacks : public NimBLEServerCallbacks {
-  void onConnect(NimBLEServer* pServer, ble_gap_conn_desc* desc) override {
+  void onConnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo) override {
     bleConnected = true;
     Serial.println("[BLE] Client connected");
-    // min=60ms, max=100ms, latency=2 (skip 2 events), timeout=500ms
-    // Экономит ~5-8 мА vs старые 12ms/12ms/0/200
-    pServer->updateConnParams(desc->conn_handle, 48, 80, 2, 500);
+    pServer->updateConnParams(connInfo.getConnHandle(), 48, 80, 2, 500);
     oledWake();
     oledShowMessage("BLE CONNECTED", "", 3000);
   }
 
-  void onDisconnect(NimBLEServer* pServer, ble_gap_conn_desc* desc) override {
+  void onDisconnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo, int reason) override {
     bleConnected = false;
-    Serial.println("[BLE] Client disconnected");
-    NimBLEDevice::startAdvertising();
+    Serial.printf("[BLE] Client disconnected (reason=%d)\n", reason);
   }
 
-  void onMTUChange(uint16_t mtu, ble_gap_conn_desc* desc) override {
-    Serial.printf("[BLE] MTU changed to %d\n", mtu);
+  void onMTUChange(uint16_t MTU, NimBLEConnInfo& connInfo) override {
+    Serial.printf("[BLE] MTU changed to %d\n", MTU);
   }
 };
 
 // === RX characteristic callbacks ===
 class RxCallbacks : public NimBLECharacteristicCallbacks {
-  void onWrite(NimBLECharacteristic* pCharacteristic, ble_gap_conn_desc* desc) override {
-    std::string val = pCharacteristic->getValue();
+  void onWrite(NimBLECharacteristic* pCharacteristic, NimBLEConnInfo& connInfo) override {
+    NimBLEAttValue val = pCharacteristic->getValue();
     if (val.length() > 0 && dataCallback) {
       dataCallback((uint8_t*)val.data(), val.length());
     }
@@ -57,11 +54,12 @@ void bleInit() {
 
   NimBLEDevice::init(nameBuf);
   NimBLEDevice::setMTU(128);
-  NimBLEDevice::setPower(ESP_PWR_LVL_P6);  // +6dBm (вместо +9), экономия ~1мА
+  NimBLEDevice::setPower(6);  // +6dBm
 
   // Без BLE security — PIN проверяется на уровне приложения
   pServer = NimBLEDevice::createServer();
   pServer->setCallbacks(new ServerCallbacks());
+  pServer->advertiseOnDisconnect(true);  // NimBLE 2.x: auto-restart advertising
 
   NimBLEService* pService = pServer->createService(SERVICE_UUID);
 
@@ -83,9 +81,8 @@ void bleInit() {
   // Advertising
   NimBLEAdvertising* pAdvertising = NimBLEDevice::getAdvertising();
   pAdvertising->addServiceUUID(SERVICE_UUID);
-  pAdvertising->setScanResponse(false);  // экономия ~1-2 мА
-  pAdvertising->setMinPreferred(160);    // 100мс (вместо default ~100)
-  pAdvertising->setMaxPreferred(320);    // 200мс
+  pAdvertising->enableScanResponse(false);  // экономия ~1-2 мА
+  pAdvertising->setPreferredParams(160, 320);  // 100-200мс interval
   pAdvertising->start();
 
   // PIN на OLED

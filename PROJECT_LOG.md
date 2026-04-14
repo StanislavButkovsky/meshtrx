@@ -1,7 +1,7 @@
 # MeshTRX — Лог проекта
 
 > Файл обновляется автоматически по мере работы над проектом.
-> Последнее обновление: 2026-04-06 (v4.3.1 + power optimization + file transfer v2)
+> Последнее обновление: 2026-04-14 (NimBLE 2.x миграция завершена, light sleep, тест батареи 10-12ч)
 
 ---
 
@@ -852,8 +852,225 @@
 
 **Миграция на pioarduino (Path B — Light Sleep):**
 - Переход на Arduino 3.x + ESP-IDF 5.x для auto light sleep с BLE
-- Тесты (47 шт) проверят совместимость после миграции
+- Тесты (48 шт) проверят совместимость после миграции
 - См. `docs/PLAN_LIGHT_SLEEP.md`
+
+### 33. Тесты firmware — ГОТОВО ✓
+
+**Дата**: 2026-04-07
+
+**Native тесты (20 шт, pio test -e native):**
+- CRC16-CCITT: пустой буфер, single zero, known vector "123456789"→0x29B1, детерминизм, различие, большой буфер
+- Bitmap операции: clear, set/get, various positions, no duplicates, find_missing (none/some/all/max_limit), count_set
+- Размеры структур пакетов: Audio(39), Beacon(36), FileHeader(35), FileAck(107), FileEnd(5)
+- utils.h — вынесены чистые функции (CRC16, bitmap) для тестируемости
+
+**Embedded тесты (28 шт, pio test -e test_embedded):**
+- CPU: частота 160 МГц (тест прошёл, но BLE Advertising крашится — подтверждение блокера)
+- GPIO: LED(35), кнопка(0), Vext(36)
+- OLED: init, sleep/wake, show message
+- Батарея: напряжение 3.0-4.5V, процент 0-255
+- Heap: >100 КБ свободно, malloc 200 КБ + write pattern
+- WiFi: безопасное отключение WIFI_OFF
+- LoRa (10 тестов): init, mutex, set channel (valid/invalid), frequency mapping, TX power, start receive, send small packet, power mode continuous/sleep, send wake
+- BLE: init, PIN <10000, not connected
+- Beacon: init, callsign, send
+
+**Файлы:** firmware/test/test_native/test_main.cpp (199 строк), firmware/test/test_embedded/test_hardware.cpp (289 строк)
+**platformio.ini:** `[env:native]` test_build_src=false, `[env:test_embedded]` test_build_src=true + PIO_UNIT_TESTING
+
+### 34. Миграция на pioarduino + NimBLE 2.x + Power Optimization — В РАБОТЕ
+
+**Дата**: 2026-04-08
+
+**Контекст**: полевой тест показал 12 часов на 1200 мА·ч ≈ 100 мА среднее (ожидалось 20-28 мА).
+Подключили Serial — обнаружили `[Power] esp_pm_configure failed: 0x106` (NOT_SUPPORTED).
+
+**Причина**: `custom_sdkconfig` был в `[common]`, но НЕ наследовался в `[env:heltec_wifi_lora_32_V3]`.
+`CONFIG_PM_ENABLE` отсутствует в предсобранных Arduino 3.x libs → esp_pm_configure() — заглушка.
+
+**Попытка исправить custom_sdkconfig**: добавлен `custom_sdkconfig = ${common.custom_sdkconfig}` в env V3.
+Результат: pioarduino 55.03.37 не компилирует IDF 5.5.2 из исходников:
+- `esp_adapter.c`: `os_get_time`, `os_get_random` undeclared (include path баг)
+- `eloop.c`: `os_reltime`, `os_semphr_give` undeclared (та же проблема)
+- `esp_insights`/`esp_rainmaker`: missing `.S` files from `target_add_binary_data`
+- **Вердикт**: custom_sdkconfig с pioarduino 55.03.37 + IDF 5.5.2 не работает. Light sleep отложен.
+- Патч `esp_adapter.c` (forward declarations) решает одну ошибку, но за ней десятки других.
+
+**Что сделано (софтверные оптимизации, без light sleep):**
+
+**platformio.ini:**
+- `platform` → pioarduino (Arduino 3.x + ESP-IDF 5.x)
+- `NimBLE-Arduino` 1.4.x → **2.5.0** (новый API)
+- `custom_sdkconfig` подготовлен в `[common]`, но закомментирован в env V3 (см. выше)
+- Добавлен `gen_cert_stubs.py` — workaround для pioarduino `target_add_binary_data` (пока не нужен)
+
+**ble_service.cpp — NimBLE 2.x API миграция:**
+- `ble_gap_conn_desc*` → `NimBLEConnInfo&`
+- `std::string` → `NimBLEAttValue` для getValue()
+- `ESP_PWR_LVL_P6` → `NimBLEDevice::setPower(6)`
+- `setScanResponse(false)` → `enableScanResponse(false)`
+- `setMinPreferred/setMaxPreferred` → `setPreferredParams(160, 320)`
+- Добавлен `pServer->advertiseOnDisconnect(true)` (NimBLE 2.x не рестартует advertising автоматически)
+- Убран ручной `NimBLEDevice::startAdvertising()` из onDisconnect
+
+**main.cpp — Power Management + Duty Cycle + Wake Packet:**
+- `setupPowerManagement()` вызывает `esp_pm_configure()` — пока возвращает 0x106 (NOT_SUPPORTED без custom_sdkconfig)
+- Добавлен `esp_sleep_enable_bt_wakeup()`, GPIO wakeup: DIO1(14) + кнопка USER(0)
+
+**main.cpp — LoRa duty cycle (АКТИВИРОВАНО):**
+- После 10 сек idle при BLE connected → `LORA_POWER_DUTY_CYCLE_RX` (аппаратный SX1262 duty cycle)
+- При получении любого LoRa пакета → мгновенный возврат в `LORA_POWER_CONTINUOUS_RX`
+- При PTT/file transfer → continuous RX (duty cycle не включается)
+- Без BLE → `LORA_POWER_SLEEP` (standby, только beacon TX)
+
+**main.cpp — PTT wake-пакет:**
+- При `BLE_CMD_PTT_START` отправляется аудио пакет с `PKT_FLAG_PTT_START` + **длинная преамбула (32)**
+- Будит приёмники из duty cycle перед началом голосовой передачи
+- Приёмник получает wake-пакет → переключается в continuous RX → ловит все последующие аудио пакеты с короткой преамбулой
+
+**main.cpp — Таймауты оптимизированы:**
+- loraTask idle: 50мс → **500мс** (CPU просыпается в 10× реже, DIO1 ISR по-прежнему будит мгновенно)
+- BLE STATUS_UPDATE: 2 сек → **10 сек** (реже будит BLE radio)
+- Arduino loop(): 200мс → **500мс** (кнопка/OLED)
+
+**Тестирование 2026-04-08:**
+- Serial лог подтверждает: BLE connected → CONTINUOUS_RX → idle 10 сек → DUTY_CYCLE_RX ✓
+- Beacon от второго устройства: получен в DUTY_CYCLE (long preamble) → переход в CONTINUOUS_RX ✓
+- Без BLE → STANDBY ✓
+- Отправка файла (24.6 КБ, 206 чанков): ACCEPTED → SENDING → ACK received → **DELIVERED** за 42 сек ✓
+- PTT и сообщения: нужен полевой тест на расстоянии
+
+**Ожидаемое потребление (без light sleep, с duty cycle):**
+| Состояние | Оценка | Время на 1200 мА·ч |
+|-----------|--------|---------------------|
+| BLE connected, idle (duty cycle) | ~40-60 мА | ~20-30 ч |
+| BLE disconnected (standby) | ~6-10 мА | ~120-200 ч |
+| С light sleep (будущее) | ~10-18 мА | ~67-120 ч |
+
+**Блокер для light sleep:**
+pioarduino 55.03.37 не поддерживает `custom_sdkconfig` корректно (IDF 5.5.2 WiFi/WPA supplicant не компилируется из исходников). Варианты:
+1. Ждать обновлённую версию pioarduino с исправленным IDF
+2. Собирать IDF libs отдельно через `idf.py` и подменять
+3. Попробовать другую версию pioarduino (51.x / 53.x)
+
+### 35. Баг: ACK не доходит при отправке с MeshTRX-6770 — НЕ РЕШЕНО
+
+**Дата**: 2026-04-08
+
+**Симптом**: при отправке файла с 6770→7E88, файл доходит полностью (0 потерь), но ACK от приёмника (7E88) не принимается отправителем (6770). Таймаут 30 сек → FAILED. В обратном направлении (7E88→6770) ACK приходит и файл помечается DELIVERED.
+
+**Подтверждено Serial логами обоих устройств:**
+
+*На приёмнике (7E88) — всё работает:*
+```
+[File] RX start: i.jpeg (18275 bytes, 153 chunks)
+[LoRa RX] type=0xC1 ... (153 чанков, 0 потерь)
+[File] RX all chunks: i.jpeg (153/153) — waiting for FILE_END
+[File] RX complete via FILE_END: i.jpeg (18275 bytes)
+[File] Sending ACK (long preamble)
+[File] Sent to phone OK
+```
+
+*На отправителе (6770) — ACK не приходит:*
+```
+[FileSend] Starting: i.jpeg (18275 bytes, 153 chunks)
+[LoRa] Power: CONTINUOUS_RX
+[FileSend] FILE_END sent, waiting for ACK...
+[LoRa] RX restarted by loraTask    ← 15 перезапусков RX за 30 сек
+...
+[FileSend] ACK timeout
+[FileSend] FAILED (61306 ms, 0 NACK rounds)
+```
+
+**Что проверено (всё не помогло):**
+1. ~~`loraStartReceive()` из fileSendTask (Core 1)~~ — заменён на флаг `loraNeedRxRestart`, loraTask (Core 0) перезапускает RX
+2. ~~Периодический перезапуск RX каждые 2 сек в цикле ожидания ACK~~ — 15 перезапусков, ни один пакет не получен
+3. ~~Duty cycle мешает приёму~~ — CONTINUOUS_RX подтверждён логом
+4. ~~Радио не в RX~~ — `[LoRa] RX restarted by loraTask` подтверждает startReceive()
+
+**Характеристики проблемы:**
+- Направление 6770→7E88 (данные): работает идеально, 0 потерь, RSSI -47...-55
+- Направление 7E88→6770 (данные): работает идеально, 0 потерь
+- Направление 7E88→6770 (ACK после файла 7E88→6770): **работает** ✓
+- Направление 7E88→6770 (ACK после файла 6770→7E88): **НЕ работает** ✗
+- При этом beacons от 7E88 на 6770 приходят нормально (вне окна file transfer)
+- RSSI отличный (-28...-59 dBm), TX power 1 dBm, расстояние ~1м
+
+**Гипотезы для следующей сессии:**
+1. **Устройства на РАЗНОЙ прошивке** — 7E88 прошит ранее (до loraNeedRxRestart), 6770 — позже. Нужно прошить оба одинаково и протестировать.
+2. **Cross-core SPI race**: fileSendTask (Core 1) вызывает `loraSend()` через SPI, затем loraTask (Core 0) вызывает `loraStartReceive()` через тот же SPI. Mutex защищает, но возможны тонкие проблемы с DMA/кешем.
+3. **RadioLib state**: после `loraSend()` из Core 1 RadioLib/SX1262 может оставаться в неконсистентном состоянии, и `radio.startReceive()` из Core 0 не работает корректно.
+4. **DIO1 ISR не срабатывает**: ISR привязана к DIO1 через RadioLib. После `loraSend()` DIO1 переключается с onTxDone на onRxDone. Может быть edge case с пропуском прерывания.
+5. **Аппаратная проблема 6770**: возможна разница в кристалле/PA/настройке приёмника именно 6770.
+
+**Текущее состояние кода (незакоммичено):**
+- `loraNeedRxRestart` — volatile bool флаг, fileSendTask ставит, loraTask обрабатывает
+- fileSendTask НЕ вызывает `loraStartReceive()` напрямую (всё через флаг)
+- Периодический перезапуск RX каждые 2 сек в ACK wait loop
+- `loraSetPowerMode(CONTINUOUS_RX)` вызывается в начале fileSendTask
+
+**План для следующей сессии:**
+1. Прошить ОБА устройства одинаковой прошивкой
+2. Тест в обоих направлениях: 7E88→6770 и 6770→7E88
+3. Если 6770→7E88 всё ещё fail — добавить лог в ACK wait: проверить `radio.getModemStatus()` или аналог для подтверждения что SX1262 реально в RX
+4. Попробовать вариант: fileSendTask ставит FILE_END в очередь, loraTask отправляет его (весь SPI доступ с Core 0)
+5. Попробовать вариант: после loraSend() в fileSendTask вызвать `radio.standby()` + задержка + затем флаг на loraTask
+
+---
+
+### 36. NimBLE 2.x миграция + power management — ГОТОВО ✓
+
+**Дата**: 2026-04-14
+
+**Что сделано:**
+- **NimBLE-Arduino 2.5.0** — полная миграция API в `ble_service.cpp`:
+  - `ble_gap_conn_desc*` → `NimBLEConnInfo&`
+  - `setPower(ESP_PWR_LVL_P6)` → `setPower(6)`
+  - `advertiseOnDisconnect(true)` — авто-рестарт advertising
+  - `enableScanResponse()` / `setPreferredParams()` — новый API
+- **pioarduino** (platform-espressif32 stable) — замена стандартной espressif32
+- **custom_sdkconfig** для V4/test_embedded:
+  - `CONFIG_PM_ENABLE=y` + `CONFIG_FREERTOS_USE_TICKLESS_IDLE=y`
+  - `CONFIG_BT_CTRL_MODEM_SLEEP=y` + modem sleep mode 1
+  - `CONFIG_BT_CTRL_MAIN_XTAL_PU_DURING_LIGHT_SLEEP=y`
+  - `CONFIG_ESP_PHY_MAC_BB_PD=y` — power down MAC/BB during sleep
+- **Auto light sleep** в `main.cpp`: `esp_pm_configure()` (240/80 МГц)
+- **BT wakeup**: `esp_sleep_enable_bt_wakeup()`
+- **Duty cycle RX**: idle 10 сек → DUTY_CYCLE_RX, активность → CONTINUOUS_RX
+- V3 env: `custom_sdkconfig` закомментирован (pioarduino не компилирует IDF из исходников)
+
+**Результат тестирования:**
+- Прошивка залита и протестирована на устройствах
+- Аккумулятор 1200 мАч: **10–12 часов** автономной работы
+- BLE, LoRa, OLED — всё работает стабильно
+
+---
+
+### Анализ энергопотребления — статус проблем (2026-04-08)
+
+**Проблема 1: LoRa duty cycle НЕ активирован — РЕШЕНО ✓**
+- Был комментарий `// Duty cycle отключён`. Теперь: idle 10 сек → DUTY_CYCLE_RX, активность → CONTINUOUS_RX.
+- PTT wake-пакет с длинной преамбулой будит приёмники перед голосом.
+
+**Проблема 2: loraTask будит Core 0 каждые 50мс — РЕШЕНО ✓**
+- Таймаут idle: 50мс → 500мс. DIO1 ISR по-прежнему будит мгновенно при пакете.
+
+**Проблема 3: Arduino loop() каждые 200мс — РЕШЕНО ✓**
+- Увеличен до 500мс.
+
+**Проблема 4: BLE STATUS_UPDATE каждые 2 сек — РЕШЕНО ✓**
+- Увеличен до 10 сек.
+
+**Проблема 5: Serial включён (debug build) — НЕ РЕШЕНО**
+- `NDEBUG` не определён. UART ~5 мА. Не критично пока идёт отладка.
+
+**Проблема 6: esp_pm_configure() не работает — РЕШЕНО ✓ (V4), НЕ РЕШЕНО (V3)**
+- V4: pioarduino + `custom_sdkconfig` с CONFIG_PM_ENABLE=y — light sleep работает.
+- V3: `custom_sdkconfig` закомментирован (pioarduino 55.03.37 не компилирует IDF из исходников).
+
+**Проблема 7: Serial.print без LOG_D — НЕ РЕШЕНО**
+- lora_radio.cpp, beacon.cpp используют `Serial.print()` напрямую. Не критично пока NDEBUG не включён.
 
 **Прочее:**
 - Pre-emphasis/de-emphasis фильтр (дополнительное улучшение разборчивости)
@@ -905,6 +1122,14 @@
 - `7273685` Task: file transfer v2 protocol design
 - `3fd25ce` File Transfer v2: ESP32 RAM buffering, autonomous LoRa TX with NACK retry
 - `70ee714` File Transfer v2: ACK delivery fixed, radio mutex, full working pipeline
+- `10c756a` Docs: PROJECT_LOG and SPEC updated for File Transfer v2, power optimization
+- `da04edd` Tests: embedded hardware tests + clean platformio.ini
+- `2dcba19` Tests: native unit tests + utils.h refactoring
+- `8ff7f18` Docs: Light Sleep implementation plan — Path A (manual) + Path B (pioarduino)
+- `bb18e06` Revert pioarduino: CONFIG_PM_ENABLE crashes BLE controller
+- `2a1b727` Revert CPU 160MHz: BLE controller crashes on non-240MHz
+- `8b4f5f3` Task: NimBLE migration to IDF 5.x — unlock light sleep and CPU scaling
+- (незакоммичено) NimBLE 2.x API migration, pioarduino + custom_sdkconfig, auto light sleep, duty cycle RX
 
 ---
 
