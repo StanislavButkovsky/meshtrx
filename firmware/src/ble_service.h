@@ -57,6 +57,8 @@
 extern bool bleConnected;
 
 void bleInit();
+void bleStartAdvertising();
+void bleStopAdvertising();
 bool bleSendNotify(uint8_t* data, size_t len);
 bool bleIsConnected();
 String bleGetDeviceName();

@@ -190,7 +190,9 @@ void beaconTask(void* param) {
 
     // Отправить beacon
     beaconSendNow();
-    loraStartReceive();
+    if (bleIsConnected()) {
+      loraStartReceive();  // RX нужен только с BLE (loraTask обрабатывает)
+    }
 
     // Jitter ±15% от интервала
     uint32_t jitter = beaconIntervalSec * 150; // мс * 0.15

@@ -1,5 +1,6 @@
 #include "ble_service.h"
 #include "oled_display.h"
+#include "lora_radio.h"
 #include <esp_mac.h>
 
 bool bleConnected = false;
@@ -17,6 +18,8 @@ class ServerCallbacks : public NimBLEServerCallbacks {
     bleConnected = true;
     Serial.println("[BLE] Client connected");
     pServer->updateConnParams(connInfo.getConnHandle(), 48, 80, 2, 500);
+    // Разбудить loraTask из deep sleep (portMAX_DELAY)
+    if (loraTaskHandle) xTaskNotifyGive(loraTaskHandle);
     oledWake();
     oledShowMessage("BLE CONNECTED", "", 3000);
   }
@@ -82,7 +85,7 @@ void bleInit() {
   NimBLEAdvertising* pAdvertising = NimBLEDevice::getAdvertising();
   pAdvertising->addServiceUUID(SERVICE_UUID);
   pAdvertising->enableScanResponse(false);  // экономия ~1-2 мА
-  pAdvertising->setPreferredParams(160, 320);  // 100-200мс interval
+  pAdvertising->setPreferredParams(1600, 3200);  // 1000-2000мс interval (экономия BLE radio)
   pAdvertising->start();
 
   // PIN на OLED
@@ -91,6 +94,16 @@ void bleInit() {
   oledShowMessage(pinMsg, nameBuf, 10000);
 
   Serial.println("[BLE] Advertising started");
+}
+
+void bleStartAdvertising() {
+  NimBLEDevice::getAdvertising()->start();
+  Serial.println("[BLE] Advertising started");
+}
+
+void bleStopAdvertising() {
+  NimBLEDevice::getAdvertising()->stop();
+  Serial.println("[BLE] Advertising stopped");
 }
 
 uint32_t bleGetPin() {

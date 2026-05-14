@@ -1,6 +1,9 @@
 # PlatformIO
 firmware/.pio/
 firmware/.vscode/
+firmware/.dummy/
+firmware/managed_components/
+firmware/sdkconfig.defaults
 
 # Android
 android/MeshTRX/.gradle/

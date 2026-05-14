@@ -252,8 +252,8 @@ void oledRepeaterTxBlink(bool on) {
 void oledWake() {
   if (!oledAwake) {
     digitalWrite(36, LOW);   // включить Vext
-    delay(50);
-    u8g2.setPowerSave(0);    // включить дисплей
+    delay(100);
+    u8g2.begin();            // полная реинициализация после power off
     oledAwake = true;
   }
   oledSleepAt = millis() + OLED_TIMEOUT_MS;

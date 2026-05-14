@@ -175,31 +175,42 @@ static void loadSettings();
 static void handleUserButton();
 
 // ================================================================
-// Power Management — auto light sleep + BLE modem sleep
+// Power Management — deep sleep
 // ================================================================
+#define DEEP_SLEEP_SEC         10     // 10 сек deep sleep
+#define BLE_BOOT_SEARCH_MS     30000  // 30 сек после boot/кнопки
+#define BLE_WAKE_SEARCH_MS     3000   // 3 сек после timer/LoRa wake
+#define BEACON_WAKE_CYCLES     30     // beacon каждые 30 пробуждений (~5 мин)
+
+// RTC memory — сохраняется между deep sleep циклами
+RTC_DATA_ATTR static uint8_t sleepCycleCount = 0;
+RTC_DATA_ATTR static bool wasDeepSleep = false;
+
 static void setupPowerManagement() {
-  // Auto light sleep: CPU засыпает когда все задачи заблокированы
-  esp_pm_config_t pm = {
-    .max_freq_mhz = 240,
-    .min_freq_mhz = 80,
-    .light_sleep_enable = true
-  };
-  esp_err_t err = esp_pm_configure(&pm);
-  if (err == ESP_OK) {
-    LOG_D("[Power] Auto light sleep ENABLED (240/80 MHz)");
-  } else {
-    LOG_F("[Power] esp_pm_configure failed: 0x%x\n", err);
+  LOG_D("[Power] Deep sleep mode (timer + button wakeup)");
+}
+
+static void enterDeepSleep() {
+  // Beacon раз в BEACON_WAKE_CYCLES
+  if (++sleepCycleCount >= BEACON_WAKE_CYCLES) {
+    sleepCycleCount = 0;
+    beaconSendNow();
+    LOG_D("[Sleep] Beacon sent before deep sleep");
   }
 
-  // GPIO wakeup: LoRa DIO1 + кнопка USER
-  gpio_wakeup_enable(GPIO_NUM_14, GPIO_INTR_HIGH_LEVEL);  // LoRa DIO1
-  gpio_wakeup_enable(GPIO_NUM_0, GPIO_INTR_LOW_LEVEL);    // кнопка USER
-  esp_sleep_enable_gpio_wakeup();
+  bleStopAdvertising();
+  oledOff();
+  wasDeepSleep = true;
 
-  // BLE wakeup
-  esp_sleep_enable_bt_wakeup();
+  LOG_F("[Sleep] Deep sleep %d sec...\n", DEEP_SLEEP_SEC);
+  Serial.flush();
 
-  LOG_D("[Power] GPIO + BT wakeup configured");
+  // Wakeup sources: таймер + кнопка USER (GPIO0 через EXT1, low level)
+  esp_sleep_enable_timer_wakeup((uint64_t)DEEP_SLEEP_SEC * 1000000ULL);
+  esp_sleep_enable_ext1_wakeup(BIT(GPIO_NUM_0), ESP_EXT1_WAKEUP_ALL_LOW);
+
+  esp_deep_sleep_start();
+  // ← сюда не вернёмся, reboot при пробуждении
 }
 
 // ================================================================
@@ -237,8 +248,13 @@ void setup() {
   senderMac[0] = mac[4];
   senderMac[1] = mac[5];
 
-  // OLED
+  // OLED — не включать экран при пробуждении из deep sleep (экономия)
+  esp_sleep_wakeup_cause_t wakeCause = esp_sleep_get_wakeup_cause();
+  bool fromDeepSleepTimer = (wakeCause == ESP_SLEEP_WAKEUP_TIMER);
   oledInit();
+  if (fromDeepSleepTimer) {
+    oledOff();  // сразу погасить — boot из deep sleep по таймеру
+  }
 
   // Проверить режим ретранслятора
   repeaterInit();
@@ -326,7 +342,7 @@ void loop() {
     callTick();
   }
 
-  delay(500);  // 500мс — экономия CPU, кнопка реагирует приемлемо
+  delay(bleConnected ? 500 : 30000);
 }
 #endif // PIO_UNIT_TESTING
 
@@ -410,18 +426,45 @@ static void handleUserButton() {
 static void loraTaskFunc(void* param) {
   LOG_D("[LoRa Task] Started on Core 0 (event-driven)");
 
+  // После загрузки — ждать подключения телефона
+  esp_sleep_wakeup_cause_t bootCause = esp_sleep_get_wakeup_cause();
+  bool fromDeepSleep = (bootCause == ESP_SLEEP_WAKEUP_TIMER || bootCause == ESP_SLEEP_WAKEUP_GPIO);
+  uint32_t searchMs = fromDeepSleep ? BLE_WAKE_SEARCH_MS : BLE_BOOT_SEARCH_MS;
+
+  // Кнопка разбудила — долгий поиск
+  if (bootCause == ESP_SLEEP_WAKEUP_GPIO) {
+    searchMs = BLE_BOOT_SEARCH_MS;
+    oledWake();
+    LOG_D("[Sleep] Woke by BUTTON — BLE search 30s");
+  } else if (fromDeepSleep) {
+    LOG_D("[Sleep] Woke by timer — BLE search 3s");
+  } else {
+    LOG_D("[Sleep] Cold boot — BLE search 30s");
+  }
+
+  uint32_t bootWait = millis();
+  while (!bleConnected && (millis() - bootWait) < searchMs) {
+    vTaskDelay(pdMS_TO_TICKS(100));
+  }
+
+  // Не подключился — deep sleep
+  if (!bleConnected) {
+    enterDeepSleep();
+    // ← не вернёмся
+  }
+  LOG_D("[Sleep] Phone connected! Normal mode.");
+
   uint8_t rxBuf[222];
   LoRaAudioPacket txAudioPkt;
   LoRaTextPacket txTextPkt;
 
   while (true) {
-    // BLE не подключен и не ретранслятор — LoRa standby
+    // BLE отключился — deep sleep
     if (!bleConnected && !repeaterIsEnabled()) {
-      if (loraGetPowerMode() != LORA_POWER_SLEEP) {
-        loraSetPowerMode(LORA_POWER_SLEEP);
-      }
-      vTaskDelay(pdMS_TO_TICKS(1000));
-      continue;
+      LOG_D("[Sleep] BLE disconnected — entering deep sleep");
+      loraSetPowerMode(LORA_POWER_SLEEP);
+      enterDeepSleep();
+      // ← не вернёмся
     }
 
     // BLE подключен, но были в sleep — проснуться
@@ -970,9 +1013,13 @@ static void bleTaskFunc(void* param) {
       lastStatusMs = nowMs;
     }
 
-    // Idle → спать дольше (1 сек), active → 500мс
-    bool isActive = pttActive || fileTxActive || (fileState == FILE_STATE_RECEIVING) || oledIsAwake();
-    vTaskDelay(pdMS_TO_TICKS(isActive ? 500 : 1000));
+    // Без BLE — спать долго (loraTask управляет light sleep)
+    if (!bleConnected) {
+      vTaskDelay(pdMS_TO_TICKS(30000));
+    } else {
+      bool isActive = pttActive || fileTxActive || (fileState == FILE_STATE_RECEIVING) || oledIsAwake();
+      vTaskDelay(pdMS_TO_TICKS(isActive ? 500 : 1000));
+    }
   }
 }
 

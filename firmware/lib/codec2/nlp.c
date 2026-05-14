@@ -36,7 +36,7 @@
 #include <stdlib.h>
 
 #include "machdep.h"
-#include "os.h"
+#include "codec2_os_filter.h"
 
 /*---------------------------------------------------------------------------*\
 
