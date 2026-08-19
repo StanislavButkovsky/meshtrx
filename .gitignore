@@ -41,3 +41,6 @@ ios/MeshTRX/DerivedData/
 .venv-test/
 firmware/test/harness/vendor/
 __pycache__/
+
+# Next.js / TypeScript
+web/tsconfig.tsbuildinfo

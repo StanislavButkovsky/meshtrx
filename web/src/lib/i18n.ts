@@ -94,6 +94,25 @@ export const translations = {
   'dl.step2.title': { ru: 'Разрешите установку', en: 'Allow installation' },
   'dl.step2.desc': { ru: 'В настройках Android разрешите установку из неизвестных источников для браузера.', en: 'In Android settings, allow installation from unknown sources for the browser.' },
   'dl.step3.title': { ru: 'Установите приложение', en: 'Install the app' },
+  'dl.feedback.title': { ru: 'Помогите проверить новую сборку', en: 'Help us test the new build' },
+  'dl.feedback.desc': {
+    ru: 'В этой версии переработано главное — связь между устройством и телефоном. Проверено на стенде из двух плат, но живой эфир, чужие стены и реальные телефоны всегда богаче любого стенда. Расскажите, как повело себя ваше устройство.',
+    en: 'This release reworks the core of the link between the device and the phone. It passed the two-board bench, but real air, real walls and real phones are always richer than any bench. Tell us how your device behaved.',
+  },
+  'dl.feedback.p1': {
+    ru: 'Держится ли связь с телефоном и восстанавливается ли она сама после разрыва',
+    en: 'Does the phone stay connected, and does the link recover on its own after a drop',
+  },
+  'dl.feedback.p2': {
+    ru: 'Доходят ли сообщения и вызовы, когда телефон собеседника отключён от устройства',
+    en: 'Do messages and calls arrive when the other side has no phone connected',
+  },
+  'dl.feedback.p3': {
+    ru: 'Разборчивость голоса и дальность в ваших условиях — с версией устройства (V3 или V4)',
+    en: 'Voice clarity and range in your conditions — mention your board version (V3 or V4)',
+  },
+  'dl.feedback.tg': { ru: 'Написать в Telegram', en: 'Write in Telegram' },
+  'dl.feedback.gh': { ru: 'Сообщить об ошибке на GitHub', en: 'Report an issue on GitHub' },
   'dl.step3.desc': { ru: 'Откройте скачанный файл и следуйте инструкции установки.', en: 'Open the downloaded file and follow the installation instructions.' },
   'dl.step4.title': { ru: 'Подключите модуль', en: 'Connect the module' },
   'dl.step4.desc': { ru: 'Включите Bluetooth, откройте MeshTRX и подключитесь к Heltec V3.', en: 'Enable Bluetooth, open MeshTRX and connect to Heltec V3.' },

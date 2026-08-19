@@ -5,6 +5,7 @@ import FirmwareDownload from '@/components/download/FirmwareDownload';
 import QrCode from '@/components/download/QrCode';
 import InstallSteps from '@/components/download/InstallSteps';
 import Changelog from '@/components/download/Changelog';
+import Feedback from '@/components/download/Feedback';
 import { useLanguage } from '@/components/LanguageProvider';
 
 export default function DownloadPage() {
@@ -23,6 +24,7 @@ export default function DownloadPage() {
           <QrCode />
         </div>
         <FirmwareDownload />
+        <Feedback />
         <InstallSteps />
         <Changelog />
       </div>
