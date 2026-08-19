@@ -44,3 +44,7 @@ __pycache__/
 
 # Next.js / TypeScript
 web/tsconfig.tsbuildinfo
+
+# Окружение настольного клиента
+.venv-desktop/
+.venv/
