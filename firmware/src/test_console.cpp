@@ -384,6 +384,27 @@ static void handleLine(char* line) {
     return;
   }
 
+  // --- Управление внешним усилителем V4 вручную ---
+  // Уровни GC1109 подобраны по документации, но проверить их можно только
+  // замером: команда меняет пины на лету, а RX STATS показывает результат.
+  if (strcmp(cmd, "FEM") == 0) {
+#ifdef BOARD_V4
+    char* a1 = nextTok(&p);
+    char* a2 = nextTok(&p);
+    char* a3 = nextTok(&p);
+    if (a1 && a2 && a3) {
+      digitalWrite(PA_FEM_POWER, atoi(a1) ? HIGH : LOW);
+      digitalWrite(PA_FEM_EN,    atoi(a2) ? HIGH : LOW);
+      digitalWrite(PA_FEM_CTX,   atoi(a3) ? HIGH : LOW);
+    }
+    evt("EVT FEM power=%d en=%d ctx=%d\n",
+      digitalRead(PA_FEM_POWER), digitalRead(PA_FEM_EN), digitalRead(PA_FEM_CTX));
+#else
+    evt("EVT FEM board=v3 note=no_fem\n");
+#endif
+    return;
+  }
+
   // --- Duty cycle RX: включение вручную, чтобы проверить режим отдельно ---
   if (strcmp(cmd, "DUTY") == 0) {
     char* arg = nextTok(&p);
