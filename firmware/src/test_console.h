@@ -40,6 +40,7 @@ bool testHookPtt(bool on);
 bool testHookSendFile(uint8_t fileType, uint32_t size, uint16_t dest);
 bool testHookCall(const char* kind, const uint8_t* target4);
 bool testHookCallResponse(const char* kind, uint8_t seq);
+bool testHookSetChannel(uint8_t ch);
 void testHookInfo();
 uint8_t testHookCurrentChannel();
 uint32_t testHookBootCount();

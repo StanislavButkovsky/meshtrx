@@ -1836,6 +1836,17 @@ bool testHookCallResponse(const char* kind, uint8_t seq) {
   return false;
 }
 
+bool testHookSetChannel(uint8_t ch) {
+  // Канал живёт в двух местах: частота радио и поле channel в пакетах.
+  // Консоль меняла только частоту, из-за чего устройства слышали друг друга,
+  // но отбрасывали пакеты как «чужой канал» — и это выглядело как потеря связи.
+  if (ch >= NUM_CHANNELS) return false;
+  currentChannel = ch;
+  bool ok = loraSetChannel(ch);
+  loraStartReceive();
+  return ok;
+}
+
 void testHookInfo() {
   // id печатаем ровно в том виде, в каком его принимает parseDest: как
   // 16-битное значение little-endian. Раньше печатались байты по порядку,

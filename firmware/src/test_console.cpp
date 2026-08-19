@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include "test_console.h"
 #include "packet.h"
 #include "lora_radio.h"
@@ -12,6 +13,23 @@
 #include "utils.h"
 #include <esp_random.h>
 #include <freertos/FreeRTOS.h>
+
+// Событие печатаем одной операцией записи и с принудительным сбросом буфера.
+// На V4 консоль идёт через нативный USB CDC, и серия отдельных printf рвалась
+// посередине: строки склеивались и обрезались, а стенд читал это как потерю
+// пакета, которой на самом деле не было.
+static void evt(const char* fmt, ...) {
+  char buf[320];
+  va_list ap;
+  va_start(ap, fmt);
+  int n = vsnprintf(buf, sizeof(buf), fmt, ap);
+  va_end(ap);
+  if (n < 0) return;
+  if (n > (int)sizeof(buf) - 1) n = sizeof(buf) - 1;
+  Serial.write((const uint8_t*)buf, n);
+  Serial.flush();
+}
+
 #include <freertos/task.h>
 
 // ================================================================
@@ -152,7 +170,7 @@ void testConsoleOnLoRaRx(const uint8_t* data, int len, int16_t rssi, int8_t snr)
     rxLastAudioSeq = seq;
   }
 
-  Serial.printf("EVT LORA_RX type=%02X len=%d rssi=%d snr=%d seq=%d t=%lu\n",
+  evt("EVT LORA_RX type=%02X len=%d rssi=%d snr=%d seq=%d t=%lu\n",
     type, len, rssi, snr, seq, (unsigned long)now);
 
   // Текст выводим отдельно — стенд сверяет целостность (в т.ч. UTF-8)
@@ -160,10 +178,14 @@ void testConsoleOnLoRaRx(const uint8_t* data, int len, int16_t rssi, int8_t snr)
     const LoRaTextPacket* t = (const LoRaTextPacket*)data;
     size_t tlen = strnlen((const char*)t->text, 85);
     uint16_t crc = crc16_ccitt(t->text, tlen);
-    Serial.printf("EVT TEXT_RX seq=%d dest=%04X len=%u crc=%04X hex=",
-      t->seq, (unsigned)(t->dest[0] | (t->dest[1] << 8)), (unsigned)tlen, crc);
-    for (size_t i = 0; i < tlen && i < 90; i++) Serial.printf("%02X", t->text[i]);
-    Serial.println();
+    char hex[181];
+    size_t hn = 0;
+    for (size_t i = 0; i < tlen && i < 90; i++)
+      hn += snprintf(hex + hn, sizeof(hex) - hn, "%02X", t->text[i]);
+    hex[hn] = 0;
+    evt("EVT TEXT_RX seq=%d dest=%04X len=%u crc=%04X hex=%s\n",
+      t->seq, (unsigned)(t->dest[0] | (t->dest[1] << 8)),
+      (unsigned)tlen, crc, hex);
   }
 }
 
@@ -286,8 +308,7 @@ static void handleLine(char* line) {
     char* arg = nextTok(&p);
     if (!arg) { Serial.println("EVT ERR cmd=CH reason=no_arg"); return; }
     uint8_t ch = (uint8_t)atoi(arg);
-    bool ok = loraSetChannel(ch);
-    if (ok) loraStartReceive();
+    bool ok = testHookSetChannel(ch);
     Serial.printf("EVT CH ch=%d freq=%.3f ok=%d\n", ch, loraGetFrequency(ch), ok ? 1 : 0);
     return;
   }
