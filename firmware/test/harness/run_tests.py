@@ -57,6 +57,45 @@ def test_ping(A: Device, B: Device):
     return ia, ib
 
 
+def calibrate_link(A: Device, B: Device) -> int:
+    """Подобрать мощность так, чтобы канал был уверенным, но не перегруженным.
+
+    Минимальная мощность выбиралась под две платы, лежащие рядом. Стоит их
+    разнести или взять V4 с внешним усилителем — и картина меняется на десятки
+    децибел: слишком сильный сигнал насыщает входной тракт, слишком слабый даёт
+    случайные потери, и то и другое выглядит как дефект протокола. Поэтому
+    уровень подбираем замером, а не константой.
+    """
+    print("\n[0] Калибровка канала")
+    target_lo, target_hi = -70, -40          # рабочее окно RSSI
+    dbm = A.info().int("pwr")
+    for attempt in range(5):
+        B.drain()
+        for i in range(4):
+            A.send_text("BCAST", f"CAL{i}")
+            time.sleep(0.4)
+        rssi = [e.int("rssi") for e in B.collect("LORA_RX", 1.5)
+                if e.get("type") == T_TEXT]
+        if not rssi:
+            avg = -120
+        else:
+            avg = sum(rssi) // len(rssi)
+        print(f"    мощность {dbm:+d} дБм → принято {len(rssi)}/4, RSSI {avg} дБм")
+        if len(rssi) == 4 and target_lo <= avg <= target_hi:
+            check("канал в рабочем окне", True, f"{avg} дБм при {dbm:+d} дБм")
+            return dbm
+        step = 6 if avg < target_lo else -6
+        new_dbm = max(-9, min(14, dbm + step))
+        if new_dbm == dbm:
+            break
+        dbm = new_dbm
+        A.set_power(dbm); B.set_power(dbm)
+        time.sleep(0.5)
+    check("канал в рабочем окне", False,
+          f"не удалось выйти на рабочий уровень, остались на {dbm:+d} дБм")
+    return dbm
+
+
 def test_text(A: Device, B: Device, count: int = 20):
     print(f"\n[2] Текст: {count} broadcast-сообщений A→B")
     B.drain()
@@ -437,6 +476,7 @@ def main():
         print(f"Тестовый режим: A tx={ta.get('tx_power') if ta else '?'} дБм, "
               f"B tx={tb.get('tx_power') if tb else '?'} дБм")
         before = test_ping(A, B)
+        calibrate_link(A, B)
         if enabled("text"):     test_text(A, B)
         if enabled("voice"):    test_voice(A, B)
         if enabled("files"):    test_files(A, B)

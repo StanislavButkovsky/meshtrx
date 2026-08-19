@@ -27,7 +27,6 @@ static void evt(const char* fmt, ...) {
   if (n < 0) return;
   if (n > (int)sizeof(buf) - 1) n = sizeof(buf) - 1;
   Serial.write((const uint8_t*)buf, n);
-  Serial.flush();
 }
 
 #include <freertos/task.h>
@@ -598,6 +597,15 @@ static void handleLine(char* line) {
 void testConsoleInit() {
   lineLen = 0;
   statReset();
+#if ARDUINO_USB_CDC_ON_BOOT
+  // На V4 консоль идёт через USB CDC, и запись в переполненный буфер просто
+  // отбрасывается: радио принимало все 20 пакетов из 20, а до стенда доходило
+  // 13-18 событий — выглядело как потеря в эфире, которой не было.
+  // Большой буфер переживает пачку событий, короткий таймаут не даёт задаче
+  // приёма застрять на ожидании хоста.
+  Serial.setTxBufferSize(8192);
+  Serial.setTxTimeoutMs(20);
+#endif
   Serial.println("EVT CONSOLE_READY");
 }
 
