@@ -254,7 +254,10 @@ class BleManager(private val context: Context) {
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
             if (newState == BluetoothProfile.STATE_CONNECTED) {
                 Log.d(TAG, "Connected, discovering services")
+                // Таймаут не снимаем, а продлеваем: соединение установлено, но
+                // характеристик ещё нет — застрять можно и на этом этапе.
                 handler.removeCallbacks(connectTimeoutRunnable)
+                handler.postDelayed(connectTimeoutRunnable, 15_000)
                 gatt.requestMtu(128)
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 Log.d(TAG, "Disconnected (status=$status)")
@@ -272,10 +275,33 @@ class BleManager(private val context: Context) {
         }
 
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
-            if (status != BluetoothGatt.GATT_SUCCESS) return
-            val service = gatt.getService(SERVICE_UUID) ?: return
+            // Неудачный поиск сервисов раньше просто игнорировался: GATT оставался
+            // открытым без характеристик, разрыв не приходил, и переподключение
+            // не начиналось никогда — связь «пропадала и не восстанавливалась».
+            val service = if (status == BluetoothGatt.GATT_SUCCESS)
+                gatt.getService(SERVICE_UUID) else null
+            if (service == null) {
+                Log.w(TAG, "Service discovery failed (status=$status), closing GATT")
+                try { gatt.close() } catch (_: Exception) {}
+                bluetoothGatt = null
+                rxCharacteristic = null
+                txCharacteristic = null
+                handler.post { onDisconnected?.invoke() }
+                return
+            }
             rxCharacteristic = service.getCharacteristic(RX_CHAR_UUID)
             txCharacteristic = service.getCharacteristic(TX_CHAR_UUID)
+            if (rxCharacteristic == null || txCharacteristic == null) {
+                Log.w(TAG, "UART characteristics missing, closing GATT")
+                try { gatt.close() } catch (_: Exception) {}
+                bluetoothGatt = null
+                rxCharacteristic = null
+                txCharacteristic = null
+                handler.post { onDisconnected?.invoke() }
+                return
+            }
+
+            handler.removeCallbacks(connectTimeoutRunnable)  // характеристики есть
 
             txCharacteristic?.let { tx ->
                 gatt.setCharacteristicNotification(tx, true)

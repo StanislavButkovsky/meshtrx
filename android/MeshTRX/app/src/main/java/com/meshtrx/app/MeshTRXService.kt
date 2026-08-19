@@ -33,7 +33,6 @@ class MeshTRXService : Service() {
     private var pendingDeviceAddr: String? = null
     private var msgSeq = 0
     private var reconnectAttempts = 0
-    private val maxReconnectAttempts = 10
     private var wasConnected = false  // был ли подключён (для авто-реконнекта)
 
     override fun onCreate() {
@@ -97,8 +96,11 @@ class MeshTRXService : Service() {
                 voxEngine.reset()
             }
             updateNotification("Отключено")
-            // Авто-реконнект если связь была установлена ранее
-            if (wasConnected) {
+            // Переподключаемся и если соединение в этой сессии ещё ни разу не
+            // состоялось: сервис живёт дольше экрана, а сохранённое устройство —
+            // это явный выбор пользователя, а не случайная находка сканера.
+            val saved = prefs.getString("last_device_addr", null)
+            if (wasConnected || (saved != null && isDeviceAuthorized(saved))) {
                 scheduleReconnect()
             }
         }
@@ -196,22 +198,24 @@ class MeshTRXService : Service() {
     private val reconnectRunnable = Runnable { autoConnect() }
 
     private fun scheduleReconnect() {
-        if (reconnectAttempts >= maxReconnectAttempts) {
-            Log.d(TAG, "Max reconnect attempts reached ($maxReconnectAttempts)")
-            ServiceState.statusMessage.postValue("Нет связи")
-            updateNotification("Нет связи")
-            return
-        }
+        // Попытки не прекращаем никогда: раньше после десяти неудач сервис
+        // замолкал навсегда, и рация оставалась «мёртвой» до ручного
+        // переподключения — даже когда устройство снова появлялось рядом.
+        // Пользователь останавливает переподключение сам (stopReconnect).
         reconnectAttempts++
-        // Нарастающая задержка: 3, 5, 7, 10, 10, 10... сек
+        // Нарастающая задержка с потолком в минуту: часто в начале, редко потом
         val delaySec = when {
             reconnectAttempts <= 1 -> 3L
             reconnectAttempts <= 2 -> 5L
             reconnectAttempts <= 3 -> 7L
-            else -> 10L
+            reconnectAttempts <= 6 -> 10L
+            reconnectAttempts <= 10 -> 20L
+            reconnectAttempts <= 20 -> 30L
+            else -> 60L
         }
         Log.d(TAG, "Reconnect #$reconnectAttempts in ${delaySec}s")
         ServiceState.statusMessage.postValue("Переподключение #$reconnectAttempts через ${delaySec}с...")
+        if (reconnectAttempts > 3) updateNotification("Нет связи, переподключение...")
         handler.removeCallbacks(reconnectRunnable)
         handler.postDelayed(reconnectRunnable, delaySec * 1000)
     }
