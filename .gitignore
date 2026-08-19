@@ -36,3 +36,8 @@ ios/MeshTRX/DerivedData/
 /tmp/codec2_src/
 *.keystore
 *.jks
+
+# Тестовое окружение
+.venv-test/
+firmware/test/harness/vendor/
+__pycache__/
