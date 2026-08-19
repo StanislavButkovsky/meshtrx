@@ -55,6 +55,17 @@
 // UPLOAD_STATUS values: 0=ACCEPTED, 1=BUSY, 2=SENDING, 3=DELIVERED, 4=FAILED, 5=NO_MEMORY
 
 extern bool bleConnected;
+extern volatile bool bleConnEvent;
+// Статистика соединения (для диагностики разрывов)
+extern volatile uint32_t bleConnCount;
+extern volatile uint32_t bleDiscCount;
+extern volatile int      bleLastDiscReason;
+extern volatile uint32_t bleNotifyOk;
+extern volatile uint32_t bleNotifyFail;
+extern volatile uint32_t bleNotifyNoConn;
+extern volatile uint32_t bleNotifyRetry;
+extern volatile uint32_t bleLastConnMs;
+extern volatile uint32_t bleLastDiscMs;  // выставляется в onConnect, сбрасывается в bleTask
 
 void bleInit();
 void bleStartAdvertising();

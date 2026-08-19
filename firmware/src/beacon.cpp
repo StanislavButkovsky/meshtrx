@@ -188,11 +188,14 @@ void beaconTask(void* param) {
       locationRequested = false;
     }
 
-    // Отправить beacon
-    beaconSendNow();
-    if (bleIsConnected()) {
-      loraStartReceive();  // RX нужен только с BLE (loraTask обрабатывает)
+    // Не влезать в активную передачу: beacon посреди файла рвал приём
+    // у получателя (radio уходил в TX, чанки терялись, FILE_END не доходил).
+    for (int w = 0; w < 120 && loraAppBusy; w++) {
+      vTaskDelay(pdMS_TO_TICKS(500));   // ждать до 60 с
     }
+
+    // Отправить beacon — loraSendWake сам вернёт радио в приём
+    beaconSendNow();
 
     // Jitter ±15% от интервала
     uint32_t jitter = beaconIntervalSec * 150; // мс * 0.15

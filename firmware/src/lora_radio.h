@@ -5,12 +5,14 @@
 #define ENFORCE_DUTY_CYCLE  false
 #define TX_POWER_DBM        14
 #define MAX_RADIO_DBM       22   // SX1262 max output
+#define MIN_RADIO_DBM       -9   // SX1262 min output (тесты на столе)
 #ifdef BOARD_V4
   #define PA_GAIN_DB        6    // GC1109 PA gain
 #else
   #define PA_GAIN_DB        0    // V3 — без PA
 #endif
 #define MAX_TX_POWER_DBM    (MAX_RADIO_DBM + PA_GAIN_DB)
+#define MIN_TX_POWER_DBM    (MIN_RADIO_DBM + PA_GAIN_DB)
 #define DUTY_CYCLE_PERCENT  1
 #define NUM_CHANNELS        23
 #define DEFAULT_CHANNEL     0
@@ -53,6 +55,7 @@ extern volatile bool loraRxFlag;
 extern volatile bool loraTxDone;
 extern TaskHandle_t loraTaskHandle;  // для task notification из ISR
 extern SemaphoreHandle_t loraRadioMutex;  // mutex для доступа к радио
+extern volatile bool loraAppBusy;  // идёт PTT или файловая передача — beacon откладывается
 
 void loraInit();
 bool loraSetChannel(uint8_t ch);
@@ -71,5 +74,22 @@ uint8_t loraGetChannel();
 void loraSetPowerMode(LoRaPowerMode mode);
 LoRaPowerMode loraGetPowerMode();
 bool loraSendWake(uint8_t* data, size_t len);  // с длинной преамбулой
+// Диагностика состояния чипа (для тестовой консоли)
+uint16_t loraGetIrqStatus();
+// Учёт времени в режимах радио — основа для оценки среднего тока
+enum {
+  RADIO_ACC_STANDBY = 0,
+  RADIO_ACC_RX      = 1,
+  RADIO_ACC_TX      = 2,
+  RADIO_ACC_DUTY    = 3,
+  RADIO_ACC_COUNT   = 4
+};
+void loraGetRadioTime(uint32_t out[RADIO_ACC_COUNT], uint32_t* windowMs,
+                      uint32_t* txCount);
+void loraResetRadioTime();
+
+bool loraIsRxArmed();
+bool loraIsTxInProgress();
+
 void loraPaEnable();   // включить PA (V4)
 void loraPaDisable();  // выключить PA (V4) — экономия ~5-10 мА
