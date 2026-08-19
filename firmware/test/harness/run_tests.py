@@ -18,7 +18,7 @@ import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from device import Device  # noqa: E402
+from device import Device, discover_ports  # noqa: E402
 
 # Типы LoRa-пакетов (packet.h)
 T_AUDIO, T_TEXT, T_TEXT_ACK = "A0", "B0", "B1"
@@ -408,13 +408,19 @@ def test_edge_cases(A: Device, B: Device):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--ports", default="/dev/ttyUSB0,/dev/ttyUSB1")
+    ap.add_argument("--ports", default="",
+                    help="через запятую; по умолчанию — найденные ttyUSB/ttyACM")
     ap.add_argument("--only", default="",
                     help="ping,text,voice,files,beacon,idle,calls,channels,nack,load,edge")
     ap.add_argument("--logdir", default="/tmp/meshtrx-logs")
     args = ap.parse_args()
 
-    pa, pb = args.ports.split(",")
+    ports = ([x.strip() for x in args.ports.split(",")]
+             if args.ports else discover_ports(2))
+    if len(ports) < 2:
+        print(f"нужны две платы, найдено: {ports}")
+        return 1
+    pa, pb = ports
     os.makedirs(args.logdir, exist_ok=True)
     A = Device(pa, name="A", log_path=f"{args.logdir}/A.log")
     B = Device(pb, name="B", log_path=f"{args.logdir}/B.log")

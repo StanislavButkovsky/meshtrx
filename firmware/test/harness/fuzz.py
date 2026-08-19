@@ -18,7 +18,7 @@ import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from device import Device  # noqa: E402
+from device import Device, discover_ports  # noqa: E402
 
 TYPES = [0xA0, 0xB0, 0xB1, 0xC0, 0xC1, 0xC2, 0xC3, 0xD0,
          0xE0, 0xE1, 0xE2, 0xE3, 0xE4, 0xE5, 0xE6]
@@ -106,10 +106,16 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--rounds", type=int, default=200)
     ap.add_argument("--seed", type=int, default=1)
-    ap.add_argument("--ports", default="/dev/ttyUSB0,/dev/ttyUSB1")
+    ap.add_argument("--ports", default="",
+                    help="через запятую; по умолчанию — найденные ttyUSB/ttyACM")
     args = ap.parse_args()
 
-    pa, pb = args.ports.split(",")
+    ports = ([x.strip() for x in args.ports.split(",")]
+             if args.ports else discover_ports(2))
+    if len(ports) < 2:
+        print(f"нужны две платы, найдено: {ports}")
+        return 1
+    pa, pb = ports
     A = Device(pa, name="fuzzer")     # отправитель мусора
     B = Device(pb, name="target")     # цель
     rnd = random.Random(args.seed)

@@ -19,7 +19,7 @@ import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from device import Device          # noqa: E402
+from device import Device, discover_ports   # noqa: E402
 from ble_phone import (Phone, CMD_AUDIO_RX, CMD_PEER_SEEN,      # noqa: E402
                        CMD_RECV_MESSAGE, CMD_STATUS_UPDATE)
 
@@ -34,13 +34,17 @@ def check(name: str, ok: bool, detail: str = ""):
 
 async def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--target", default="/dev/ttyUSB1", help="устройство, к которому подключается телефон")
-    ap.add_argument("--peer", default="/dev/ttyUSB0", help="второе устройство — источник LoRa-трафика")
+    ap.add_argument("--target", default="", help="устройство, к которому подключается телефон")
+    ap.add_argument("--peer", default="", help="второе устройство — источник LoRa-трафика")
     ap.add_argument("--cycles", type=int, default=20)
     args = ap.parse_args()
 
-    target = Device(args.target, name="target")
-    peer = Device(args.peer, name="peer")
+    found = discover_ports(2)
+    if not (args.target and args.peer) and len(found) < 2:
+        print(f"нужны две платы, найдено: {found}")
+        return 1
+    target = Device(args.target or found[1], name="target")
+    peer = Device(args.peer or found[0], name="peer")
     t_all = time.time()
 
     try:

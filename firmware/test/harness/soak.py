@@ -19,7 +19,7 @@ import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from device import Device  # noqa: E402
+from device import Device, discover_ports  # noqa: E402
 
 
 def snapshot(dev: Device) -> dict:
@@ -51,7 +51,8 @@ def snapshot(dev: Device) -> dict:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--ports", default="/dev/ttyUSB0,/dev/ttyUSB1")
+    ap.add_argument("--ports", default="",
+                    help="через запятую; по умолчанию — найденные ttyUSB/ttyACM")
     ap.add_argument("--minutes", type=float, default=60.0)
     ap.add_argument("--interval", type=float, default=60.0, help="шаг замера, с")
     ap.add_argument("--csv", default="/tmp/meshtrx-soak.csv")
@@ -59,7 +60,12 @@ def main():
                     help="без трафика — проверяем только покой")
     args = ap.parse_args()
 
-    pa, pb = args.ports.split(",")
+    ports = ([x.strip() for x in args.ports.split(",")]
+             if args.ports else discover_ports(2))
+    if len(ports) < 2:
+        print(f"нужны две платы, найдено: {ports}")
+        return 1
+    pa, pb = ports
     A = Device(pa, name="A")
     B = Device(pb, name="B")
 

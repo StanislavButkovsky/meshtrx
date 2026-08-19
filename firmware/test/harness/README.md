@@ -18,8 +18,12 @@ PYTHONPATH=firmware/test/harness/vendor python3 firmware/test/harness/run_tests.
 ... run_tests.py --only text,voice
 ... run_tests.py --only files
 ... run_tests.py --only nack,load     # потери канала и конкурентная нагрузка
-... run_tests.py --ports /dev/ttyUSB0,/dev/ttyUSB1 --logdir /tmp/meshtrx-logs
+... run_tests.py --ports /dev/ttyUSB0,/dev/ttyACM0 --logdir /tmp/meshtrx-logs
 ```
+
+Порты искать не нужно: без `--ports` берутся найденные `ttyUSB*` и `ttyACM*` по порядку.
+V3 виден через мост как `/dev/ttyUSB*`, V4 отдаёт нативный USB и появляется как
+`/dev/ttyACM*` — смешанная пара работает так же, как две одинаковые платы.
 
 Логи обеих плат с метками времени пишутся в `--logdir` — по ним разбираются падения.
 

@@ -42,6 +42,14 @@ class Event:
         return f"<{self.name} {self.fields}>"
 
 
+def discover_ports(count: int = 2) -> list[str]:
+    """Найти подключённые платы: V3 отдаётся мостом (ttyUSB), V4 — нативным USB
+    (ttyACM). Порядок фиксируем сортировкой, чтобы прогоны были повторяемы."""
+    import glob
+    ports = sorted(glob.glob("/dev/ttyUSB*")) + sorted(glob.glob("/dev/ttyACM*"))
+    return ports[:count]
+
+
 class Device:
     def __init__(self, port: str, baud: int = 115200, name: str | None = None,
                  log_path: str | None = None):
