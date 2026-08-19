@@ -136,6 +136,32 @@ class FileProgress:
         self.percent = int(100 * self.done / self.total) if self.total else 0
 
 
+UPLOAD_STATUS = {
+    0: "принято",
+    1: "устройство занято другой передачей",
+    2: "передаётся в эфир",
+    3: "доставлено",
+    4: "не доставлено",
+    5: "не хватает памяти устройства",
+}
+
+
+@dataclass
+class UploadStatus:
+    """Ответ устройства на загрузку файла. Без него отказ выглядел молчанием:
+    клиент отправлял заголовок и ждал у моря погоды."""
+    code: int
+    session: int
+
+    @property
+    def text(self) -> str:
+        return UPLOAD_STATUS.get(self.code, f"код {self.code}")
+
+    @property
+    def accepted(self) -> bool:
+        return self.code in (0, 2, 3)
+
+
 @dataclass
 class IncomingFileHeader:
     file_type: int
@@ -230,9 +256,15 @@ def set_repeater(enabled: bool) -> bytes:
 
 def file_upload_start(name: str, file_type: int, size: int,
                       dest_id: str | None = None) -> bytes:
+    """Заголовок загрузки: cmd + тип + адрес + размер + имя, ровно 28 байт.
+
+    Порядок полей здесь не произволен — прошивка читает адрес до размера, и
+    перестановка приводит к молчаливому отказу: устройство просто не начинает
+    приём, ничего об этом не сообщая.
+    """
     name_b = name.encode()[:19].ljust(20, b"\x00")
     return (bytes([Cmd.FILE_UPLOAD_START, file_type & 0xFF])
-            + struct.pack("<I", size) + dest_bytes(dest_id) + name_b)
+            + dest_bytes(dest_id) + struct.pack("<I", size) + name_b)
 
 
 def file_upload_data(chunk: bytes) -> bytes:
@@ -307,6 +339,9 @@ def parse(data: bytes):
         return IncomingFileHeader(file_type=data[1], size=size, chunks=data[6],
                                   sender_id=_hex_id(data[7:9]),
                                   name=_cstr(data[9:29]))
+
+    if cmd == Cmd.FILE_UPLOAD_STATUS and len(data) >= 3:
+        return UploadStatus(code=data[1], session=data[2])
 
     if cmd == Cmd.FILE_DATA:
         return ("file_data", bytes(data[1:]))

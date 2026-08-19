@@ -75,6 +75,7 @@ class Client:
 
         self.ptt_active = False
         self.listen_all = True
+        self.upload_status: proto.UploadStatus | None = None
         self.mic_level = 0.0
         self._rx_file: FileTransfer | None = None
         self._seq = 0
@@ -203,7 +204,18 @@ class Client:
         self.transfers.append(transfer)
         self._emit("transfer", transfer)
 
+        self.upload_status = None
         self.link.send_sync(proto.file_upload_start(name, file_type, len(data), dest_id))
+        # Ждём ответа устройства: молча слать содержимое в занятое или
+        # переполненное устройство бессмысленно — оно всё равно его выбросит.
+        deadline = time.time() + 3
+        while time.time() < deadline and self.upload_status is None:
+            time.sleep(0.05)
+        if self.upload_status and not self.upload_status.accepted:
+            transfer.finished = True
+            self._emit("transfer_failed", (transfer, self.upload_status.text))
+            return transfer
+
         for off in range(0, len(data), chunk):
             self.link.send_sync(proto.file_upload_data(data[off:off + chunk]))
             transfer.done = min(off + chunk, len(data))
@@ -300,6 +312,10 @@ class Client:
             if self._rx_file:
                 self._rx_file.done, self._rx_file.total = event.done, event.total
                 self._emit("transfer", self._rx_file)
+
+        elif isinstance(event, proto.UploadStatus):
+            self.upload_status = event
+            self._emit("upload_status", event)
 
         elif isinstance(event, proto.IncomingFileHeader):
             self._rx_file = FileTransfer(name=event.name, size=event.size,
