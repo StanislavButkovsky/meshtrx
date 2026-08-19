@@ -28,7 +28,7 @@ export default function Feedback() {
           </li>
         ))}
       </ul>
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <a
           href={SITE.telegram}
           target="_blank"
@@ -37,14 +37,7 @@ export default function Feedback() {
         >
           {t('dl.feedback.tg')}
         </a>
-        <a
-          href={`${SITE.github}/issues/new`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="px-4 py-2 rounded-lg border border-border text-text-primary font-bold text-sm hover:border-accent transition"
-        >
-          {t('dl.feedback.gh')}
-        </a>
+        <span className="text-sm text-text-secondary">t.me/MeshTRX</span>
       </div>
     </div>
   );
