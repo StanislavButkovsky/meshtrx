@@ -72,6 +72,11 @@ class MainWindow(QMainWindow):
         # Устройство, с которым уже работали, подключаем сами: пользователю
         # не нужно каждый раз искать его в списке.
         QTimer.singleShot(300, self.start_up)
+        # Устройство освобождает канал от молчащего клиента, поэтому
+        # напоминаем о себе, даже когда пользователь просто слушает эфир.
+        self._keepalive = QTimer(self)
+        self._keepalive.timeout.connect(self.client.keepalive)
+        self._keepalive.start(20000)
 
     def start_up(self):
         last = self.config.last_device

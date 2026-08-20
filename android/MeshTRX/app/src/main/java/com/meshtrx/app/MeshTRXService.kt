@@ -17,6 +17,8 @@ class MeshTRXService : Service() {
         private const val TAG = "MeshTRXService"
         private const val NOTIF_CHANNEL = "meshtrx_service"
         private const val NOTIF_ID = 1
+        // Как часто напоминать устройству, что приложение живо
+        private const val KEEPALIVE_INTERVAL_MS = 15_000L
     }
 
     inner class LocalBinder : Binder() {
@@ -76,6 +78,8 @@ class MeshTRXService : Service() {
             wasConnected = true
             reconnectAttempts = 0
             handler.removeCallbacks(reconnectRunnable)
+            handler.removeCallbacks(keepAliveRunnable)
+            handler.postDelayed(keepAliveRunnable, KEEPALIVE_INTERVAL_MS)
             // Отправить GPS на ESP32 сразу при подключении
             sendGpsToDevice()
             pendingDeviceAddr?.let { addr ->
@@ -88,6 +92,7 @@ class MeshTRXService : Service() {
         }
 
         bleManager.onDisconnected = {
+            handler.removeCallbacks(keepAliveRunnable)
             ServiceState.connectionState.postValue(BleState.DISCONNECTED)
             ServiceState.statusMessage.postValue("Отключено")
             audioEngine.stopPlayback()
@@ -193,6 +198,18 @@ class MeshTRXService : Service() {
         prefs.edit().clear().apply()
         ServiceState.deviceName.value = ""
         startScan(showPicker = true)
+    }
+
+    // Устройство освобождает канал от молчащего клиента: иначе брошенное
+    // соединение делает рацию невидимой для всех остальных. Приложение может
+    // часами только слушать эфир, поэтому периодически напоминаем о себе.
+    private val keepAliveRunnable = object : Runnable {
+        override fun run() {
+            if (ServiceState.connectionState.value == BleState.CONNECTED) {
+                bleManager.requestSettings()
+            }
+            handler.postDelayed(this, KEEPALIVE_INTERVAL_MS)
+        }
     }
 
     private val reconnectRunnable = Runnable { autoConnect() }

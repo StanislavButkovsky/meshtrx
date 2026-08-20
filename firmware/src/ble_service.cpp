@@ -12,6 +12,11 @@ volatile uint32_t bleNotifyOk = 0;
 volatile uint32_t bleNotifyFail = 0;
 volatile uint32_t bleNotifyNoConn = 0;
 volatile uint32_t bleNotifyRetry = 0;
+volatile uint32_t bleAdvRestarts = 0;
+volatile uint32_t bleStaleLinks = 0;
+volatile uint32_t bleLastRxMs = 0;
+volatile uint32_t bleIdleDrops = 0;
+volatile bool bleLinkAuthorized = false;
 volatile uint32_t bleLastConnMs = 0;
 volatile uint32_t bleLastDiscMs = 0;
 
@@ -28,6 +33,8 @@ class ServerCallbacks : public NimBLEServerCallbacks {
     bleConnected = true;
     bleConnCount++;
     bleLastConnMs = millis();
+    bleLastRxMs = bleLastConnMs;
+    bleLinkAuthorized = false;   // каждое соединение здоровается заново
     Serial.printf("EVT BLE_CONN n=%lu gap_ms=%lu\n",
       (unsigned long)bleConnCount,
       (unsigned long)(bleLastDiscMs ? bleLastConnMs - bleLastDiscMs : 0));
@@ -57,6 +64,7 @@ class ServerCallbacks : public NimBLEServerCallbacks {
 class RxCallbacks : public NimBLECharacteristicCallbacks {
   void onWrite(NimBLECharacteristic* pCharacteristic, NimBLEConnInfo& connInfo) override {
     NimBLEAttValue val = pCharacteristic->getValue();
+    bleLastRxMs = millis();
     if (val.length() > 0 && dataCallback) {
       dataCallback((uint8_t*)val.data(), val.length());
     }
@@ -76,7 +84,13 @@ void bleInit() {
 
   NimBLEDevice::init(nameBuf);
   NimBLEDevice::setMTU(128);
+#ifdef BOARD_V4
+  // V4: керамическая антенна WiFi/BLE отдаёт заметно меньше, чем у V3, —
+  // берём максимум, который допускает контроллер.
+  NimBLEDevice::setPower(9);
+#else
   NimBLEDevice::setPower(6);  // +6dBm
+#endif
 
   // Без BLE security — PIN проверяется на уровне приложения
   pServer = NimBLEDevice::createServer();
@@ -120,6 +134,57 @@ void bleInit() {
 void bleStartAdvertising() {
   NimBLEDevice::getAdvertising()->start();
   Serial.println("[BLE] Advertising started");
+}
+
+bool bleIsAdvertising() {
+  NimBLEAdvertising* adv = NimBLEDevice::getAdvertising();
+  return adv && adv->isAdvertising();
+}
+
+size_t bleConnectedCount() {
+  return pServer ? pServer->getConnectedCount() : 0;
+}
+
+bool bleEnsureAdvertising() {
+  // Устройство, которое не рекламируется и ни с кем не соединено, для
+  // пользователя просто исчезает: телефон его не находит, а причину увидеть
+  // неоткуда.
+  //
+  // Отдельно ловим залипший флаг: если телефон ушёл, не разорвав соединение,
+  // колбэк onDisconnect может не прийти вовсе, и устройство молчит в эфире,
+  // считая, что с ним кто-то работает. Настоящее число соединений знает стек —
+  // на него и опираемся, а не на собственный флаг.
+  if (bleConnected && bleConnectedCount() == 0) {
+    bleConnected = false;
+    bleStaleLinks++;
+    Serial.printf("EVT BLE_STALE_LINK n=%lu\n", (unsigned long)bleStaleLinks);
+  }
+  // Соединение, в котором приложение не сказало ни слова, — брошенное.
+  // Живой клиент здоровается сразу: шлёт PIN и запрашивает настройки. Пока
+  // такое соединение висит, устройство не рекламируется, и для остальных
+  // рация просто не существует, поэтому освобождаем канал сами.
+  //
+  // Авторизованное соединение не трогаем никогда: приложение может слушать
+  // эфир часами, не отправляя ни одной команды, и обрывать его было бы хуже
+  // самой болезни.
+  if (bleConnected && !bleLinkAuthorized && bleLastRxMs &&
+      millis() - bleLastRxMs > BLE_IDLE_LINK_TIMEOUT_MS) {
+    bleIdleDrops++;
+    Serial.printf("EVT BLE_IDLE_DROP n=%lu silent_ms=%lu\n",
+      (unsigned long)bleIdleDrops, (unsigned long)(millis() - bleLastRxMs));
+    if (pServer) {
+      std::vector<uint16_t> handles = pServer->getPeerDevices();
+      for (uint16_t h : handles) pServer->disconnect(h);
+    }
+    bleConnected = false;
+    bleLastRxMs = millis();
+  }
+
+  if (bleConnected || bleIsAdvertising()) return false;
+  NimBLEDevice::getAdvertising()->start();
+  bleAdvRestarts++;
+  Serial.printf("EVT BLE_ADV_RESTART n=%lu\n", (unsigned long)bleAdvRestarts);
+  return true;
 }
 
 void bleStopAdvertising() {

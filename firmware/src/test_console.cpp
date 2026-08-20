@@ -575,15 +575,18 @@ static void handleLine(char* line) {
     } else if (what && strcasecmp(what, "STATS") == 0) {
       Serial.printf("EVT BLE_STATS conn=%lu disc=%lu last_reason=%d "
                     "notify_ok=%lu notify_fail=%lu notify_retry=%lu "
-                    "notify_noconn=%lu connected=%d\n",
+                    "notify_noconn=%lu connected=%d adv=%d adv_restarts=%lu "
+                    "links=%u stale=%lu\n",
         (unsigned long)bleConnCount, (unsigned long)bleDiscCount, bleLastDiscReason,
         (unsigned long)bleNotifyOk, (unsigned long)bleNotifyFail,
         (unsigned long)bleNotifyRetry, (unsigned long)bleNotifyNoConn,
-        bleIsConnected() ? 1 : 0);
+        bleIsConnected() ? 1 : 0, bleIsAdvertising() ? 1 : 0,
+        (unsigned long)bleAdvRestarts, (unsigned)bleConnectedCount(),
+        (unsigned long)bleStaleLinks);
     } else {
-      Serial.printf("EVT BLE_STATE connected=%d name=%s pin=%04lu\n",
-        bleIsConnected() ? 1 : 0, bleGetDeviceName().c_str(),
-        (unsigned long)bleGetPin());
+      Serial.printf("EVT BLE_STATE connected=%d adv=%d name=%s pin=%04lu\n",
+        bleIsConnected() ? 1 : 0, bleIsAdvertising() ? 1 : 0,
+        bleGetDeviceName().c_str(), (unsigned long)bleGetPin());
     }
     return;
   }

@@ -11,9 +11,9 @@ export const SITE = {
 };
 
 export const VERSION = {
-  app: '4.4.0',
-  firmware: '4.4.0',
-  date: '2026-08-19',
+  app: '4.4.1',
+  firmware: '4.4.1',
+  date: '2026-08-20',
 };
 
 export const STATS = [

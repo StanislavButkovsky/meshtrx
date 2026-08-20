@@ -143,6 +143,16 @@ class Client:
     def request_settings(self):
         self.link.send(proto.get_settings())
 
+    def keepalive(self):
+        """Напомнить устройству, что на другом конце кто-то есть.
+
+        Устройство освобождает канал, если клиент долго молчит: иначе
+        брошенное соединение делает рацию невидимой для всех остальных.
+        Клиент, который просто слушает эфир, обязан подавать признаки жизни.
+        """
+        if self.link.connected:
+            self.link.send(proto.get_settings())
+
     def apply_settings(self, **values):
         """Настройки уходят одним JSON — устройство так их и ждёт."""
         self.link.send_sync(proto.set_settings(json.dumps(values)))

@@ -64,11 +64,25 @@ extern volatile uint32_t bleNotifyOk;
 extern volatile uint32_t bleNotifyFail;
 extern volatile uint32_t bleNotifyNoConn;
 extern volatile uint32_t bleNotifyRetry;
+extern volatile uint32_t bleAdvRestarts;
+extern volatile uint32_t bleStaleLinks;
+extern volatile uint32_t bleLastRxMs;
+extern volatile uint32_t bleIdleDrops;
+// Клиент прошёл проверку PIN — такое соединение считаем рабочим
+extern volatile bool bleLinkAuthorized;
 extern volatile uint32_t bleLastConnMs;
 extern volatile uint32_t bleLastDiscMs;  // выставляется в onConnect, сбрасывается в bleTask
 
 void bleInit();
 void bleStartAdvertising();
+// Сколько молчания в соединении считаем признаком брошенного клиента.
+// Живое приложение здоровается за секунды — шлёт PIN и запрашивает настройки,
+// поэтому полминуты тишины означают, что на том конце уже никого нет.
+#define BLE_IDLE_LINK_TIMEOUT_MS 45000
+
+bool bleIsAdvertising();
+bool bleEnsureAdvertising();
+size_t bleConnectedCount();
 void bleStopAdvertising();
 bool bleSendNotify(uint8_t* data, size_t len);
 bool bleIsConnected();

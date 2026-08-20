@@ -961,6 +961,16 @@ static bool ledState = false;
 static void bleTaskFunc(void* param) {
   LOG_D("[BLE Task] Started on Core 1");
   while (true) {
+    // === Сторож рекламы ===
+    // Реклама должна идти всегда, когда телефон не подключён: иначе устройство
+    // для пользователя просто исчезает. NimBLE обещает поднимать её сам после
+    // разрыва, но обещание — не гарантия, а цена сбоя здесь слишком велика.
+    static uint32_t advCheckMs = 0;
+    if (millis() - advCheckMs > 3000) {
+      advCheckMs = millis();
+      bleEnsureAdvertising();
+    }
+
     // === Событие подключения телефона — OLED вне контекста BLE-колбэка ===
     if (bleConnEvent) {
       bleConnEvent = false;
@@ -1652,6 +1662,7 @@ static void handleBleData(uint8_t* data, size_t len) {
       uint8_t result[2] = {BLE_CMD_PIN_RESULT, 0};
       if (pin == bleGetPin()) {
         result[1] = 1; // OK
+        bleLinkAuthorized = true;
         LOG_D("[BLE] PIN OK");
         oledWake();
         oledShowMessage("PIN OK", "", 2000);
