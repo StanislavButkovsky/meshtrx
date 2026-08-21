@@ -58,6 +58,7 @@ class Cmd(IntEnum):
     FILE_UPLOAD_START = 0x30
     FILE_UPLOAD_DATA = 0x31
     FILE_UPLOAD_STATUS = 0x32
+    SCAN_PEERS = 0x33
 
 
 class CallType(IntEnum):
@@ -248,6 +249,15 @@ def call_reject(seq: int) -> bytes:
 
 def call_cancel() -> bytes:
     return bytes([Cmd.CALL_CANCEL])
+
+
+def scan_peers() -> bytes:
+    """Попросить соседей отозваться маяками.
+
+    Штатный маяк уходит раз в несколько минут, поэтому сразу после запуска
+    список абонентов пуст и человек считает, что связь не работает.
+    """
+    return bytes([Cmd.SCAN_PEERS])
 
 
 def set_repeater(enabled: bool) -> bytes:

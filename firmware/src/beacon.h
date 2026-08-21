@@ -17,7 +17,7 @@ int32_t beaconGetLat();
 int32_t beaconGetLon();
 
 // Собрать и отправить beacon пакет
-bool beaconSendNow();
+bool beaconSendNow(bool request = false);
 
 // Обработка входящего beacon от другого устройства
 void beaconProcessIncoming(const LoRaBeaconPacket* pkt, int16_t rssi, int8_t snr);
@@ -27,6 +27,14 @@ void beaconProcessIncoming(const LoRaBeaconPacket* pkt, int16_t rssi, int8_t snr
 
 // Задача FreeRTOS
 void beaconTask(void* param);
+
+// Не отвечать на запросы чаще, чем раз в это время
+#define BEACON_REPLY_MIN_GAP_MS 20000
+
+// Попросить соседей отозваться — их маяки придут за секунды
+void beaconRequestPeers();
+// Ответить на чужой запрос присутствия (со случайной задержкой)
+void beaconScheduleReply();
 
 // Запрос координат от телефона (ожидание ответа)
 extern volatile bool locationRequested;

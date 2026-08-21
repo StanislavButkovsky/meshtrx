@@ -60,6 +60,7 @@ class BleManager(private val context: Context) {
         const val CMD_FILE_UPLOAD_START = 0x30
         const val CMD_FILE_UPLOAD_DATA = 0x31
         const val CMD_FILE_UPLOAD_STATUS = 0x32
+        const val CMD_SCAN_PEERS = 0x33
     }
 
     private val bluetoothAdapter: BluetoothAdapter? =
@@ -154,6 +155,10 @@ class BleManager(private val context: Context) {
         System.arraycopy(codec2Data, 0, pkt, 1, codec2Data.size)
         send(pkt)
     }
+
+    /** Попросить соседей отозваться маяками: штатный маяк идёт раз в минуты,
+     *  и до него список абонентов пуст — человек считает, что связи нет. */
+    fun scanPeers() = send(byteArrayOf(CMD_SCAN_PEERS.toByte()))
 
     fun sendPttStart() = send(byteArrayOf(CMD_PTT_START.toByte()))
     fun sendPttEnd() = send(byteArrayOf(CMD_PTT_END.toByte()))

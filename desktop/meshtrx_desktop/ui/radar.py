@@ -7,7 +7,7 @@ import time
 
 from PySide6.QtCore import QPointF, Qt, QTimer
 from PySide6.QtGui import QColor, QFont, QPainter, QPen
-from PySide6.QtWidgets import QVBoxLayout, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QPushButton, QVBoxLayout, QWidget
 
 from ..client import Client
 from . import theme
@@ -90,6 +90,11 @@ class RadarTab(QWidget):
     def __init__(self, client: Client, bridge: Bridge):
         super().__init__()
         layout = QVBoxLayout(self)
+        row = QHBoxLayout()
+        refresh = QPushButton("Обновить список")
+        refresh.clicked.connect(client.scan_peers)
+        row.addWidget(refresh); row.addStretch()
+        layout.addLayout(row)
         self.view = RadarView(client)
         layout.addWidget(self.view)
         bridge.peers_changed.connect(lambda _p: self.view.update())

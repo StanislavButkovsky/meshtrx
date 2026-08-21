@@ -158,6 +158,10 @@ class Client:
         self.link.send_sync(proto.set_settings(json.dumps(values)))
         self.settings.update(values)
 
+    def scan_peers(self):
+        """Обновить список абонентов, не дожидаясь их очередных маяков."""
+        self.link.send(proto.scan_peers())
+
     def set_channel(self, ch: int):
         self.link.send(proto.set_channel(ch))
         self.channel = ch
@@ -280,6 +284,7 @@ class Client:
         self.state, self.state_detail = state, detail
         if state == "connected":
             self.request_settings()
+            self.scan_peers()
         if state == "disconnected":
             self.authorized = False
             self.call_active = False

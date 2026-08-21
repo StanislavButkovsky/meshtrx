@@ -42,6 +42,10 @@
 #define BEACON_FLAG_VOX_ON     0x02
 #define BEACON_FLAG_BUSY       0x04
 #define BEACON_FLAG_REPEATER   0x08
+// «Отзовитесь»: узел только что вышел на связь и просит соседей прислать маяк,
+// не дожидаясь своей очереди. Без этого список абонентов наполняется минутами —
+// ровно столько, сколько идёт штатный интервал маяка.
+#define BEACON_FLAG_REQUEST    0x10
 
 // === Beacon интервалы (секунды) ===
 #define BEACON_INTERVAL_1MIN   60

@@ -52,6 +52,7 @@
 #define BLE_CMD_FILE_UPLOAD_START  0x30  // телефон→ESP: заголовок файла для загрузки в RAM
 #define BLE_CMD_FILE_UPLOAD_DATA   0x31  // телефон→ESP: чанк данных файла
 #define BLE_CMD_FILE_UPLOAD_STATUS 0x32  // ESP→телефон: статус загрузки/отправки
+#define BLE_CMD_SCAN_PEERS         0x33  // телефон→ESP: попросить соседей отозваться
 // UPLOAD_STATUS values: 0=ACCEPTED, 1=BUSY, 2=SENDING, 3=DELIVERED, 4=FAILED, 5=NO_MEMORY
 
 extern bool bleConnected;

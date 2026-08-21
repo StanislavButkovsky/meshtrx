@@ -404,6 +404,13 @@ static void handleLine(char* line) {
     return;
   }
 
+  // --- Запрос присутствия: соседи должны отозваться маяками ---
+  if (strcmp(cmd, "SCAN") == 0) {
+    beaconRequestPeers();
+    Serial.println("EVT SCAN_PEERS sent=1");
+    return;
+  }
+
   // --- Duty cycle RX: включение вручную, чтобы проверить режим отдельно ---
   if (strcmp(cmd, "DUTY") == 0) {
     char* arg = nextTok(&p);

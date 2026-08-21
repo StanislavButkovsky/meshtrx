@@ -192,6 +192,11 @@ class Device:
             return accepted, None
         return accepted, self.wait("FILE_TX", timeout)
 
+    def scan_peers(self) -> Event | None:
+        """Попросить соседей отозваться маяками, не дожидаясь их интервала."""
+        self.send("SCAN")
+        return self.wait("SCAN_PEERS", 3.0)
+
     def send_beacon(self) -> Event | None:
         self.send("TX BEACON")
         return self.wait("TX_BEACON", 5.0)

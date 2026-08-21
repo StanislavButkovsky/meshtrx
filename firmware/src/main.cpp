@@ -905,6 +905,9 @@ static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr) 
       if (len < (int)sizeof(LoRaBeaconPacket)) break;
       LoRaBeaconPacket* pkt = (LoRaBeaconPacket*)data;
       beaconProcessIncoming(pkt, rssi, snr);
+      // Сосед вышел на связь и просит отозваться — иначе он увидит нас
+      // только через несколько минут, когда подойдёт наш очередной маяк.
+      if (pkt->flags & BEACON_FLAG_REQUEST) beaconScheduleReply();
       break;
     }
 
@@ -976,6 +979,10 @@ static void bleTaskFunc(void* param) {
       bleConnEvent = false;
       oledWake();
       oledShowMessage("BLE CONNECTED", "", 3000);
+      // Телефон только что подключился, и первое, что видит человек, — пустой
+      // список абонентов. Просим соседей отозваться, чтобы он наполнился за
+      // секунды, а не за интервал маяка.
+      beaconRequestPeers();
     }
 
     // === Авто-сброс fileTxActive ===
@@ -1674,6 +1681,13 @@ static void handleBleData(uint8_t* data, size_t len) {
         oledShowMessage("WRONG PIN", "", 2000);
       }
       bleSendNotify(result, 2);
+      break;
+    }
+
+    case BLE_CMD_SCAN_PEERS: {
+      // Кнопка «обновить» в приложении: рассылаем запрос присутствия, соседи
+      // отзовутся своими маяками в пределах пары секунд.
+      beaconRequestPeers();
       break;
     }
 

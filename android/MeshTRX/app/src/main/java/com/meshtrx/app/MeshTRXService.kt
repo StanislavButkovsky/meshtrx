@@ -75,6 +75,7 @@ class MeshTRXService : Service() {
             ServiceState.statusMessage.postValue("Подключено")
             audioEngine.startPlayback()
             bleManager.requestSettings()
+            bleManager.scanPeers()      // список абонентов должен наполниться сразу
             wasConnected = true
             reconnectAttempts = 0
             handler.removeCallbacks(reconnectRunnable)
@@ -294,6 +295,11 @@ class MeshTRXService : Service() {
             voxEngine.reset()
             audioEngine.startVoxMonitoring()
         }
+    }
+
+    /** Обновить список абонентов по требованию пользователя. */
+    fun refreshPeers() {
+        bleManager.scanPeers()
     }
 
     fun setChannel(ch: Int) {

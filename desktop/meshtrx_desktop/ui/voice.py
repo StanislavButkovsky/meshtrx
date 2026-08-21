@@ -95,7 +95,11 @@ class VoiceTab(QWidget):
         self.listen = QComboBox(); self.listen.addItems(["всех", "только вызвавшего"])
         self.listen.currentIndexChanged.connect(
             lambda i: setattr(client, "listen_all", i == 0))
-        mode_row.addWidget(self.listen); mode_row.addStretch()
+        mode_row.addWidget(self.listen)
+        refresh = QPushButton("Обновить список")
+        refresh.clicked.connect(client.scan_peers)
+        mode_row.addWidget(refresh)
+        mode_row.addStretch()
         peers_layout.addLayout(mode_row)
         self.peers = QListWidget()
         peers_layout.addWidget(self.peers)

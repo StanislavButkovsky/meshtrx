@@ -98,7 +98,7 @@ void beaconUpdateLocation(int32_t lat_e7, int32_t lon_e7, int16_t alt_m, bool gp
   locationReceived = true;
 }
 
-bool beaconSendNow() {
+bool beaconSendNow(bool request) {
   LoRaBeaconPacket pkt;
   memset(&pkt, 0, sizeof(pkt));
 
@@ -113,6 +113,7 @@ bool beaconSendNow() {
   pkt.battery = batteryReadPercent();
   pkt.flags = 0;
   if (currentGpsValid) pkt.flags |= BEACON_FLAG_GPS_VALID;
+  if (request) pkt.flags |= BEACON_FLAG_REQUEST;
   pkt.uptime_sec = (uint32_t)(esp_timer_get_time() / 1000000ULL);
   pkt.beacon_seq = beaconSeqCounter++;
 
@@ -163,6 +164,24 @@ void beaconProcessIncoming(const LoRaBeaconPacket* pkt, int16_t rssi, int8_t snr
   bleSendNotify(bleData, 32);
 }
 
+// Момент, когда нужно отозваться на чужой запрос присутствия (0 = нечего слать)
+static volatile uint32_t beaconReplyAtMs = 0;
+static volatile uint32_t beaconLastReplyMs = 0;
+
+void beaconRequestPeers() {
+  beaconSendNow(true);
+}
+
+void beaconScheduleReply() {
+  // Отвечаем не сразу: если рядом десяток узлов, одновременные ответы
+  // сложатся в кашу и не дойдут ни один. Разброс до двух с половиной секунд
+  // разводит их по времени.
+  uint32_t now = millis();
+  if (beaconLastReplyMs && now - beaconLastReplyMs < BEACON_REPLY_MIN_GAP_MS) return;
+  if (beaconReplyAtMs) return;                 // ответ уже запланирован
+  beaconReplyAtMs = now + 300 + (esp_random() % 2200);
+}
+
 void beaconTask(void* param) {
   // Случайная начальная задержка 5-15 сек (антиколлизия)
   vTaskDelay(pdMS_TO_TICKS(5000 + (esp_random() % 10000)));
@@ -171,6 +190,15 @@ void beaconTask(void* param) {
     if (beaconIntervalSec == BEACON_INTERVAL_NEVER) {
       vTaskDelay(pdMS_TO_TICKS(5000));
       continue;
+    }
+
+    // Отложенный ответ на чужой запрос присутствия — прежде всего остального:
+    // сосед ждёт нас в списке прямо сейчас, а свой очередной маяк подождёт.
+    if (beaconReplyAtMs && (int32_t)(millis() - beaconReplyAtMs) >= 0) {
+      beaconReplyAtMs = 0;
+      beaconLastReplyMs = millis();
+      for (int w = 0; w < 20 && loraAppBusy; w++) vTaskDelay(pdMS_TO_TICKS(100));
+      beaconSendNow(false);
     }
 
     // Запросить координаты от телефона
@@ -201,6 +229,13 @@ void beaconTask(void* param) {
     uint32_t jitter = beaconIntervalSec * 150; // мс * 0.15
     uint32_t waitMs = beaconIntervalSec * 1000;
     waitMs += (esp_random() % (jitter * 2)) - jitter;
-    vTaskDelay(pdMS_TO_TICKS(waitMs));
+    // Спим короткими шагами: запрос присутствия от соседа может прийти в любой
+    // момент, и ответ на него не должен ждать конца интервала.
+    uint32_t slept = 0;
+    while (slept < waitMs) {
+      vTaskDelay(pdMS_TO_TICKS(200));
+      slept += 200;
+      if (beaconReplyAtMs && (int32_t)(millis() - beaconReplyAtMs) >= 0) break;
+    }
   }
 }
