@@ -76,7 +76,11 @@ export const NAV_LINKS = [
 ];
 
 export const DOWNLOAD_LINKS = {
-  apk: '/downloads/meshtrx-latest.apk',
-  firmware: '/downloads/firmware.bin',
-  firmwareV4: '/downloads/firmware-v4.bin',
+  // Версия в имени файла — не украшение: браузеры и мессенджеры отдают
+  // «тот же» файл из кеша, и люди неделю ставили старую сборку, будучи
+  // уверенными, что скачали новую. Разное имя такой ошибки не допускает.
+  apk: `/downloads/meshtrx-${VERSION.app}.apk`,
+  firmware: `/downloads/firmware-v3-${VERSION.firmware}.bin`,
+  firmwareV4: `/downloads/firmware-v4-${VERSION.firmware}.bin`,
+  firmwareV43: `/downloads/firmware-v4.3-${VERSION.firmware}.bin`,
 };

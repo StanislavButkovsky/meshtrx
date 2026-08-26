@@ -32,6 +32,10 @@ export default function ApkDownload() {
             </svg>
             {t('dl.btn')}
           </a>
+          <p className="mt-3 text-xs text-text-secondary">
+            {t('dl.file')}: <code>{DOWNLOAD_LINKS.apk.split('/').pop()}</code>
+            {' — '}{t('dl.file.hint')}
+          </p>
         </div>
       </div>
     </div>

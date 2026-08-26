@@ -94,6 +94,11 @@ export const translations = {
   'dl.step2.title': { ru: 'Разрешите установку', en: 'Allow installation' },
   'dl.step2.desc': { ru: 'В настройках Android разрешите установку из неизвестных источников для браузера.', en: 'In Android settings, allow installation from unknown sources for the browser.' },
   'dl.step3.title': { ru: 'Установите приложение', en: 'Install the app' },
+  'dl.file': { ru: 'Файл', en: 'File' },
+  'dl.file.hint': {
+    ru: 'после установки проверьте версию в приложении: она должна совпадать с номером в имени файла',
+    en: 'after installing, check the version in the app: it must match the number in the file name',
+  },
   'dl.feedback.title': { ru: 'Помогите проверить новую сборку', en: 'Help us test the new build' },
   'dl.feedback.desc': {
     ru: 'В этой версии переработано главное — связь между устройством и телефоном. Проверено на стенде из двух плат, но живой эфир, чужие стены и реальные телефоны всегда богаче любого стенда. Расскажите в Telegram, как повело себя ваше устройство.',
@@ -116,7 +121,10 @@ export const translations = {
   'dl.step4.title': { ru: 'Подключите модуль', en: 'Connect the module' },
   'dl.step4.desc': { ru: 'Включите Bluetooth, откройте MeshTRX и подключитесь к Heltec V3.', en: 'Enable Bluetooth, open MeshTRX and connect to Heltec V3.' },
   'dl.firmware': { ru: 'Прошивка LoRa-модуля', en: 'LoRa module firmware' },
-  'dl.firmware_hint': { ru: 'V3 — стабильная. V4 с GC1109 PA — beta, требует тестирования.', en: 'V3 — stable. V4 with GC1109 PA — beta, needs testing.' },
+  'dl.firmware_hint': {
+    ru: 'Выберите файл по надписи на плате: V3, V4 (ревизия 4.2) или V4.3. У ревизий V4 разные усилители, и прошивка от 4.2 на плате 4.3 работает вслепую — приём заметно хуже.',
+    en: 'Pick the file that matches the marking on your board: V3, V4 (revision 4.2) or V4.3. The V4 revisions use different front-end chips, and 4.2 firmware on a 4.3 board runs blind — reception is noticeably worse.',
+  },
 
   // Flash page
   'flash.title': { ru: 'Прошивка модуля', en: 'Flash Firmware' },

@@ -107,12 +107,19 @@ void loraInit() {
   radio.setDio1Action(onRxDone);
 
 #ifdef BOARD_V4
-  // GC1109 PA: power + enable + TX/RX switch
   pinMode(PA_FEM_POWER, OUTPUT);
   pinMode(PA_FEM_EN, OUTPUT);
-  pinMode(PA_FEM_CTX, OUTPUT);
-  loraPaEnable();  // включить PA, RX mode
-  Serial.println("[LoRa] GC1109 PA enabled (V4)");
+#ifdef PA_FEM_TX_MODE
+  pinMode(PA_FEM_TX_MODE, OUTPUT);
+#endif
+#ifdef PA_FEM_RX_MODE
+  pinMode(PA_FEM_RX_MODE, OUTPUT);
+#endif
+  // Приём/передачу усилителя переключает сам SX1262 линией DIO2. Делать это
+  // ещё и из программы значит управлять одним входом с двух сторон.
+  radio.setDio2AsRfSwitch(true);
+  loraPaEnable();
+  Serial.printf("[LoRa] FEM V4 rev %d enabled\n", BOARD_V4_REV);
 #endif
 
   // Duty cycle — управляется программно в loraSend()
@@ -151,8 +158,8 @@ static bool loraSendLocked(uint8_t* data, size_t len) {
   rxArmed = false;
   radio.setDio1Action(onTxDone);
 
-#ifdef BOARD_V4
-  digitalWrite(PA_FEM_CTX, HIGH);  // PA → TX mode
+#ifdef PA_FEM_TX_MODE
+  digitalWrite(PA_FEM_TX_MODE, HIGH);  // полная мощность усилителя на время передачи
 #endif
 
   int state = radio.startTransmit(data, len);
@@ -178,8 +185,9 @@ static bool loraSendLocked(uint8_t* data, size_t len) {
   txInProgress = false;
   radioAccount(RADIO_ACC_STANDBY);
 
-#ifdef BOARD_V4
-  digitalWrite(PA_FEM_CTX, LOW);   // PA → RX mode
+#ifdef PA_FEM_TX_MODE
+  // GPIO46 — strapping-пин: держим его низким везде, кроме самой передачи
+  digitalWrite(PA_FEM_TX_MODE, LOW);
 #endif
 
   if (!loraTxDone) {
@@ -334,18 +342,28 @@ bool loraIsTxInProgress() { return txInProgress; }
 
 void loraPaEnable() {
 #ifdef BOARD_V4
-  digitalWrite(PA_FEM_POWER, HIGH);  // питание PA
-  digitalWrite(PA_FEM_EN, HIGH);     // enable
-  digitalWrite(PA_FEM_CTX, LOW);     // RX mode
+  digitalWrite(PA_FEM_POWER, HIGH);  // питание усилителя
+  digitalWrite(PA_FEM_EN, HIGH);     // CSD: микросхема включена
+#ifdef PA_FEM_TX_MODE
+  digitalWrite(PA_FEM_TX_MODE, LOW); // 4.2: обход PA, пока не передаём
+#endif
+#ifdef PA_FEM_RX_MODE
+  digitalWrite(PA_FEM_RX_MODE, LOW); // 4.3: приём через малошумящий усилитель
+#endif
   Serial.println("[LoRa] PA ON");
 #endif
 }
 
 void loraPaDisable() {
 #ifdef BOARD_V4
-  digitalWrite(PA_FEM_CTX, LOW);
+#ifdef PA_FEM_TX_MODE
+  digitalWrite(PA_FEM_TX_MODE, LOW);
+#endif
+#ifdef PA_FEM_RX_MODE
+  digitalWrite(PA_FEM_RX_MODE, LOW);
+#endif
   digitalWrite(PA_FEM_EN, LOW);
-  digitalWrite(PA_FEM_POWER, LOW);   // полностью снять питание PA
+  digitalWrite(PA_FEM_POWER, LOW);   // полностью снять питание усилителя
   Serial.println("[LoRa] PA OFF");
 #endif
 }

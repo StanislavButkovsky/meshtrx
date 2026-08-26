@@ -26,11 +26,28 @@
 #define LORA_DIO1  14
 #define LORA_BUSY  13
 
-// === GC1109 PA (только V4) ===
+// === Внешний усилитель на V4 ===
+// Ревизии различаются микросхемой, и путать их нельзя: у 4.2 стоит GC1109,
+// у 4.3 — KCT8103L с другой разводкой управления.
+//
+// Общее для обеих: питание усилителя на GPIO7, включение (CSD) на GPIO2,
+// а переключение приём/передача делает сам SX1262 линией DIO2 — трогать её
+// из программы не нужно и вредно (двойное управление одним входом).
+//
+// GC1109 (плата 4.2):
+//   CPS на GPIO46 — режим передачи: HIGH = полная мощность, LOW = обход PA.
+//   GPIO46 у ESP32-S3 ещё и strapping-пин, поэтому в покое держим его LOW.
+// KCT8103L (плата 4.3):
+//   CTX на GPIO5 — режим приёма: LOW = через малошумящий усилитель (+21 дБ),
+//   HIGH = в обход. Держим LOW, иначе приём теряет два десятка децибел.
 #ifdef BOARD_V4
-  #define PA_FEM_POWER 7   // GC1109 power supply (HIGH = вкл)
-  #define PA_FEM_EN    2   // GC1109 enable (CSD)
-  #define PA_FEM_CTX   46  // GC1109 TX/RX switch (CTX)
+  #define PA_FEM_POWER 7   // VFEM_Ctrl — питание усилителя (HIGH = вкл)
+  #define PA_FEM_EN    2   // CSD — включение микросхемы (HIGH = вкл)
+  #if BOARD_V4_REV >= 43
+    #define PA_FEM_RX_MODE 5   // KCT8103L CTX: LOW = LNA, HIGH = обход
+  #else
+    #define PA_FEM_TX_MODE 46  // GC1109 CPS: HIGH = полный PA, LOW = обход
+  #endif
 #endif
 
 // === Радио параметры ===
