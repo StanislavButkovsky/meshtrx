@@ -106,7 +106,7 @@ void loraInit() {
   // DIO1 прерывания
   radio.setDio1Action(onRxDone);
 
-#ifdef BOARD_V4
+#if defined(BOARD_V4) && !defined(DISABLE_FEM)
   pinMode(PA_FEM_POWER, OUTPUT);
   pinMode(PA_FEM_EN, OUTPUT);
 #ifdef PA_FEM_TX_MODE
@@ -341,7 +341,7 @@ bool loraIsRxArmed() { return rxArmed; }
 bool loraIsTxInProgress() { return txInProgress; }
 
 void loraPaEnable() {
-#ifdef BOARD_V4
+#if defined(BOARD_V4) && !defined(DISABLE_FEM)
   digitalWrite(PA_FEM_POWER, HIGH);  // питание усилителя
   digitalWrite(PA_FEM_EN, HIGH);     // CSD: микросхема включена
 #ifdef PA_FEM_TX_MODE
@@ -355,7 +355,7 @@ void loraPaEnable() {
 }
 
 void loraPaDisable() {
-#ifdef BOARD_V4
+#if defined(BOARD_V4) && !defined(DISABLE_FEM)
 #ifdef PA_FEM_TX_MODE
   digitalWrite(PA_FEM_TX_MODE, LOW);
 #endif

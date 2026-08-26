@@ -24,8 +24,9 @@ float batteryReadVoltage() {
   }
   int raw = sum / 8;
   digitalWrite(PIN_ADC_CTRL, LOW);
-  // Heltec V3: эмпирический множитель 5.55 (среднее по 2 устройствам: 4.03→4.15, 4.11→4.21)
-  return (raw / 4095.0f) * 3.3f * 5.55f;
+  // Множитель делителя подобран замером: у V3 и V4 разные номиналы, и общая
+  // константа давала на V4 завышение — 4,35 В там, где на клеммах 4,20.
+  return (raw / 4095.0f) * 3.3f * BAT_DIVIDER;
 }
 
 uint8_t batteryReadPercent() {

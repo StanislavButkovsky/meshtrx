@@ -114,13 +114,25 @@ void bleInit() {
 
   pService->start();
 
-  // Advertising
+  // Advertising.
+  //
+  // Имя обязано быть в основном рекламном пакете. В нём всего 31 байт, из
+  // которых три уходят на флаги, а 128-битный UUID сервиса съедает ещё
+  // восемнадцать — на имя из двенадцати символов места уже не остаётся, и
+  // устройство уходит в эфир безымянным. Телефон такое не показывает, а
+  // приложение ищет как раз по имени: для человека рация просто «не видна».
+  // Поэтому UUID переносим в scan response, а имя оставляем в основном пакете.
   NimBLEAdvertising* pAdvertising = NimBLEDevice::getAdvertising();
-  pAdvertising->addServiceUUID(SERVICE_UUID);
-  pAdvertising->enableScanResponse(true);   // имя устройства в scan response — надёжное обнаружение
+  pAdvertising->setName(nameBuf);
+
+  NimBLEAdvertisementData scanResponse;
+  scanResponse.setCompleteServices(NimBLEUUID(SERVICE_UUID));
+  pAdvertising->setScanResponseData(scanResponse);
+  pAdvertising->enableScanResponse(true);
+
   pAdvertising->setMinInterval(160);        // 100 мс — интервал рекламы
   pAdvertising->setMaxInterval(320);        // 200 мс
-  pAdvertising->setPreferredParams(24, 40); // предпочитаемое соединение 30-50 мс (было 1000-2000!)
+  pAdvertising->setPreferredParams(24, 40); // предпочитаемое соединение 30-50 мс
   pAdvertising->start();
 
   // PIN на OLED
