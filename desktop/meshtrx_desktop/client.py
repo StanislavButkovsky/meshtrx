@@ -20,6 +20,10 @@ from .audio import Capture, Playback
 from .link import Device, Link
 
 PEER_STALE_SEC = 15 * 60      # старше — абонент считается пропавшим
+# Предел одной передачи. Столько же стоит в прошивке и в записи голосовых
+# сообщений: в полудуплексе говорящий занимает канал целиком, и без предела
+# один человек затыкает всю сеть.
+PTT_MAX_SECONDS = 10
 
 
 @dataclass
@@ -77,6 +81,7 @@ class Client:
         self.listen_all = True
         self.upload_status: proto.UploadStatus | None = None
         self.mic_level = 0.0
+        self._ptt_started = 0.0
         self._rx_file: FileTransfer | None = None
         self._seq = 0
         self._subscribers: list[Callable[[str, object], None]] = []
@@ -98,7 +103,7 @@ class Client:
         self.link.start()
         self.playback.start()
         # Соединение, брошенное без разрыва, устройство держит до супервизорного
-        # таймаута и всё это время не рекламируется — снаружи выглядит как
+        # таймаута и всё это время не объявляет о себе — снаружи выглядит как
         # «рация пропала». Поэтому закрываемся при любом выходе, включая Ctrl+C.
         atexit.register(self._emergency_stop)
         for sig in (signal.SIGINT, signal.SIGTERM):
@@ -242,6 +247,7 @@ class Client:
         if self.ptt_active or not self.link.connected:
             return
         self.ptt_active = True
+        self._ptt_started = time.time()
         self.link.send(proto.ptt(True))
         if self.capture is None:
             self.capture = Capture(on_packet=self._on_captured,
@@ -260,7 +266,18 @@ class Client:
         self._emit("ptt", False)
 
     def _on_captured(self, packet: bytes):
+        # Предел речи проверяем здесь: кадры приходят каждые 80 мс, отдельный
+        # таймер ради этого заводить незачем.
+        if time.time() - self._ptt_started >= PTT_MAX_SECONDS:
+            self._emit("ptt_limit", PTT_MAX_SECONDS)
+            self.stop_ptt()
+            return
         self.link.send(proto.audio(packet))
+
+    def ptt_seconds_left(self) -> int:
+        if not self.ptt_active:
+            return 0
+        return max(0, int(PTT_MAX_SECONDS - (time.time() - self._ptt_started)))
 
     def _on_level(self, level: float):
         self.mic_level = level

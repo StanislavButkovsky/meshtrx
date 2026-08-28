@@ -13,6 +13,8 @@ object ServiceState {
     val rssi = MutableLiveData(0)
     val snr = MutableLiveData(0)
     val isPttActive = MutableLiveData(false)
+    // Сколько секунд осталось говорить; null — передача не идёт
+    val pttSecondsLeft = MutableLiveData<Int?>(null)
     val txMode = MutableLiveData(TxMode.PTT)
     val listenMode = MutableLiveData(ListenMode.ALL)
     val voxState = MutableLiveData(VoxEngine.State.IDLE)

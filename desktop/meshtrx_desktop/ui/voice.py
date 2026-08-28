@@ -111,6 +111,11 @@ class VoiceTab(QWidget):
         bridge.audio_rx.connect(self.on_audio)
         bridge.ptt_changed.connect(self.on_ptt)
 
+        # Остаток времени речи прямо на кнопке: передача прекратится сама,
+        # и человек должен видеть, сколько ему осталось.
+        self._countdown = QTimer(self)
+        self._countdown.timeout.connect(self._tick_ptt)
+
         self._rx_timer = QTimer(self); self._rx_timer.setSingleShot(True)
         self._rx_timer.timeout.connect(lambda: self.rx_label.setText("—"))
         QTimer(self, interval=5000, timeout=self.refresh_peers).start()
@@ -146,11 +151,19 @@ class VoiceTab(QWidget):
         self.call_banner.setVisible(True)
         self.call_actions.setVisible(True)
 
+    def _tick_ptt(self):
+        left = self.client.ptt_seconds_left()
+        self.ptt.setText(f"ПЕРЕДАЧА…  осталось {left} с")
+
     def on_audio(self, frame):
         self.rx_label.setText(f"приём: {self.client.peer_name(frame.sender_id)}")
         self._rx_timer.start(1200)
 
     def on_ptt(self, active: bool):
+        if active:
+            self._countdown.start(250)
+        else:
+            self._countdown.stop()
         self.ptt.setText("ПЕРЕДАЧА…" if active else "ГОВОРИТЬ  (пробел)")
         self.ptt.setStyleSheet(
             f"background: {theme.DANGER}; color: #fff; font-weight: bold;" if active else "")

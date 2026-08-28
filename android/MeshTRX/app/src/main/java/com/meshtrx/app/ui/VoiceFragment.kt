@@ -247,6 +247,15 @@ class VoiceFragment : Fragment() {
             }
         }
 
+        // Остаток времени речи: человек должен видеть, что передача сама
+        // прекратится, а не гадать, почему его перестали слышать.
+        ServiceState.pttSecondsLeft.observe(viewLifecycleOwner) { left ->
+            if (left != null && ServiceState.isPttActive.value == true) {
+                tvStatusLine.text = "● передача… осталось $left с"
+                tvStatusLine.setTextColor(if (left <= 3) Colors.amberAccent else Colors.redTx)
+            }
+        }
+
         ServiceState.isPttActive.observe(viewLifecycleOwner) { active ->
             if (active) {
                 val isVox = ServiceState.txMode.value == TxMode.VOX

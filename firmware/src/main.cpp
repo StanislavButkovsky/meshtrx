@@ -37,6 +37,7 @@ static QueueHandle_t txTextQueue  = nullptr;   // текстовые пакет�
 
 // === Состояние ===
 static volatile bool pttActive = false;
+static volatile uint32_t pttStartedMs = 0;
 uint8_t currentChannel = DEFAULT_CHANNEL;
 static uint8_t audioSeqNum = 0;
 static uint8_t textSeqNum = 0;
@@ -177,6 +178,7 @@ static void fileSendTask(void* param);
 static void handleBleData(uint8_t* data, size_t len);
 static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr);
 static void sendStatusUpdate();
+static void pttStop(bool byTimeout);
 static void loadSettings();
 static void handleUserButton();
 
@@ -961,9 +963,48 @@ static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr) 
 static uint32_t ledBlinkTimer = 0;
 static bool ledState = false;
 
+// Завершение передачи: общий путь для отпущенной кнопки и для предохранителя
+// по времени. Слушателям уходит пакет с признаком конца — по нему телефон
+// собеседника даёт отбой; телефону говорящего сообщаем тем же кодом, чтобы он
+// снял кнопку, даже если сам об окончании не знает.
+static void pttStop(bool byTimeout) {
+  if (!pttActive) return;
+  pttActive = false;
+
+  LoRaAudioPacket pkt;
+  memset(&pkt, 0, sizeof(pkt));
+  pkt.type = PKT_TYPE_AUDIO;
+  pkt.channel = currentChannel;
+  pkt.seq = audioSeqNum++;
+  pkt.flags = PKT_FLAG_PTT_END;
+  pkt.ttl = TTL_DEFAULT;
+  memcpy(pkt.sender, senderMac, 2);
+  loraSend((uint8_t*)&pkt, sizeof(pkt));
+  loraStartReceive();
+
+  if (byTimeout) {
+    uint8_t note[2] = {BLE_CMD_PTT_END, 1};   // 1 — остановлено по времени
+    bleSendNotify(note, 2);
+    LOG_F("[PTT] Остановлено по лимиту %d с\n", PTT_MAX_SECONDS);
+#ifdef TEST_CONSOLE
+    Serial.printf("EVT PTT_LIMIT seconds=%d\n", PTT_MAX_SECONDS);
+#endif
+    oledWake();
+    oledShowMessage("LIMIT 10s", "", 2000);
+  }
+}
+
 static void bleTaskFunc(void* param) {
   LOG_D("[BLE Task] Started on Core 1");
   while (true) {
+    // === Предохранитель длительности передачи ===
+    // В полудуплексе говорящий занимает канал целиком: пока он не отпустит
+    // кнопку, остальные не могут ни ответить, ни позвать на помощь. Залипшая
+    // кнопка или зависшее приложение без этого затыкали бы сеть насовсем.
+    if (pttActive && millis() - pttStartedMs > (uint32_t)PTT_MAX_SECONDS * 1000) {
+      pttStop(true);
+    }
+
     // === Сторож объявлений ===
     // Объявления должны идти всегда, пока телефон не подключён: иначе устройство
     // для пользователя просто исчезает. NimBLE обещает возобновлять их сам после
@@ -1337,6 +1378,7 @@ static void handleBleData(uint8_t* data, size_t len) {
 
     case BLE_CMD_PTT_START: {
       pttActive = true;
+      pttStartedMs = millis();
       audioSeqNum = 0;
       lastLoraActivityMs = millis();
       LOG_D("[BLE] PTT START");
@@ -1358,21 +1400,8 @@ static void handleBleData(uint8_t* data, size_t len) {
     }
 
     case BLE_CMD_PTT_END: {
-      pttActive = false;
       LOG_D("[BLE] PTT END");
-      // Отправить пакет с флагом PTT_END (телефон получателя воспроизведёт тон)
-      {
-        LoRaAudioPacket pkt;
-        memset(&pkt, 0, sizeof(pkt));
-        pkt.type = PKT_TYPE_AUDIO;
-        pkt.channel = currentChannel;
-        pkt.seq = audioSeqNum++;
-        pkt.flags = PKT_FLAG_PTT_END;
-        pkt.ttl = TTL_DEFAULT;
-        memcpy(pkt.sender, senderMac, 2);
-        loraSend((uint8_t*)&pkt, sizeof(pkt));
-        loraStartReceive();
-      }
+      pttStop(false);
       break;
     }
 
@@ -1760,6 +1789,9 @@ bool testHookPtt(bool on) {
   pttActive = on;
   if (on) {
     audioSeqNum = 0;
+    // Отметка старта нужна и здесь: иначе предохранитель по времени считает
+    // от прошлой передачи и срабатывает раньше срока.
+    pttStartedMs = millis();
     lastLoraActivityMs = millis();
   }
   return true;

@@ -19,6 +19,9 @@ class MeshTRXService : Service() {
         private const val NOTIF_ID = 1
         // Как часто напоминать устройству, что приложение живо
         private const val KEEPALIVE_INTERVAL_MS = 15_000L
+        // Предел одной передачи; столько же стоит в прошивке и в записи
+        // голосовых сообщений, чтобы правило было одно для всех режимов
+        const val PTT_MAX_SECONDS = 10
     }
 
     inner class LocalBinder : Binder() {
@@ -267,18 +270,51 @@ class MeshTRXService : Service() {
         bleManager.sendPinCheck(pin)
     }
 
+    // Речь ограничена по времени: в полудуплексе говорящий занимает канал
+    // целиком, и пока он держит кнопку, остальные не могут даже ответить.
+    private val pttLimitRunnable = Runnable {
+        if (ServiceState.isPttActive.value == true) {
+            ServiceState.statusMessage.postValue(
+                "Достигнут предел $PTT_MAX_SECONDS с — передача завершена")
+            pttUp()
+        }
+    }
+
     fun pttDown() {
         if (ServiceState.txMode.value != TxMode.PTT) return
         ServiceState.isPttActive.value = true
+        ServiceState.pttSecondsLeft.postValue(PTT_MAX_SECONDS)
         bleManager.sendPttStart()
         audioEngine.startRecording()
+        handler.removeCallbacks(pttLimitRunnable)
+        handler.postDelayed(pttLimitRunnable, PTT_MAX_SECONDS * 1000L)
+        startPttCountdown()
     }
 
     fun pttUp() {
         if (ServiceState.txMode.value != TxMode.PTT) return
+        handler.removeCallbacks(pttLimitRunnable)
+        handler.removeCallbacks(pttTickRunnable)
         ServiceState.isPttActive.value = false
+        ServiceState.pttSecondsLeft.postValue(null)
         audioEngine.stopRecording()
         Thread { Thread.sleep(100); bleManager.sendPttEnd() }.start()
+    }
+
+    /** Обратный отсчёт для кнопки: человек должен видеть, сколько осталось. */
+    private val pttTickRunnable = object : Runnable {
+        override fun run() {
+            val left = (ServiceState.pttSecondsLeft.value ?: 0) - 1
+            ServiceState.pttSecondsLeft.postValue(left.coerceAtLeast(0))
+            if (left > 0 && ServiceState.isPttActive.value == true) {
+                handler.postDelayed(this, 1000L)
+            }
+        }
+    }
+
+    private fun startPttCountdown() {
+        handler.removeCallbacks(pttTickRunnable)
+        handler.postDelayed(pttTickRunnable, 1000L)
     }
 
     fun setTxMode(mode: TxMode) {
