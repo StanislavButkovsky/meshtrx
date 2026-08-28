@@ -25,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import httpx                       # noqa: E402
 import store                       # noqa: E402
+import docs_index                  # noqa: E402
 from docs_index import DocsIndex   # noqa: E402
 
 ENV_FILE = Path.home() / ".config" / "meshtrx" / "telegram.env"
@@ -160,6 +161,22 @@ class Bot:
                 self.send(chat_id, "Спросите что-нибудь после команды, "
                                    "например: /ask сколько можно говорить")
                 return
+            # «Привет» и «спасибо» в очередь не идут: человек ждал двух слов в
+            # ответ, а расписка «записал, разберусь» на приветствие выглядит
+            # как издевательство.
+            ready = docs_index.quick_answer(question)
+            if ready:
+                self.send(chat_id, ready, msg["message_id"])
+                return
+
+            # Вопрос из одних стоп-слов искать бессмысленно, но и записывать
+            # его не стоит: непонятно, о чём человек спрашивает.
+            if not docs_index.is_searchable(question):
+                self.send(chat_id, "Уточните, пожалуйста, о чём вопрос — про "
+                                   "связь, прошивку, приложение или устройство?",
+                          msg["message_id"])
+                return
+
             qid = store.add_question(self.conn, msg["message_id"], chat_id, name, question)
             # Быстрый ответ по документации — если ничего похожего не нашлось,
             # вопрос остаётся в очереди и на него отвечает человек или агент.
