@@ -266,10 +266,15 @@ class VoiceFragment : Fragment() {
                 tvStatusLine.text = "● передача… осталось $left с"
                 tvStatusLine.setTextColor(if (left <= 3) Colors.amberAccent else Colors.redTx)
                 if (left == 0) {
-                    // Передачу остановил предел, а не человек: пока кнопку не
-                    // отпустят, следующая не начнётся.
-                    pttBlockedUntilRelease = pttButton.isPressed
-                    tvStatusLine.text = "● предел 10 с — отпустите кнопку"
+                    // Передачу остановил предел, а не человек. В режиме
+                    // удержания ждём, пока отпустят кнопку; в голосовой
+                    // активации ждать нечего — там кнопку не держат.
+                    val isVox = ServiceState.txMode.value == TxMode.VOX
+                    pttBlockedUntilRelease = !isVox && pttButton.isPressed
+                    tvStatusLine.text = if (isVox)
+                        "● предел 10 с — сделайте паузу"
+                    else
+                        "● предел 10 с — отпустите кнопку"
                     tvStatusLine.setTextColor(Colors.amberAccent)
                 }
             }

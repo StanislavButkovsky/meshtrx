@@ -154,10 +154,15 @@ class MeshTRXService : Service() {
             ServiceState.isPttActive.postValue(true)
             audioEngine.sendAudio = true
             bleManager.sendPttStart()
+            // Предел речи одинаков для всех режимов, поэтому и отсчёт здесь
+            // такой же: в голосовой активации кнопку не держат, и без счётчика
+            // человек не поймёт, почему его перестали слышать.
+            startPttLimit()
         }
 
         voxEngine.onTxDeactivated = {
             Log.d(TAG, "VOX: TX deactivated")
+            stopPttLimit()
             ServiceState.isPttActive.postValue(false)
             audioEngine.sendAudio = false
             Thread { Thread.sleep(100); bleManager.sendPttEnd() }.start()
@@ -273,30 +278,49 @@ class MeshTRXService : Service() {
     // Речь ограничена по времени: в полудуплексе говорящий занимает канал
     // целиком, и пока он держит кнопку, остальные не могут даже ответить.
     private val pttLimitRunnable = Runnable {
-        if (ServiceState.isPttActive.value == true) {
-            ServiceState.statusMessage.postValue(
-                "Достигнут предел $PTT_MAX_SECONDS с — передача завершена")
+        if (ServiceState.isPttActive.value != true) return@Runnable
+        ServiceState.statusMessage.postValue(
+            "Достигнут предел $PTT_MAX_SECONDS с — передача завершена")
+        if (ServiceState.txMode.value == TxMode.VOX) {
+            // В голосовой активации кнопки нет: гасим передачу сами и сбрасываем
+            // движок, иначе он продолжит считать, что человек ещё говорит.
+            stopPttLimit()
+            voxEngine.reset()
+            ServiceState.isPttActive.postValue(false)
+            audioEngine.sendAudio = false
+            Thread { Thread.sleep(100); bleManager.sendPttEnd() }.start()
+        } else {
             pttUp()
         }
+    }
+
+    /** Запустить отсчёт речи: и для удержания кнопки, и для голосовой активации. */
+    private fun startPttLimit() {
+        ServiceState.pttSecondsLeft.postValue(PTT_MAX_SECONDS)
+        handler.removeCallbacks(pttLimitRunnable)
+        handler.removeCallbacks(pttTickRunnable)
+        handler.postDelayed(pttLimitRunnable, PTT_MAX_SECONDS * 1000L)
+        handler.postDelayed(pttTickRunnable, 1000L)
+    }
+
+    private fun stopPttLimit() {
+        handler.removeCallbacks(pttLimitRunnable)
+        handler.removeCallbacks(pttTickRunnable)
+        ServiceState.pttSecondsLeft.postValue(null)
     }
 
     fun pttDown() {
         if (ServiceState.txMode.value != TxMode.PTT) return
         ServiceState.isPttActive.value = true
-        ServiceState.pttSecondsLeft.postValue(PTT_MAX_SECONDS)
         bleManager.sendPttStart()
         audioEngine.startRecording()
-        handler.removeCallbacks(pttLimitRunnable)
-        handler.postDelayed(pttLimitRunnable, PTT_MAX_SECONDS * 1000L)
-        startPttCountdown()
+        startPttLimit()
     }
 
     fun pttUp() {
         if (ServiceState.txMode.value != TxMode.PTT) return
-        handler.removeCallbacks(pttLimitRunnable)
-        handler.removeCallbacks(pttTickRunnable)
+        stopPttLimit()
         ServiceState.isPttActive.value = false
-        ServiceState.pttSecondsLeft.postValue(null)
         audioEngine.stopRecording()
         Thread { Thread.sleep(100); bleManager.sendPttEnd() }.start()
     }
@@ -310,11 +334,6 @@ class MeshTRXService : Service() {
                 handler.postDelayed(this, 1000L)
             }
         }
-    }
-
-    private fun startPttCountdown() {
-        handler.removeCallbacks(pttTickRunnable)
-        handler.postDelayed(pttTickRunnable, 1000L)
     }
 
     fun setTxMode(mode: TxMode) {
