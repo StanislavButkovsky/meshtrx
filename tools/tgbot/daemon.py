@@ -25,7 +25,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import httpx                       # noqa: E402
 import store                       # noqa: E402
-import docs_index                  # noqa: E402
 from docs_index import DocsIndex   # noqa: E402
 
 ENV_FILE = Path.home() / ".config" / "meshtrx" / "telegram.env"
@@ -161,32 +160,16 @@ class Bot:
                 self.send(chat_id, "Спросите что-нибудь после команды, "
                                    "например: /ask сколько можно говорить")
                 return
-            # «Привет» и «спасибо» в очередь не идут: человек ждал двух слов в
-            # ответ, а расписка «записал, разберусь» на приветствие выглядит
-            # как издевательство.
-            ready = docs_index.quick_answer(question)
-            if ready:
-                self.send(chat_id, ready, msg["message_id"])
-                return
 
-            # Вопрос из одних стоп-слов искать бессмысленно, но и записывать
-            # его не стоит: непонятно, о чём человек спрашивает.
-            if not docs_index.is_searchable(question):
-                self.send(chat_id, "Уточните, пожалуйста, о чём вопрос — про "
-                                   "связь, прошивку, приложение или устройство?",
-                          msg["message_id"])
-                return
-
-            qid = store.add_question(self.conn, msg["message_id"], chat_id, name, question)
-            # Быстрый ответ по документации — если ничего похожего не нашлось,
-            # вопрос остаётся в очереди и на него отвечает человек или агент.
-            found = self.docs.search(question)
-            if found:
-                self.send(chat_id, found, msg["message_id"])
-                store.close_question(self.conn, qid, found)
-            else:
-                self.send(chat_id, "Записал, разберусь и отвечу.",
-                          msg["message_id"])
+            # Отвечать сам бот не пробует. Поиск по словам находит похожий по
+            # словам раздел, а не ответ на вопрос: «как подключить
+            # ретранслятор» приводило к разделу про вызовы. Уверенный неверный
+            # ответ дороже ожидания, поэтому вопрос копится в очереди, а
+            # отвечает на него человек или агент — по-прежнему через этого же
+            # бота, так что для спрашивающего ничего не меняется, кроме того,
+            # что ответ приходит не мгновенно и по делу.
+            store.add_question(self.conn, msg["message_id"], chat_id, name, question)
+            self.send(chat_id, "Записал, отвечу.", msg["message_id"])
             return
 
     # ---------------------------------------------------------------- цикл

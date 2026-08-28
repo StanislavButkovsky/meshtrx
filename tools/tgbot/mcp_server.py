@@ -116,6 +116,46 @@ def telegram_questions() -> str:
 
 
 @mcp.tool()
+def telegram_pending(limit: int = 40) -> str:
+    """Что накопилось и ждёт ответа: вопросы через /ask и непрочитанные
+    сообщения группы.
+
+    Отвечать в группе — работа агента, а не бота: бот только принимает вопросы
+    и отдаёт ответы обратно. Этот инструмент — точка входа для «ответь на
+    накопившиеся вопросы»: он показывает всё сразу, чтобы ничего не потерялось
+    между очередью /ask и обычной перепиской, где вопрос задают без команды.
+
+    Прочитанным ничего не помечает — это делает telegram_read, когда вы
+    действительно разобрали переписку.
+    """
+    conn = store.connect()
+    parts = []
+
+    questions = store.open_questions(conn)
+    if questions:
+        parts.append("Вопросы через /ask (отвечать через telegram_answer):")
+        for r in questions:
+            stamp = time.strftime("%d.%m %H:%M", time.localtime(r["created_ts"]))
+            parts.append(f"  #{r['id']} {stamp} {r['user_name']}: {r['text']}")
+    else:
+        parts.append("Вопросов через /ask нет.")
+
+    rows = store.recent_messages(conn, limit=limit, only_unseen=True)
+    # Команды бота в этом списке — шум: сам вопрос уже лежит выше отдельной
+    # строкой, а «/status» разбирать незачем.
+    rows = [r for r in rows if not r["is_command"]]
+    if rows:
+        parts.append("")
+        parts.append("Непрочитанные сообщения (отвечать через telegram_send):")
+        parts.append(_format(rows))
+    else:
+        parts.append("")
+        parts.append("Новых сообщений нет.")
+
+    return "\n".join(parts)
+
+
+@mcp.tool()
 def telegram_answer(question_id: int, answer: str) -> str:
     """Ответить на вопрос из telegram_questions: ответ уходит в тот же чат
     ответом на исходное сообщение, а вопрос закрывается.
