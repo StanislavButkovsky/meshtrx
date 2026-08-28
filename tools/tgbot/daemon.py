@@ -75,7 +75,13 @@ class Bot:
     def __init__(self, token: str, allowed_chats: set[int]):
         self.token = token
         self.allowed = allowed_chats
-        self.http = httpx.Client(timeout=POLL_TIMEOUT + 10)
+        # Установка соединения и чтение разведены намеренно. Длинный опрос
+        # честно висит полминуты и это норма, а вот первое соединение после
+        # паузы на этом сервере иногда пропадает бесследно: TCP не встаёт
+        # вовсе, зато следующая попытка проходит за 0,15 с. С общим таймаутом
+        # каждый такой случай стоил бы полминуты тишины.
+        self.http = httpx.Client(timeout=httpx.Timeout(
+            connect=6.0, read=POLL_TIMEOUT + 10, write=15.0, pool=10.0))
         self.conn = store.connect()
         self.docs = DocsIndex()
         self.net_failures = 0
@@ -198,7 +204,14 @@ class Bot:
 
     def run(self, only_list_chats: bool = False):
         offset = store.get_state(self.conn, "offset", 0)
-        me = self.call("getMe").get("result", {})
+        # Три попытки: первое обращение после простоя здесь регулярно пропадает,
+        # а строка «бот @? на связи» в журнале выглядит как поломка, хотя бот
+        # при этом работает.
+        me = {}
+        for _ in range(3):
+            me = self.call("getMe").get("result", {})
+            if me:
+                break
         print(f"[tg] бот @{me.get('username', '?')} на связи; "
               f"чаты: {sorted(self.allowed) or 'любые'}", flush=True)
 
