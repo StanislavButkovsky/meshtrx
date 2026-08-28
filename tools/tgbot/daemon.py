@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import argparse
+import fcntl
 import os
 import sys
 import time
@@ -27,8 +28,28 @@ import store                       # noqa: E402
 from docs_index import DocsIndex   # noqa: E402
 
 ENV_FILE = Path.home() / ".config" / "meshtrx" / "telegram.env"
+LOCK_FILE = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share")) \
+    / "meshtrx" / "daemon.lock"
 API = "https://api.telegram.org/bot{token}/{method}"
 POLL_TIMEOUT = 25                  # секунд держим длинный опрос
+
+
+def acquire_lock():
+    """Второй демон отбирал бы обновления у первого: длинный опрос отдаёт
+    каждое ровно одному клиенту, и часть переписки пропадала бы молча. Поэтому
+    единственность — не пожелание, а условие работы.
+
+    Блокировка файла, а не поиск по списку процессов: она снимается сама, когда
+    процесс умирает, в том числе от kill -9 и при перезагрузке."""
+    LOCK_FILE.parent.mkdir(parents=True, exist_ok=True)
+    handle = open(LOCK_FILE, "w")
+    try:
+        fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        return None
+    handle.write(f"{os.getpid()}\n")
+    handle.flush()
+    return handle   # держим открытым до конца жизни процесса
 
 
 def load_env() -> dict:
@@ -184,6 +205,11 @@ def main() -> int:
     ap.add_argument("--chats", action="store_true",
                     help="показать идентификаторы чатов и выйти по Ctrl+C")
     args = ap.parse_args()
+
+    lock = acquire_lock()
+    if lock is None:
+        print("демон уже работает — второй не нужен", file=sys.stderr)
+        return 0
 
     env = load_env()
     token = env.get("MESHTRX_TG_BOT_TOKEN")

@@ -1,0 +1,26 @@
+# Круглосуточный вариант вместо запуска по сессии Claude Code.
+# Ставится в пользовательский systemd — от root он не нужен и вреден:
+# токен и база лежат в домашнем каталоге пользователя.
+#
+#   mkdir -p ~/.config/systemd/user
+#   cp tools/tgbot/meshtrx-tgbot.service ~/.config/systemd/user/
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now meshtrx-tgbot
+#   loginctl enable-linger $USER    # иначе умрёт при выходе из системы
+#
+# Путь к репозиторию правится здесь — юнит не умеет его угадывать.
+
+[Unit]
+Description=MeshTRX: мост в группу Telegram
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/@PROJECTS/meshtrx
+ExecStart=%h/@PROJECTS/meshtrx/.venv-desktop/bin/python %h/@PROJECTS/meshtrx/tools/tgbot/daemon.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target
