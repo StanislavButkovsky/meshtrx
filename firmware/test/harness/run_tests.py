@@ -220,8 +220,8 @@ def test_idle_wake(A: Device, B: Device):
 
 def test_calls(A: Device, B: Device):
     print("\n[7] Вызовы")
+    # Тревожный вызов из проекта убран, поэтому здесь его больше нет
     for kind, ptype, target in (("all", T_CALL_ALL, ""),
-                                ("sos", T_CALL_SOS, ""),
                                 ("priv", T_CALL_PRIV, "DB527E88")):
         B.drain()
         A.call(kind, target)
@@ -322,7 +322,10 @@ def test_repeater(A: Device, B: Device):
     B.repeater("OFF")
     time.sleep(8)
     B.drain()
-    B.set_channel(channel); B.set_power(9)
+    # Перезагрузка сбрасывает не только канал и мощность, но и тестовый режим:
+    # без него плата уходит слушать эфир по расписанию, и все следующие блоки
+    # начинают терять пакеты на ровном месте.
+    B.set_channel(channel); B.set_power(9); B.testmode(True)
     mode = B.repeater()
     check("режим ретранслятора выключается", mode is not None
           and mode.get("mode") == "OFF")
@@ -556,14 +559,17 @@ def main():
         if enabled("idle"):     test_idle_wake(A, B)
         if enabled("calls"):    test_calls(A, B)
         if enabled("calls"):    test_call_answers(A, B)
-        if enabled("repeater"):
-            updated = test_repeater(A, B)
-            if updated and all(updated):
-                before = updated
         if enabled("channels"): test_channels(A, B)
         if enabled("nack"):     test_nack_recovery(A, B)
         if enabled("load"):     test_concurrent_load(A, B)
         if enabled("edge"):     test_edge_cases(A, B)
+        # Ретранслятор идёт последним: он дважды перезагружает плату, и после
+        # такой перезагрузки остальным блокам пришлось бы заново приводить её
+        # в чувство — канал, мощность и тестовый режим сбрасываются.
+        if enabled("repeater"):
+            updated = test_repeater(A, B)
+            if updated and all(updated):
+                before = updated
         test_stability(A, B, before)
     finally:
         for d in (A, B):

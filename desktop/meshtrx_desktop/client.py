@@ -191,8 +191,6 @@ class Client:
     def call(self, kind: str, device_id: str | None = None):
         if kind == "all":
             self.link.send(proto.call_all())
-        elif kind == "sos":
-            self.link.send(proto.call_emergency())
         elif kind == "private" and device_id:
             self.link.send(proto.call_private(device_id))
 

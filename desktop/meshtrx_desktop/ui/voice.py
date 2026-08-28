@@ -18,6 +18,11 @@ class PttButton(QPushButton):
 
     Рация не терпит переключателей: отпустил — замолчал. Поэтому здесь
     именно удержание, а не тумблер.
+
+    Когда время вышло, передача прекращается сама, но зажатая кнопка её не
+    продолжает: чтобы говорить дальше, нужно отпустить и нажать заново. Иначе
+    забытый на кнопке палец занимал бы канал бесконечными десятисекундными
+    отрезками.
     """
 
     def __init__(self, client: Client):
@@ -26,14 +31,22 @@ class PttButton(QPushButton):
         self.setMinimumHeight(90)
         self.setProperty("accent", True)
         self.setFocusPolicy(Qt.StrongFocus)
+        self._blocked_until_release = False
         self.pressed.connect(self._down)
         self.released.connect(self._up)
 
     def _down(self):
+        if self._blocked_until_release:
+            return
         self.client.start_ptt()
 
     def _up(self):
+        self._blocked_until_release = False
         self.client.stop_ptt()
+
+    def block_until_release(self):
+        """Время вышло: пока кнопку не отпустят, новую передачу не начинаем."""
+        self._blocked_until_release = self.isDown()
 
     def keyPressEvent(self, event: QKeyEvent):
         if event.key() == Qt.Key_Space and not event.isAutoRepeat():
@@ -69,9 +82,7 @@ class VoiceTab(QWidget):
         call_row = QHBoxLayout(calls)
         btn_all = QPushButton("Вызов всем"); btn_all.clicked.connect(lambda: client.call("all"))
         btn_priv = QPushButton("Вызов абоненту"); btn_priv.clicked.connect(self._call_private)
-        btn_sos = QPushButton("SOS"); btn_sos.setProperty("danger", True)
-        btn_sos.clicked.connect(lambda: client.call("sos"))
-        for b in (btn_all, btn_priv, btn_sos):
+        for b in (btn_all, btn_priv):
             call_row.addWidget(b)
         layout.addWidget(calls)
 
@@ -110,6 +121,7 @@ class VoiceTab(QWidget):
         bridge.call_changed.connect(self.on_call)
         bridge.audio_rx.connect(self.on_audio)
         bridge.ptt_changed.connect(self.on_ptt)
+        bridge.ptt_limit.connect(self.on_ptt_limit)
 
         # Остаток времени речи прямо на кнопке: передача прекратится сама,
         # и человек должен видеть, сколько ему осталось.
@@ -154,6 +166,11 @@ class VoiceTab(QWidget):
     def _tick_ptt(self):
         left = self.client.ptt_seconds_left()
         self.ptt.setText(f"ПЕРЕДАЧА…  осталось {left} с")
+
+    def on_ptt_limit(self, _seconds):
+        self.ptt.block_until_release()
+        self.rx_label.setText("предел речи — отпустите кнопку")
+        self._rx_timer.start(3000)
 
     def on_audio(self, frame):
         self.rx_label.setText(f"приём: {self.client.peer_name(frame.sender_id)}")

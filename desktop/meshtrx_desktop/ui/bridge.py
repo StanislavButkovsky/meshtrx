@@ -23,6 +23,7 @@ class Bridge(QObject):
     settings_changed = Signal(object)
     pin_result = Signal(bool)
     ptt_changed = Signal(bool)
+    ptt_limit = Signal(int)
     mic_level = Signal(float)
     audio_rx = Signal(object)
     any_event = Signal(str, object)      # для журнала диагностики
@@ -58,6 +59,8 @@ class Bridge(QObject):
                 self.pin_result.emit(bool(payload))
             case "ptt":
                 self.ptt_changed.emit(bool(payload))
+            case "ptt_limit":
+                self.ptt_limit.emit(int(payload))
             case "mic_level":
                 self.mic_level.emit(float(payload))
             case "audio_rx":

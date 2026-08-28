@@ -170,10 +170,9 @@ def test_calls(client: Client, board: Board, col: Collector, peer_addr: str):
     client.cancel_call()
     time.sleep(1.5)
 
-    board.call("sos")
-    got = wait_until(lambda: client.incoming_call is not None
-                     and int(client.incoming_call.call_type) == 3, 12)
-    check("тревожный вызов распознан", got)
+    # Тревожный вызов убран из проекта; проверяем отклонение обычного
+    board.call("all")
+    wait_until(lambda: client.incoming_call is not None, 12)
     if client.incoming_call:
         board.drain()
         client.reject_call()

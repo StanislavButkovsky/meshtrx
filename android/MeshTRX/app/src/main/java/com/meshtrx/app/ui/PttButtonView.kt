@@ -27,6 +27,11 @@ class PttButtonView @JvmOverloads constructor(
     var label: String = "ГОВОРИТЬ"
     var subLabel: String = "удержать"
 
+    /** Сколько секунд речи осталось; null — отсчёт не идёт. Рисуется прямо на
+     *  кнопке: человек должен видеть, что передача вот-вот прекратится сама. */
+    var secondsLeft: Int? = null
+        set(value) { field = value; invalidate() }
+
     private val paintRing = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 3f }
     private val paintInner = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val paintInnerBorder = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 2f }
@@ -115,6 +120,16 @@ class PttButtonView @JvmOverloads constructor(
         paintText.textSize = 17f * resources.displayMetrics.density
         paintText.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         canvas.drawText(mainLabel, cx, cy + 6f, paintText)
+
+        // Обратный отсчёт крупно под надписью — вместо обычной подсказки
+        val left = secondsLeft
+        if (left != null && (state == State.TX || state == State.VOX_TX)) {
+            paintText.textSize = 22f * resources.displayMetrics.density
+            paintText.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            paintText.color = if (left <= 3) Colors.amberAccent else textColor
+            canvas.drawText("$left", cx, cy + 34f * resources.displayMetrics.density, paintText)
+            return
+        }
 
         if (subLbl.isNotEmpty()) {
             paintText.textSize = 11f * resources.displayMetrics.density

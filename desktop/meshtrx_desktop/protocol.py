@@ -235,10 +235,6 @@ def call_private(device_id: str) -> bytes:
     return bytes([Cmd.CALL_PRIVATE]) + raw
 
 
-def call_emergency() -> bytes:
-    return bytes([Cmd.CALL_EMERGENCY])
-
-
 def call_accept(seq: int) -> bytes:
     return bytes([Cmd.CALL_ACCEPT, seq & 0xFF])
 

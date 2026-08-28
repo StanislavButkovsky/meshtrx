@@ -179,6 +179,7 @@ static void handleBleData(uint8_t* data, size_t len);
 static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr);
 static void sendStatusUpdate();
 static void pttStop(bool byTimeout);
+static void pttStart();
 static void loadSettings();
 static void handleUserButton();
 
@@ -963,6 +964,14 @@ static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr) 
 static uint32_t ledBlinkTimer = 0;
 static bool ledState = false;
 
+// Включение передачи. Обязательно через эту функцию: флаг и отметка времени
+// должны выставляться вместе, иначе предохранитель считает от чужого момента
+// и глушит передачу в первую же секунду.
+static void pttStart() {
+  pttActive = true;
+  pttStartedMs = millis();
+}
+
 // Завершение передачи: общий путь для отпущенной кнопки и для предохранителя
 // по времени. Слушателям уходит пакет с признаком конца — по нему телефон
 // собеседника даёт отбой; телефону говорящего сообщаем тем же кодом, чтобы он
@@ -1010,10 +1019,12 @@ static void bleTaskFunc(void* param) {
     // для пользователя просто исчезает. NimBLE обещает возобновлять их сам после
     // разрыва, но обещание — не гарантия, а цена сбоя здесь слишком велика.
     static uint32_t advCheckMs = 0;
+#ifndef DISABLE_ADV_WATCHDOG
     if (millis() - advCheckMs > 3000) {
       advCheckMs = millis();
       bleEnsureAdvertising();
     }
+#endif
 
     // === Событие подключения телефона — OLED вне контекста BLE-колбэка ===
     if (bleConnEvent) {
@@ -1377,8 +1388,7 @@ static void handleBleData(uint8_t* data, size_t len) {
     }
 
     case BLE_CMD_PTT_START: {
-      pttActive = true;
-      pttStartedMs = millis();
+      pttStart();
       audioSeqNum = 0;
       lastLoraActivityMs = millis();
       LOG_D("[BLE] PTT START");
@@ -1669,12 +1679,10 @@ static void handleBleData(uint8_t* data, size_t len) {
       break;
     }
     case BLE_CMD_CALL_EMERGENCY: {
-      int32_t lat = 0, lon = 0;
-      if (len >= 9) {
-        memcpy(&lat, data + 1, 4);
-        memcpy(&lon, data + 5, 4);
-      }
-      callSendEmergency(lat, lon);
+      // Тревожный вызов убран из проекта: команда больше не выполняется.
+      // Приём таких вызовов оставлен — в сети могут остаться устройства со
+      // старой прошивкой, и их сигнал должен быть услышан.
+      LOG_D("[Call] Тревожный вызов отключён — команда проигнорирована");
       break;
     }
     case BLE_CMD_CALL_ACCEPT: {
@@ -1786,13 +1794,12 @@ bool testHookSendText(uint16_t dest, const char* text) {
 }
 
 bool testHookPtt(bool on) {
-  pttActive = on;
   if (on) {
+    pttStart();
     audioSeqNum = 0;
-    // Отметка старта нужна и здесь: иначе предохранитель по времени считает
-    // от прошлой передачи и срабатывает раньше срока.
-    pttStartedMs = millis();
     lastLoraActivityMs = millis();
+  } else {
+    pttActive = false;
   }
   return true;
 }
@@ -1800,7 +1807,7 @@ bool testHookPtt(bool on) {
 bool testHookSendAudio(uint16_t count, uint16_t gapMs) {
   if (!txAudioQueue) return false;
   bool wasPtt = pttActive;
-  pttActive = true;                 // loraTask забирает из очереди только при PTT
+  pttStart();                       // loraTask забирает из очереди только при PTT
   lastLoraActivityMs = millis();
   audioSeqNum = 0;
   bool ok = true;
@@ -1881,7 +1888,6 @@ bool testHookCall(const char* kind, const uint8_t* target4) {
   if (strcasecmp(kind, "all") == 0)   { callSendAll(nullptr, 0); return true; }
   if (strcasecmp(kind, "priv") == 0)  { callSendPrivate(target4, nullptr, 0); return true; }
   if (strcasecmp(kind, "group") == 0) { callSendGroup(0, nullptr, 0); return true; }
-  if (strcasecmp(kind, "sos") == 0)   { callSendEmergency(beaconGetLat(), beaconGetLon()); return true; }
   return false;
 }
 
@@ -1894,13 +1900,19 @@ bool testHookCallResponse(const char* kind, uint8_t seq) {
 }
 
 bool testHookSetChannel(uint8_t ch) {
-  // Канал живёт в двух местах: частота радио и поле channel в пакетах.
-  // Консоль меняла только частоту, из-за чего устройства слышали друг друга,
-  // но отбрасывали пакеты как «чужой канал» — и это выглядело как потеря связи.
+  // Канал живёт в трёх местах: частота радио, поле channel в пакетах и запись
+  // в памяти устройства. Раньше консоль меняла только частоту, и устройства
+  // слышали друг друга, но отбрасывали пакеты как «чужой канал». А без записи
+  // в память канал терялся при первой же перезагрузке — например, при входе в
+  // режим ретранслятора, и узел молча уходил на другую частоту.
   if (ch >= NUM_CHANNELS) return false;
   currentChannel = ch;
   bool ok = loraSetChannel(ch);
   loraStartReceive();
+  Preferences prefs;
+  prefs.begin("settings", false);
+  prefs.putUChar("channel", ch);
+  prefs.end();
   return ok;
 }
 
@@ -1910,7 +1922,7 @@ void testHookInfo() {
   // и адрес из INFO, подставленный в TX, попадал в другое устройство.
   Serial.printf("EVT INFO name=%s cs=%s id=%04X ch=%d freq=%.3f pwr=%d duty=%d "
                 "lora_mode=%d ble=%d file_state=%d uptime=%lu boot=%lu heap=%lu "
-                "min_heap=%lu bat=%.2f pm=%d\n",
+                "min_heap=%lu bat=%.2f pm=%d test=%d ptt=%d qaudio=%u\n",
     bleGetDeviceName().c_str(), beaconGetCallSign(),
     (unsigned)(senderMac[0] | (senderMac[1] << 8)),
     currentChannel, loraGetFrequency(currentChannel), loraGetTxPower(),
@@ -1918,7 +1930,9 @@ void testHookInfo() {
     bleIsConnected() ? 1 : 0, (int)fileState,
     (unsigned long)(millis() / 1000), (unsigned long)bootCount,
     (unsigned long)ESP.getFreeHeap(), (unsigned long)ESP.getMinFreeHeap(),
-    getCachedBattery(), pmConfigResult);
+    getCachedBattery(), pmConfigResult,
+    testConsoleIsActive() ? 1 : 0, pttActive ? 1 : 0,
+    txAudioQueue ? (unsigned)uxQueueMessagesWaiting(txAudioQueue) : 0);
 
   Serial.printf("EVT INFO_TASKS lora=%u ble=%u filesend=%u main=%u\n",
     loraTaskHandle ? (unsigned)uxTaskGetStackHighWaterMark(loraTaskHandle) : 0,

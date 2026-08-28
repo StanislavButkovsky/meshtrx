@@ -19,6 +19,9 @@ class VoiceFragment : Fragment() {
     private var targetId: String? = null   // null = broadcast
     private var targetName: String? = null
     private val voiceRecorder = VoiceRecorder(maxDurationSec = 10)
+
+    /** Кнопку удерживают после того, как время речи вышло: ждём отпускания. */
+    private var pttBlockedUntilRelease = false
     private var updateTargetUiFn: (() -> Unit)? = null
 
     @SuppressLint("ClickableViewAccessibility")
@@ -173,6 +176,13 @@ class VoiceFragment : Fragment() {
         pttButton.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
+                    if (pttBlockedUntilRelease) {
+                        // Время речи вышло, а палец с кнопки не сняли. Пока не
+                        // отпустят — новую передачу не начинаем, иначе канал
+                        // занимался бы бесконечной чередой десятисекундных
+                        // отрезков одного человека.
+                        return@setOnTouchListener true
+                    }
                     if (targetId == null) {
                         // Broadcast: обычный realtime PTT
                         service?.pttDown()
@@ -187,6 +197,7 @@ class VoiceFragment : Fragment() {
                     true
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    pttBlockedUntilRelease = false
                     if (targetId == null) {
                         service?.pttUp()
                     } else {
@@ -250,9 +261,17 @@ class VoiceFragment : Fragment() {
         // Остаток времени речи: человек должен видеть, что передача сама
         // прекратится, а не гадать, почему его перестали слышать.
         ServiceState.pttSecondsLeft.observe(viewLifecycleOwner) { left ->
+            pttButton.secondsLeft = left
             if (left != null && ServiceState.isPttActive.value == true) {
                 tvStatusLine.text = "● передача… осталось $left с"
                 tvStatusLine.setTextColor(if (left <= 3) Colors.amberAccent else Colors.redTx)
+                if (left == 0) {
+                    // Передачу остановил предел, а не человек: пока кнопку не
+                    // отпустят, следующая не начнётся.
+                    pttBlockedUntilRelease = pttButton.isPressed
+                    tvStatusLine.text = "● предел 10 с — отпустите кнопку"
+                    tvStatusLine.setTextColor(Colors.amberAccent)
+                }
             }
         }
 
