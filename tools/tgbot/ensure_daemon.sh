@@ -1,47 +1,53 @@
 #!/usr/bin/env bash
-# Поднимает демона Telegram, если он ещё не работает. Вызывается хуком
-# SessionStart при открытии сессии Claude Code по этому проекту.
+# Проверяет, что мост в Telegram жив. Вызывается хуком SessionStart при
+# открытии сессии Claude Code по этому проекту.
 #
-# Единственность держится на блокировке файла, а не на поиске по списку
-# процессов: два демона начали бы отбирать обновления друг у друга, и часть
-# переписки пропала бы молча. Блокировку берёт сам daemon.py — здесь мы лишь
-# не мешаем ему это сделать.
+# Демон живёт не здесь, а на сервере, где хостится сайт: там он работает
+# круглосуточно, и сообщения тестировщиков не теряются, пока никто не открывал
+# проект. Хук поэтому ничего не запускает локально — он только смотрит, всё ли
+# в порядке, и поднимает сервис, если тот лежит.
+#
+# Локальный запуск (`--local`) остаётся для отладки без сервера. Держать оба
+# одновременно нельзя: Telegram отдаёт каждое обновление ровно одному клиенту
+# и второму отвечает Conflict, а часть переписки теряется молча.
 set -u
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-STATE="${XDG_DATA_HOME:-$HOME/.local/share}/meshtrx"
-LOG="$STATE/daemon.log"
-LOCK="$STATE/daemon.lock"
-ENV_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/meshtrx/telegram.env"
+HOST="${MESHTRX_HOST:-root@195.133.1.248}"
+UNIT="meshtrx-tgbot"
+SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=5)
 
-# Без токена запускать нечего: демон всё равно выйдет с ошибкой.
-[ -r "$ENV_FILE" ] || { echo "мост в Telegram: нет $ENV_FILE — демон не запущен"; exit 0; }
-
-mkdir -p "$STATE"
-
-# Занятая блокировка означает, что демон уже работает.
-if command -v flock >/dev/null && [ -e "$LOCK" ] && ! flock -n "$LOCK" true 2>/dev/null; then
-    echo "мост в Telegram: демон уже работает"
+if [ "${1:-}" = "--local" ]; then
+    ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+    STATE="${XDG_DATA_HOME:-$HOME/.local/share}/meshtrx"
+    ENV_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/meshtrx/telegram.env"
+    [ -r "$ENV_FILE" ] || { echo "нет $ENV_FILE — локальный демон не запущен"; exit 0; }
+    mkdir -p "$STATE"
+    PY="$ROOT/.venv-desktop/bin/python"
+    [ -x "$PY" ] || PY="$(command -v python3)"
+    setsid "$PY" "$ROOT/tools/tgbot/daemon.py" >>"$STATE/daemon.log" 2>&1 < /dev/null &
+    disown 2>/dev/null || true
+    echo "мост в Telegram: запущен локально (сервер при этом трогать нельзя)"
     exit 0
 fi
 
-PY="$ROOT/.venv-desktop/bin/python"
-[ -x "$PY" ] || PY="$(command -v python3)"
-[ -n "$PY" ] || { echo "мост в Telegram: не нашёл python"; exit 0; }
+state=$(timeout 8 ssh "${SSH_OPTS[@]}" "$HOST" "systemctl is-active $UNIT" 2>/dev/null)
 
-# Журнал режем по мегабайту: он пишется годами и никем не читается целиком.
-if [ -f "$LOG" ] && [ "$(stat -c %s "$LOG" 2>/dev/null || echo 0)" -gt 1048576 ]; then
-    mv -f "$LOG" "$LOG.1"
-fi
-
-# setsid отвязывает демона от терминала сессии: закрытие Claude Code его не убьёт.
-setsid "$PY" "$ROOT/tools/tgbot/daemon.py" >>"$LOG" 2>&1 < /dev/null &
-disown 2>/dev/null || true
-
-sleep 1
-if kill -0 $! 2>/dev/null; then
-    echo "мост в Telegram: демон запущен, журнал $LOG"
-else
-    echo "мост в Telegram: демон не поднялся, смотрите $LOG"
-fi
+case "$state" in
+    active)
+        echo "мост в Telegram: работает на сервере"
+        ;;
+    "")
+        # Сервер недоступен — это не повод шуметь: возможно, нет сети.
+        echo "мост в Telegram: сервер не отвечает, состояние неизвестно"
+        ;;
+    *)
+        timeout 12 ssh "${SSH_OPTS[@]}" "$HOST" "systemctl restart $UNIT" >/dev/null 2>&1
+        again=$(timeout 8 ssh "${SSH_OPTS[@]}" "$HOST" "systemctl is-active $UNIT" 2>/dev/null)
+        if [ "$again" = "active" ]; then
+            echo "мост в Telegram: сервис лежал ($state), поднят"
+        else
+            echo "мост в Telegram: сервис не поднимается ($again) — journalctl -u $UNIT на $HOST"
+        fi
+        ;;
+esac
 exit 0

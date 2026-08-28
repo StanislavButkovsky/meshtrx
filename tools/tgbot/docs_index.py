@@ -12,11 +12,13 @@
 from __future__ import annotations
 
 import re
+import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+PULL_TIMEOUT = 30      # секунд на git pull: сеть до GitHub бывает медленной
 SOURCES = [
     "docs/USER_GUIDE.md",
     "docs/ROADMAP.md",
@@ -49,7 +51,41 @@ class DocsIndex:
         self.root = root or ROOT
         self.sections: list[Section] = []
         self.updated: float = 0.0
+        self.revision: str = ""
         self.rebuild()
+
+    # -------------------------------------------------------- обновление
+    def pull(self) -> tuple[bool, str]:
+        """Подтягивает документацию из репозитория.
+
+        Источник правды — GitHub, а не копия на сервере: копию пришлось бы
+        досылать после каждой правки, и однажды бот начал бы отвечать
+        позавчерашним руководством, ничем этого не выдав.
+
+        Только ускоренная перемотка: если на сервере оказались свои изменения,
+        честнее упасть с ошибкой, чем молча их затереть.
+        """
+        try:
+            before = self._revision()
+            subprocess.run(["git", "-C", str(self.root), "pull", "--ff-only", "--quiet"],
+                           check=True, capture_output=True, timeout=PULL_TIMEOUT)
+            after = self._revision()
+            return after != before, after
+        except FileNotFoundError:
+            return False, "git не установлен"
+        except subprocess.TimeoutExpired:
+            return False, "GitHub не ответил вовремя"
+        except subprocess.CalledProcessError as e:
+            err = (e.stderr or b"").decode(errors="replace").strip().splitlines()
+            return False, err[-1] if err else "git отказался обновляться"
+
+    def _revision(self) -> str:
+        try:
+            out = subprocess.run(["git", "-C", str(self.root), "rev-parse", "--short", "HEAD"],
+                                 check=True, capture_output=True, timeout=10)
+            return out.stdout.decode().strip()
+        except (OSError, subprocess.SubprocessError):
+            return ""
 
     # ------------------------------------------------------------- сборка
     def rebuild(self) -> dict:
@@ -72,6 +108,7 @@ class DocsIndex:
                     continue
                 self.sections.append(Section(rel, title, body))
         self.updated = time.time()
+        self.revision = self._revision()
         return self.status()
 
     def status(self) -> dict:
@@ -80,6 +117,7 @@ class DocsIndex:
             "sections": len(self.sections),
             "size": sum(len(s.body) for s in self.sections),
             "updated": time.strftime("%d.%m.%Y %H:%M", time.localtime(self.updated)),
+            "revision": self.revision,
         }
 
     # ------------------------------------------------------------- поиск

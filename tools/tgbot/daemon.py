@@ -32,6 +32,8 @@ LOCK_FILE = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share
     / "meshtrx" / "daemon.lock"
 API = "https://api.telegram.org/bot{token}/{method}"
 POLL_TIMEOUT = 25                  # секунд держим длинный опрос
+MAX_NET_FAILURES = 20              # подряд — считаем, что путь до Telegram пропал
+DOCS_PULL_INTERVAL = 15 * 60       # как часто подтягиваем документацию из репозитория
 
 
 def acquire_lock():
@@ -76,6 +78,7 @@ class Bot:
         self.http = httpx.Client(timeout=POLL_TIMEOUT + 10)
         self.conn = store.connect()
         self.docs = DocsIndex()
+        self.net_failures = 0
 
     # ---------------------------------------------------------------- сеть
     def call(self, method: str, **params):
@@ -84,9 +87,20 @@ class Bot:
             data = r.json()
             if not data.get("ok"):
                 print(f"[tg] {method}: {data.get('description')}", flush=True)
+            self.net_failures = 0
             return data
         except Exception as e:                                   # noqa: BLE001
-            print(f"[tg] {method} не удался: {e}", flush=True)
+            # Это отказ сети, а не отказ Telegram: имя не разрешилось или
+            # соединение оборвали по пути. На сервере, где часть адресов
+            # Telegram отфильтрована, так выглядит пропавший маршрут — и молча
+            # ждать тут нечего, иначе бот «сломан» без единой понятной строки.
+            self.net_failures += 1
+            print(f"[tg] {method} не удался ({self.net_failures}): {e}", flush=True)
+            if self.net_failures >= MAX_NET_FAILURES:
+                print("[tg] связь с Telegram потеряна — выхожу, пусть сервис "
+                      "поднимут заново и переберут маршрут", flush=True)
+                raise SystemExit(75)          # EX_TEMPFAIL: systemd перезапустит
+            time.sleep(min(self.net_failures, 10))
             return {"ok": False}
 
     def send(self, chat_id: int, text: str, reply_to: int | None = None) -> bool:
@@ -118,10 +132,12 @@ class Bot:
             return
 
         if cmd == "reload":
+            changed, rev = self.docs.pull()
             info = self.docs.rebuild()
+            tail = f" (версия {rev})" if changed else ""
             self.send(chat_id,
                       f"Перечитал документацию: {info['files']} файлов, "
-                      f"{info['sections']} разделов.", msg["message_id"])
+                      f"{info['sections']} разделов{tail}.", msg["message_id"])
             return
 
         if cmd == "ask":
@@ -186,6 +202,7 @@ class Bot:
         print(f"[tg] бот @{me.get('username', '?')} на связи; "
               f"чаты: {sorted(self.allowed) or 'любые'}", flush=True)
 
+        next_pull = time.monotonic() + DOCS_PULL_INTERVAL
         while True:
             data = self.call("getUpdates", offset=offset, timeout=POLL_TIMEOUT)
             for upd in data.get("result", []):
@@ -197,6 +214,16 @@ class Bot:
             store.set_state(self.conn, "offset", offset)
             if not only_list_chats:
                 self.flush_outbox()
+                # Документация подтягивается сама: иначе бот отвечал бы по
+                # состоянию на момент запуска, а замечают такое обычно после
+                # того, как человек уже сделал по устаревшему совету.
+                if time.monotonic() >= next_pull:
+                    next_pull = time.monotonic() + DOCS_PULL_INTERVAL
+                    changed, rev = self.docs.pull()
+                    if changed:
+                        info = self.docs.rebuild()
+                        print(f"[tg] документация обновлена до {rev}: "
+                              f"{info['sections']} разделов", flush=True)
             time.sleep(0.2)
 
 

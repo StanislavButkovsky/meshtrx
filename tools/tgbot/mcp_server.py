@@ -171,7 +171,8 @@ def telegram_status() -> str:
             f"открытых вопросов {questions}\nпоследнее сообщение: {last_txt}\n"
             f"позиция опроса Telegram: {offset}\n"
             f"индекс документации: {info['files']} файлов, {info['sections']} разделов, "
-            f"обновлён {info['updated']}\nбаза: {store.db_path()}")
+            f"версия {info['revision'] or '?'}, собран {info['updated']}\n"
+            f"база: {store.db_path()}")
 
 
 @mcp.tool()
@@ -195,9 +196,15 @@ def telegram_docs_search(question: str) -> str:
 
 @mcp.tool()
 def telegram_docs_reload() -> str:
-    """Пересобрать индекс документации после правок в репозитории."""
+    """Подтянуть документацию из репозитория и пересобрать индекс.
+
+    Сам он тоже обновляется раз в четверть часа — этот инструмент нужен, когда
+    правку запушили только что и ответ по ней нужен немедленно.
+    """
+    changed, rev = _docs.pull()
     info = _docs.rebuild()
-    return (f"индекс пересобран: {info['files']} файлов, {info['sections']} разделов, "
+    state = f"обновлено до {rev}" if changed else f"без изменений ({rev or 'версия неизвестна'})"
+    return (f"{state}: {info['files']} файлов, {info['sections']} разделов, "
             f"{info['size'] // 1024} КБ")
 
 

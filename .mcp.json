@@ -1,8 +1,15 @@
 {
   "mcpServers": {
     "meshtrx-telegram": {
-      "command": "${workspaceFolder}/.venv-desktop/bin/python",
-      "args": ["${workspaceFolder}/tools/tgbot/mcp_server.py"]
+      "command": "ssh",
+      "args": [
+        "-o", "BatchMode=yes",
+        "-o", "ConnectTimeout=10",
+        "-o", "ServerAliveInterval=30",
+        "-T",
+        "root@195.133.1.248",
+        "sudo -u meshtrx /opt/meshtrx/venv/bin/python /opt/meshtrx/repo/tools/tgbot/mcp_server.py"
+      ]
     }
   }
 }
