@@ -124,6 +124,15 @@ class Bot:
 
     # ---------------------------------------------------------------- команды
     def handle_command(self, cmd: str, args: str, msg: dict, chat: dict, user: dict):
+        """Служебные ответы уходят без цитаты, ответы по существу — с цитатой.
+
+        Причина в том, как Telegram показывает ответ на удалённое сообщение:
+        вместо команды остаётся плашка «Удалённое сообщение», а под ней висит
+        наш ответ. Команды люди удаляют часто — они мусор в переписке, — и чат
+        зарастает такими обрубками. Цитата остаётся там, где она несёт смысл:
+        в ответе на заданный вопрос, чтобы через сотню сообщений было понятно,
+        о чём речь.
+        """
         chat_id = chat["id"]
         name = user.get("username") or user.get("first_name") or "?"
 
@@ -133,8 +142,7 @@ class Bot:
             tail = f", жду ответа на {waiting}" if waiting else ""
             self.send(chat_id,
                       f"Читаю {info['files']} файлов документации "
-                      f"({info['sections']} разделов), обновлял {info['updated']}{tail}.",
-                      msg["message_id"])
+                      f"({info['sections']} разделов), обновлял {info['updated']}{tail}.")
             return
 
         if cmd == "reload":
@@ -143,15 +151,14 @@ class Bot:
             tail = f" (версия {rev})" if changed else ""
             self.send(chat_id,
                       f"Перечитал документацию: {info['files']} файлов, "
-                      f"{info['sections']} разделов{tail}.", msg["message_id"])
+                      f"{info['sections']} разделов{tail}.")
             return
 
         if cmd == "ask":
             question = args.strip()
             if not question:
                 self.send(chat_id, "Спросите что-нибудь после команды, "
-                                   "например: /ask сколько можно говорить",
-                          msg["message_id"])
+                                   "например: /ask сколько можно говорить")
                 return
             qid = store.add_question(self.conn, msg["message_id"], chat_id, name, question)
             # Быстрый ответ по документации — если ничего похожего не нашлось,
