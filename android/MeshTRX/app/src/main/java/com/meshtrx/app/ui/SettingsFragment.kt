@@ -272,7 +272,10 @@ class SettingsFragment : Fragment() {
         }
 
         ServiceState.deviceName.observe(viewLifecycleOwner) { name ->
-            tvInfo.text = getString(R.string.device_label, name)
+            // Версию берём из сборки, а не из строки ресурсов: зашитый номер
+            // отстал от релизов, и люди по нему решали, что обновление не встало.
+            tvInfo.text = getString(R.string.device_label, name,
+                com.meshtrx.app.BuildConfig.VERSION_NAME)
         }
 
         return v

@@ -192,6 +192,14 @@ class Device:
             return accepted, None
         return accepted, self.wait("FILE_TX", timeout)
 
+    def repeater(self, mode: str = "") -> Event | None:
+        """Режим ретранслятора: ON/OFF (с перезагрузкой), STATS, RESET."""
+        self.drain()
+        self.send(f"REPEATER {mode}".strip())
+        name = {"STATS": "REPEATER_STATS", "RESET": "REPEATER_RESET"}.get(
+            mode.upper(), "REPEATER")
+        return self.wait(name, 8.0)
+
     def scan_peers(self) -> Event | None:
         """Попросить соседей отозваться маяками, не дожидаясь их интервала."""
         self.send("SCAN")

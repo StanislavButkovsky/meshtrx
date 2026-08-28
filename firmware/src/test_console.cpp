@@ -9,6 +9,7 @@
 #include "lora_radio.h"
 #include "ble_service.h"
 #include "beacon.h"
+#include "repeater.h"
 #include "battery.h"
 #include "utils.h"
 #include <esp_random.h>
@@ -411,6 +412,38 @@ static void handleLine(char* line) {
 #else
     evt("EVT FEM board=v3 note=no_fem\n");
 #endif
+    return;
+  }
+
+  // --- Режим ретранслятора ---
+  if (strcmp(cmd, "REPEATER") == 0) {
+    char* arg = nextTok(&p);
+    if (arg && strcasecmp(arg, "STATS") == 0) {
+      RepeaterStats st = repeaterGetStats();
+      evt("EVT REPEATER_STATS fwd=%lu drop=%lu audio=%lu text=%lu file=%lu "
+          "beacon=%lu rssi_min=%d rssi_max=%d enabled=%d\n",
+        (unsigned long)st.fwd_count, (unsigned long)st.drop_count,
+        (unsigned long)st.audio_fwd, (unsigned long)st.text_fwd,
+        (unsigned long)st.file_fwd, (unsigned long)st.beacon_fwd,
+        st.min_rssi, st.max_rssi, repeaterIsEnabled() ? 1 : 0);
+      return;
+    }
+    if (arg && strcasecmp(arg, "RESET") == 0) {
+      repeaterResetStats();
+      evt("EVT REPEATER_RESET\n");
+      return;
+    }
+    if (arg && (strcasecmp(arg, "ON") == 0 || strcasecmp(arg, "OFF") == 0)) {
+      bool on = strcasecmp(arg, "ON") == 0;
+      repeaterSetEnabled(on);
+      // Режим выбирается один раз при старте, поэтому без перезагрузки
+      // устройство останется в прежней роли.
+      evt("EVT REPEATER mode=%s reboot=1\n", on ? "ON" : "OFF");
+      delay(150);
+      ESP.restart();
+      return;
+    }
+    evt("EVT REPEATER mode=%s\n", repeaterIsEnabled() ? "ON" : "OFF");
     return;
   }
 

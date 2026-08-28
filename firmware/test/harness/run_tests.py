@@ -259,6 +259,78 @@ def test_call_answers(A: Device, B: Device):
           ev.raw if ev else "не принята")
 
 
+def test_repeater(A: Device, B: Device):
+    """Ретранслятор: B повторяет чужие пакеты, A слышит собственные обратно.
+
+    Третьего узла на стенде нет, но он и не нужен: отправителю достаточно
+    услышать свой же пакет с уменьшенным TTL, чтобы стало ясно, что повтор
+    состоялся. Заодно проверяем, что повтор ровно один — иначе пакет пойдёт
+    размножаться по сети.
+    """
+    print("\n[13] Ретранслятор")
+    channel = A.info().int("ch")
+    B.repeater("ON")
+    time.sleep(8)                      # плата перезагружается в другой режим
+    B.drain()
+    # После перезагрузки канал и мощность берутся из памяти платы, а команды
+    # стенда туда не пишут — возвращаем те же, иначе узлы разойдутся по частотам
+    B.set_channel(channel)
+    B.set_power(9)
+    time.sleep(1)
+    mode = B.repeater()
+    if not check("режим ретранслятора включился", mode is not None
+                 and mode.get("mode") == "ON"):
+        B.repeater("OFF"); time.sleep(8)
+        return
+
+    B.repeater("RESET")
+    A.drain()
+    echoes, doubles = 0, 0
+    for i in range(5):
+        A.send_text("BCAST", f"REP-{i}")
+        if A.wait("LORA_RX", 5.0, type=T_TEXT):
+            echoes += 1
+            if A.wait("LORA_RX", 1.5, type=T_TEXT):
+                doubles += 1
+        time.sleep(1.2)
+    check("текст ретранслируется", echoes >= 4, f"повторов {echoes} из 5")
+    check("пакет не размножается", doubles == 0,
+          f"двойных повторов {doubles}" if doubles else "по одному повтору")
+
+    st = B.repeater("STATS")
+    check("счётчик пересылки сходится", st is not None and st.int("text") >= 4,
+          f"переслано текстов {st.int('text') if st else '?'}, "
+          f"отброшено {st.int('drop') if st else '?'}")
+
+    B.repeater("RESET")
+    A.send_beacon(); time.sleep(2.5)
+    A.send_beacon(); time.sleep(2.5)
+    st = B.repeater("STATS")
+    check("маяки ретранслируются", st is not None and st.int("beacon") >= 2,
+          f"переслано {st.int('beacon') if st else '?'} из 2")
+
+    # Голос через ретранслятор проходит лишь частично, и это физика: пока
+    # ретранслятор повторяет пакет, он не слышит следующий.
+    B.repeater("RESET")
+    A.send_audio(20, 150)
+    time.sleep(8)
+    st = B.repeater("STATS")
+    fwd = st.int("audio") if st else 0
+    check("голос частично проходит через ретранслятор", fwd >= 5,
+          f"переслано {fwd} из 20 — часть теряется на полудуплексе")
+
+    B.repeater("OFF")
+    time.sleep(8)
+    B.drain()
+    B.set_channel(channel); B.set_power(9)
+    mode = B.repeater()
+    check("режим ретранслятора выключается", mode is not None
+          and mode.get("mode") == "OFF")
+    # Плата дважды перезагружалась по команде теста — счётчик загрузок для
+    # проверки стабильности берём заново, иначе она отчитается о «сбое».
+    return A.info(), B.info()
+
+
 def test_channels(A: Device, B: Device):
     print("\n[8] Каналы")
     base = A.info().int("ch")
@@ -450,7 +522,7 @@ def main():
     ap.add_argument("--ports", default="",
                     help="через запятую; по умолчанию — найденные ttyUSB/ttyACM")
     ap.add_argument("--only", default="",
-                    help="ping,text,voice,files,beacon,idle,calls,channels,nack,load,edge")
+                    help="ping,text,voice,files,beacon,idle,calls,repeater,channels,nack,load,edge")
     ap.add_argument("--logdir", default="/tmp/meshtrx-logs")
     args = ap.parse_args()
 
@@ -484,6 +556,10 @@ def main():
         if enabled("idle"):     test_idle_wake(A, B)
         if enabled("calls"):    test_calls(A, B)
         if enabled("calls"):    test_call_answers(A, B)
+        if enabled("repeater"):
+            updated = test_repeater(A, B)
+            if updated and all(updated):
+                before = updated
         if enabled("channels"): test_channels(A, B)
         if enabled("nack"):     test_nack_recovery(A, B)
         if enabled("load"):     test_concurrent_load(A, B)
