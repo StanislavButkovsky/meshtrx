@@ -44,7 +44,7 @@ class Cmd(IntEnum):
     CALL_ALL = 0x18
     CALL_PRIVATE = 0x19
     CALL_GROUP = 0x1A
-    CALL_EMERGENCY = 0x1B
+    CALL_EMERGENCY = 0x1B   # оставлен в таблице ради старых прошивок; не шлём
     CALL_ACCEPT = 0x1C
     CALL_REJECT = 0x1D
     CALL_CANCEL = 0x1E
@@ -65,7 +65,7 @@ class CallType(IntEnum):
     ALL = 0
     PRIVATE = 1
     GROUP = 2
-    EMERGENCY = 3
+    EMERGENCY = 3      # приходит только от устройств со старой прошивкой
 
 
 class FileType(IntEnum):

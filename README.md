@@ -5,12 +5,17 @@
 MeshTRX is an open-source communication system that provides PTT voice, text messaging, file transfer, and GPS tracking over LoRa radio — independent of cellular networks and internet.
 
 ```
-[Phone A] <--BLE--> [Heltec V3 A] <--LoRa 868MHz--> [Heltec V3 B] <--BLE--> [Phone B]
+[Phone A] <--BLE--> [Heltec A] <--LoRa 868MHz--> [Heltec B] <--BLE--> [Desktop B]
 ```
 
 ## Features
 
-- **Voice** — Codec2 3200 bps, PTT and VOX modes, roger beep, noise gate
+- **Voice** — Codec2 3200 bps, PTT and VOX modes, roger beep, noise gate; a
+  single transmission is capped at 10 seconds so the half-duplex channel never
+  stays occupied, with a countdown on the button and the same limit enforced in
+  firmware
+- **Desktop client** — Windows, Linux and macOS (Python + PySide6), same
+  features over the same BLE protocol
 - **Messaging** — Text chat up to 84 chars, broadcast or direct
 - **Files** — Photo and file transfer up to 100 KB over LoRa
 - **Map & Radar** — OpenStreetMap + tactical radar with zoom and contrast, peer positions via GPS
@@ -22,8 +27,11 @@ MeshTRX is an open-source communication system that provides PTT voice, text mes
 
 ## Hardware
 
-- **Device**: [Heltec WiFi LoRa 32 V3](https://heltec.org/project/wifi-lora-32-v3/) (ESP32-S3 + SX1262)
-- **Phone**: Android 5.0+ with BLE
+- **Device**: Heltec WiFi LoRa 32 [V3](https://heltec.org/project/wifi-lora-32-v3/) or V4 (ESP32-S3 + SX1262)
+- **Board revisions**: V4 comes as rev 4.2 (GC1109 front-end) and rev 4.3
+  (KCT8103L). They need different firmware builds — see the table in the
+  [User Guide](docs/USER_GUIDE.md#аппаратура)
+- **Client**: Android 5.0+ with BLE, or a desktop running the Python client
 - **Range**: 5+ km line of sight, extendable with repeaters
 
 ## Quick Start
@@ -32,7 +40,9 @@ MeshTRX is an open-source communication system that provides PTT voice, text mes
 
 ```bash
 cd firmware
-pio run --target upload --upload-port /dev/ttyUSB0
+pio run -e heltec_wifi_lora_32_V3  --target upload --upload-port /dev/ttyUSB0   # V3
+pio run -e heltec_wifi_lora_32_V4  --target upload --upload-port /dev/ttyUSB0   # V4 rev 4.2
+pio run -e heltec_wifi_lora_32_V43 --target upload --upload-port /dev/ttyUSB0   # V4 rev 4.3
 ```
 
 ### Build and install Android app
@@ -41,6 +51,14 @@ pio run --target upload --upload-port /dev/ttyUSB0
 cd android/MeshTRX
 ./gradlew assembleDebug
 adb install -r app/build/outputs/apk/debug/app-debug.apk
+```
+
+### Run the desktop client
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r desktop/requirements.txt
+.venv/bin/python desktop/run.py
 ```
 
 ### Connect
@@ -96,8 +114,22 @@ meshtrx/
 │       ├── app/          # Pages: /, /download, /flash, /docs, /about
 │       ├── components/   # React components
 │       └── lib/          # Constants, i18n, flash utils
+├── desktop/              # Desktop client (Python + PySide6)
+│   └── meshtrx_desktop/
+│       ├── protocol.py   # BLE packet formats — single source of truth
+│       ├── link.py       # Connection, endless reconnect, transfers
+│       ├── codec2.py     # Native codec via ctypes
+│       ├── audio.py      # Mic and speaker, 20 ms frames
+│       ├── client.py     # Core: network state, voice, files, calls
+│       └── ui/           # Voice, messages, files, map, settings, diagnostics
+├── tools/tgbot/          # Telegram bridge for the QA group + MCP server
+│   ├── daemon.py         # The only process talking to Telegram
+│   ├── mcp_server.py     # Tools for the agent over the same SQLite base
+│   ├── docs_index.py     # Documentation search behind /ask
+│   └── persona.md        # How to write in the group
 ├── docs/
-│   └── USER_GUIDE.md      # Full user documentation
+│   ├── USER_GUIDE.md      # Full user documentation
+│   └── ROADMAP.md         # What is next and what was deliberately dropped
 ├── MESHTRX_SPEC.md         # Technical specification
 ├── PROJECT_LOG.md           # Development log
 └── README.md                # This file
@@ -124,7 +156,9 @@ meshtrx/
 
 - **[User Guide](docs/USER_GUIDE.md)** — full feature documentation, settings reference, usage scenarios
 - **[Technical Spec](MESHTRX_SPEC.md)** — packet formats, BLE protocol, radio parameters
+- **[Roadmap](docs/ROADMAP.md)** — what is planned, what is blocked and why
 - **[Project Log](PROJECT_LOG.md)** — development history and changelog
+- **[Desktop client](desktop/README.md)** — build, dependencies, internals
 
 ## Dependencies
 
@@ -134,6 +168,12 @@ meshtrx/
 - [U8g2](https://github.com/olikraus/u8g2) 2.35+ — OLED display
 - [ArduinoJson](https://github.com/bblanchon/ArduinoJson) 7.0+ — JSON parsing
 - [Codec2](https://github.com/drowe67/codec2) 1.2.0 — Voice codec (included)
+
+### Desktop
+- Python 3.10+, [PySide6](https://doc.qt.io/qtforpython/) — UI
+- [bleak](https://github.com/hbldh/bleak) — cross-platform BLE
+- [sounddevice](https://python-sounddevice.readthedocs.io/) — audio I/O
+- libcodec2 from the system, loaded via ctypes
 
 ### Android
 - Target SDK 34, Min SDK 21

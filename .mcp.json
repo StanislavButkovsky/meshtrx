@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "meshtrx-telegram": {
+      "command": "${workspaceFolder}/.venv-desktop/bin/python",
+      "args": ["${workspaceFolder}/tools/tgbot/mcp_server.py"]
+    }
+  }
+}

@@ -48,3 +48,7 @@ web/tsconfig.tsbuildinfo
 # Окружение настольного клиента
 .venv-desktop/
 .venv/
+
+# Секреты бота (на всякий случай, основное место — ~/.config/meshtrx)
+telegram.env
+.env.local
