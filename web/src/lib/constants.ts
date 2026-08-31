@@ -1,7 +1,7 @@
 export const SITE = {
   name: 'MeshTRX',
   tagline: 'Off-grid голосовая связь через LoRa mesh-сеть',
-  description: 'Голосовая связь, сообщения и файлы без интернета и сотовых сетей. Работает на Heltec V3 + Android.',
+  description: 'Голосовая связь, сообщения и файлы без интернета и сотовых сетей. Работает на Heltec V3 и V4 + Android.',
   url: 'https://meshtrx.com',
   urlRu: 'https://meshtrx.ru',
   github: 'https://github.com/StanislavButkovsky/meshtrx',
@@ -61,15 +61,24 @@ export const FEATURES = [
 ];
 
 export const HARDWARE = {
-  name: 'Heltec WiFi LoRa 32 V3',
+  name: 'Heltec WiFi LoRa 32 V3 / V4',
   chip: 'ESP32-S3',
   lora: 'SX1262',
-  freq: '868 МГц',
   power: '22 dBm',
   ble: 'BLE 5.0',
   battery: 'Li-Po 3.7V',
   antenna: 'IPEX / SMA',
 };
+
+// Поддерживаются обе платы, но прошивка у них разная — и это не мелочь:
+// чужая запустится, а усилителем будет управлять не тот вывод. На сайте это
+// приходится повторять, потому что берут файл по названию платы, не заметив
+// ревизию: она напечатана мелким шрифтом у разъёма антенны.
+export const BOARDS = [
+  { board: 'V3', chipKey: 'hw.board.v3', file: 'firmware-v3' },
+  { board: 'V4 rev 4.2', chipKey: 'hw.board.v42', file: 'firmware-v4' },
+  { board: 'V4 rev 4.3', chipKey: 'hw.board.v43', file: 'firmware-v4.3' },
+] as const;
 
 export const NAV_LINKS = [
   { href: '/', label: 'Home' },

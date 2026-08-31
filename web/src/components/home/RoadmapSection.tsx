@@ -4,7 +4,6 @@ import { useLanguage } from '@/components/LanguageProvider';
 import type { TranslationKey } from '@/lib/i18n';
 
 const PLANS: { status: 'soon' | 'planned'; titleKey: TranslationKey; descKey: TranslationKey }[] = [
-  { status: 'soon', titleKey: 'roadmap.v4.title', descKey: 'roadmap.v4.desc' },
   { status: 'soon', titleKey: 'roadmap.encrypt.title', descKey: 'roadmap.encrypt.desc' },
   { status: 'planned', titleKey: 'roadmap.devices.title', descKey: 'roadmap.devices.desc' },
   { status: 'planned', titleKey: 'roadmap.desktop.title', descKey: 'roadmap.desktop.desc' },
