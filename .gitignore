@@ -51,4 +51,5 @@ web/tsconfig.tsbuildinfo
 
 # Секреты бота (на всякий случай, основное место — ~/.config/meshtrx)
 telegram.env
+deploy.env
 .env.local
