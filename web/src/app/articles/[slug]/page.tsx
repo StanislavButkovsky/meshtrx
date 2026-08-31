@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { ARTICLES, articleBySlug } from '@/content/articles';
-import { SITE, OG_IMAGE } from '@/lib/constants';
+import { SITE } from '@/lib/constants';
+import { SITE_LOCALE, SITE_URL, DOMAIN, OG_IMAGE } from '@/lib/site-locale';
 import ArticleView from '@/components/articles/ArticleView';
 
 // Экспорт статический, поэтому адреса всех статей должны быть известны на
@@ -17,32 +18,37 @@ export async function generateStaticParams() {
   return ARTICLES.map((article) => ({ slug: article.slug }));
 }
 
-// В разметку идёт русский заголовок: страница отдаётся с lang="ru", а язык
-// переключается уже в браузере. Поисковику и мессенджеру достаётся то, что
-// лежит в html, и переключатель до них не доходит.
+// Заголовок берётся на языке сборки: на meshtrx.com в html лежит английский,
+// на meshtrx.ru — русский. Поисковику и превью в мессенджере достаётся ровно
+// это, переключатель в шапке до них не доходит.
 export function generateMetadata({ params }: { params: { slug: string } }): Metadata {
   const article = articleBySlug(params.slug);
   if (!article) return {};
 
   return {
-    title: article.title.ru,
-    description: article.summary.ru,
+    title: article.title[SITE_LOCALE],
+    description: article.summary[SITE_LOCALE],
     openGraph: {
-      title: article.title.ru,
-      description: article.summary.ru,
+      title: article.title[SITE_LOCALE],
+      description: article.summary[SITE_LOCALE],
       type: 'article',
       publishedTime: article.date,
-      url: `${SITE.url}/articles/${article.slug}/`,
+      url: `${SITE_URL}/articles/${article.slug}/`,
       images: [OG_IMAGE],
     },
     twitter: {
       card: 'summary_large_image',
-      title: article.title.ru,
-      description: article.summary.ru,
+      title: article.title[SITE_LOCALE],
+      description: article.summary[SITE_LOCALE],
       images: [OG_IMAGE.url],
     },
     alternates: {
-      canonical: `${SITE.url}/articles/${article.slug}/`,
+      canonical: `${SITE_URL}/articles/${article.slug}/`,
+      languages: {
+        ru: `${DOMAIN.ru}/articles/${article.slug}/`,
+        en: `${DOMAIN.en}/articles/${article.slug}/`,
+        'x-default': `${DOMAIN.en}/articles/${article.slug}/`,
+      },
     },
   };
 }
@@ -57,16 +63,16 @@ export default function ArticlePage({ params }: { params: { slug: string } }) {
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Article',
-    headline: article.title.ru,
-    description: article.summary.ru,
+    headline: article.title[SITE_LOCALE],
+    description: article.summary[SITE_LOCALE],
     datePublished: article.date,
     dateModified: article.date,
     image: OG_IMAGE.url,
-    inLanguage: 'ru',
-    mainEntityOfPage: `${SITE.url}/articles/${article.slug}/`,
-    author: { '@type': 'Organization', name: SITE.name, url: SITE.url },
-    publisher: { '@type': 'Organization', name: SITE.name, url: SITE.url },
-    about: { '@type': 'SoftwareApplication', name: SITE.name, url: SITE.url },
+    inLanguage: SITE_LOCALE,
+    mainEntityOfPage: `${SITE_URL}/articles/${article.slug}/`,
+    author: { '@type': 'Organization', name: SITE.name, url: SITE_URL },
+    publisher: { '@type': 'Organization', name: SITE.name, url: SITE_URL },
+    about: { '@type': 'SoftwareApplication', name: SITE.name, url: SITE_URL },
   };
 
   return (

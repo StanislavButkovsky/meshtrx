@@ -1,13 +1,14 @@
 import type { MetadataRoute } from 'next';
-import { SITE, VERSION } from '@/lib/constants';
+import { VERSION } from '@/lib/constants';
+import { SITE_URL } from '@/lib/site-locale';
 import { ARTICLES } from '@/content/articles';
 
 // Экспорт статический, поэтому карта считается один раз при сборке.
 export const dynamic = 'force-static';
 
-// Сайт отдаётся с двух доменов, meshtrx.com и meshtrx.ru, одним и тем же
-// содержимым. В карте указан только основной: иначе поисковик видит две копии
-// каждой страницы и сам решает, какую считать настоящей.
+// У каждого домена своя карта со своими адресами: meshtrx.ru и meshtrx.com —
+// не копии, а русская и английская версии, и связаны они через hreflang в
+// layout. Раньше карта на обоих доменах указывала на meshtrx.com.
 export default function sitemap(): MetadataRoute.Sitemap {
   const updated = new Date(VERSION.date);
 
@@ -29,7 +30,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   // ей дату версии — значит каждый раз звать поисковик перечитывать текст,
   // который не менялся.
   const articles: MetadataRoute.Sitemap = ARTICLES.map((article) => ({
-    url: `${SITE.url}/articles/${article.slug}/`,
+    url: `${SITE_URL}/articles/${article.slug}/`,
     lastModified: new Date(article.date),
     changeFrequency: 'yearly',
     priority: 0.6,
@@ -37,7 +38,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   return [
     ...pages.map(({ path, changeFrequency, priority }) => ({
-      url: `${SITE.url}/${path}`,
+      url: `${SITE_URL}/${path}`,
       lastModified: updated,
       changeFrequency,
       priority,

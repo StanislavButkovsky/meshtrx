@@ -16,22 +16,22 @@
 
 ## Документация
 
-- [Руководство пользователя, полный текст](https://meshtrx.com/llms-full.txt): подключение, голос, вызовы, сообщения, файлы, карта и радар, настройки, ретранслятор, характеристики.
-- [User guide in English, full text](https://meshtrx.com/llms-full.en.txt): the same guide in English.
-- [Документация на сайте](https://meshtrx.com/docs/): то же руководство в вёрстке, с оглавлением.
+- [Руководство пользователя, полный текст](https://meshtrx.ru/llms-full.txt): подключение, голос, вызовы, сообщения, файлы, карта и радар, настройки, ретранслятор, характеристики.
+- [User guide in English, full text](https://meshtrx.ru/llms-full.en.txt): the same guide in English.
+- [Документация на сайте](https://meshtrx.ru/docs/): то же руководство в вёрстке, с оглавлением.
 
 ## Статьи
 
 Разборы того, как проект устроен внутри. Числа в них взяты из исходников.
 
-- [Как голос уместился в LoRa](https://meshtrx.com/articles/voice-over-lora/), 2026-08-31
+- [Как голос уместился в LoRa](https://meshtrx.ru/articles/voice-over-lora/), 2026-08-31
 
 ## Страницы сайта
 
-- [О проекте](https://meshtrx.com/about/): зачем понадобился ещё один проект, что общего с Meshtastic и чем отличается.
-- [Статьи](https://meshtrx.com/articles/): список всех разборов.
-- [Скачать](https://meshtrx.com/download/): прошивки для каждой ревизии платы и APK для Android.
-- [Прошивка из браузера](https://meshtrx.com/flash/): заливка прошивки по USB прямо из Chrome или Edge.
+- [О проекте](https://meshtrx.ru/about/): зачем понадобился ещё один проект, что общего с Meshtastic и чем отличается.
+- [Статьи](https://meshtrx.ru/articles/): список всех разборов.
+- [Скачать](https://meshtrx.ru/download/): прошивки для каждой ревизии платы и APK для Android.
+- [Прошивка из браузера](https://meshtrx.ru/flash/): заливка прошивки по USB прямо из Chrome или Edge.
 
 ## Исходный код и связь
 

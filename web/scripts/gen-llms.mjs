@@ -23,20 +23,23 @@ const pick = (key) => constants.match(new RegExp(`${key}:\\s*'([^']+)'`))?.[1] ?
 const APP = pick('app');
 const FIRMWARE = pick('firmware');
 const DATE = constants.match(/date:\s*'([^']+)'/g)?.pop()?.match(/'([^']+)'/)?.[1] ?? '?';
-const SITE = 'https://meshtrx.com';
+// Сайт собирается дважды, и указатель должен вести на тот домен, с которого
+// его прочитали: иначе английская версия отправляет модель на русскую.
+const LOCALE = process.env.NEXT_PUBLIC_SITE_LOCALE === 'en' ? 'en' : 'ru';
+const SITE = LOCALE === 'en' ? 'https://meshtrx.com' : 'https://meshtrx.ru';
 
 // Статьи разбираются регулярным выражением по той же причине, что и версии
 // выше: это .mjs, а articles.ts — TypeScript, и тащить сюда сборщик ради двух
 // строк не стоит. Если разбор ничего не нашёл, раздел просто не попадёт в
 // указатель — пустой список честнее выдуманного.
 const articlesSrc = readFileSync(resolve(here, '..', 'src', 'content', 'articles.ts'), 'utf-8');
-const articles = [...articlesSrc.matchAll(/slug: '([^']+)',\s*\n\s*date: '([^']+)',\s*\n\s*title: \{\s*\n\s*ru: '([^']+)'/g)]
-  .map(([, slug, date, title]) => ({ slug, date, title }));
+const articles = [...articlesSrc.matchAll(/slug: '([^']+)',\s*\n\s*date: '([^']+)',\s*\n\s*title: \{\s*\n\s*ru: '([^']+)',\s*\n\s*en: '([^']+)'/g)]
+  .map(([, slug, date, title, titleEn]) => ({ slug, date, title, titleEn }));
 
 const guideRu = readFileSync(resolve(repo, 'docs', 'USER_GUIDE.md'), 'utf-8');
 const guideEn = readFileSync(resolve(repo, 'docs', 'USER_GUIDE.en.md'), 'utf-8');
 
-const index = `# MeshTRX
+const indexRu = `# MeshTRX
 
 > Голосовая связь, текстовые сообщения и файлы через LoRa mesh-сеть, без интернета и сотовых сетей. Прошивка для плат Heltec WiFi LoRa 32 (ESP32-S3 + SX1262), приложение для Android и настольный клиент для Windows, Linux и macOS.
 
@@ -77,6 +80,49 @@ ${articles.map((a) => `- [${a.title}](${SITE}/articles/${a.slug}/), ${a.date}`).
 - [Группа в Telegram](https://t.me/MeshTRX): вопросы и обратная связь.
 `;
 
+const indexEn = `# MeshTRX
+
+> Voice communication, text messages and files over a LoRa mesh network, with no internet and no cellular coverage. Firmware for Heltec WiFi LoRa 32 boards (ESP32-S3 + SX1262), an Android app and a desktop client for Windows, Linux and macOS.
+
+App ${APP}, firmware ${FIRMWARE}, updated ${DATE}. Licensed CC BY-NC 4.0: free use with attribution, commercial use by permission.
+
+The facts people ask about most often:
+
+- Voice runs through the Codec2 vocoder at 3200 bps. One transmission is capped at ten seconds: LoRa is half-duplex, and while one station speaks nobody else can be heard.
+- 23 channels across 863.15–869.75 MHz, 300 kHz apart, transmit power 1–22 dBm, range up to 5 km and beyond in line of sight.
+- Heltec V3, V4 rev 4.2 and V4 rev 4.3 are supported. The revisions need different firmware: the wrong build will boot, but it drives the amplifier from the wrong pin.
+- A phone or computer connects to the device over Bluetooth LE and acts as its screen, microphone and keyboard.
+- Besides voice: text up to 84 characters, files up to 100 KB, a map and a tactical radar with bearing and distance to each station, and a repeater mode.
+- There is no over-the-air encryption yet — packets travel in the clear. A shared per-channel key is planned.
+- MeshTRX and Meshtastic are different projects. The hardware is shared, the protocols are not compatible, the devices cannot hear each other, and Meshtastic has no voice.
+
+## Documentation
+
+- [User guide, full text](${SITE}/llms-full.en.txt): pairing, voice, calls, messages, files, map and radar, settings, repeater, specifications.
+- [Руководство пользователя, полный текст](${SITE}/llms-full.txt): the same guide in Russian.
+- [Documentation on the site](${SITE}/docs/): the same guide laid out, with a table of contents.
+
+## Articles
+
+Write-ups on how the project works inside. The numbers in them come from the sources.
+
+${articles.map((a) => `- [${a.titleEn}](${SITE}/articles/${a.slug}/), ${a.date}`).join('\n')}
+
+## Site pages
+
+- [About](${SITE}/about/): why another project was needed, what it shares with Meshtastic and how it differs.
+- [Articles](${SITE}/articles/): every write-up.
+- [Download](${SITE}/download/): firmware for each board revision and the Android APK.
+- [Flash from the browser](${SITE}/flash/): flashing over USB straight from Chrome or Edge.
+
+## Source and contact
+
+- [GitHub](https://github.com/StanislavButkovsky/meshtrx): firmware, app, desktop client, documentation.
+- [Telegram group](https://t.me/MeshTRX): questions and feedback.
+`;
+
+const index = LOCALE === 'en' ? indexEn : indexRu;
+
 const header = (lang) => lang === 'en'
   ? `# MeshTRX — full documentation\n\n> App ${APP}, firmware ${FIRMWARE}, updated ${DATE}. Source: ${SITE}/docs/\n\n---\n\n`
   : `# MeshTRX — полная документация\n\n> Приложение ${APP}, прошивка ${FIRMWARE}, обновлено ${DATE}. Источник: ${SITE}/docs/\n\n---\n\n`;
@@ -85,7 +131,7 @@ writeFileSync(resolve(publicDir, 'llms.txt'), index, 'utf-8');
 writeFileSync(resolve(publicDir, 'llms-full.txt'), header('ru') + guideRu, 'utf-8');
 writeFileSync(resolve(publicDir, 'llms-full.en.txt'), header('en') + guideEn, 'utf-8');
 
-console.log(`[gen-llms] статей в указателе: ${articles.length}`);
+console.log(`[gen-llms] язык сборки ${LOCALE}, домен ${SITE}, статей в указателе: ${articles.length}`);
 console.log(`[gen-llms] llms.txt (${Math.round(index.length / 1024)} КБ), ` +
   `llms-full.txt (${Math.round(guideRu.length / 1024)} КБ), ` +
   `llms-full.en.txt (${Math.round(guideEn.length / 1024)} КБ) — версия ${APP}`);

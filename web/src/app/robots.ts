@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next';
-import { SITE } from '@/lib/constants';
+import { SITE_URL } from '@/lib/site-locale';
 
 export const dynamic = 'force-static';
 
@@ -15,6 +15,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: '/downloads/',
       },
     ],
-    sitemap: `${SITE.url}/sitemap.xml`,
+    sitemap: `${SITE_URL}/sitemap.xml`,
   };
 }

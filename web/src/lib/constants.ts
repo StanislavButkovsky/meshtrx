@@ -10,16 +10,6 @@ export const SITE = {
   telegram: 'https://t.me/MeshTRX',
 };
 
-// Картинка для ссылки в мессенджере и поисковой выдаче. 1200×630 — размер, на
-// который рассчитывают Telegram, X и Facebook; меньше — обрежут или покажут
-// маленькой иконкой.
-export const OG_IMAGE = {
-  url: `${SITE.url}/og.png`,
-  width: 1200,
-  height: 630,
-  alt: 'MeshTRX — off-grid голосовая связь через LoRa mesh-сеть',
-};
-
 export const VERSION = {
   app: '4.4.5',
   // Прошивка живёт своей жизнью: в 4.4.5 менялось только приложение, и
