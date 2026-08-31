@@ -12,7 +12,7 @@ export const translations = {
   // Hero
   'hero.badge': { ru: 'Проект в активной разработке', en: 'Project in active development' },
   'hero.tagline': { ru: 'Off-grid голосовая связь через LoRa mesh-сеть', en: 'Off-grid voice communication via LoRa mesh network' },
-  'hero.desc': { ru: 'Голос, сообщения и файлы без интернета. Heltec V3 + Android + LoRa mesh.', en: 'Voice, messages and files without internet. Heltec V3 + Android + LoRa mesh.' },
+  'hero.desc': { ru: 'Голос, сообщения и файлы без интернета. Heltec V3 или V4 + Android + LoRa mesh.', en: 'Voice, messages and files without internet. Heltec V3 or V4 + Android + LoRa mesh.' },
   'hero.download': { ru: 'Скачать APK', en: 'Download APK' },
   'hero.flash': { ru: 'Прошить модуль', en: 'Flash Firmware' },
 
@@ -28,8 +28,8 @@ export const translations = {
 
   // How it works
   'how.title': { ru: 'Как это работает', en: 'How it works' },
-  'how.step1.title': { ru: 'Прошейте Heltec V3', en: 'Flash Heltec V3' },
-  'how.step1.desc': { ru: 'Загрузите прошивку MeshTRX через USB прямо в браузере.', en: 'Upload MeshTRX firmware via USB directly in the browser.' },
+  'how.step1.title': { ru: 'Прошейте Heltec V3 или V4', en: 'Flash Heltec V3 or V4' },
+  'how.step1.desc': { ru: 'V3 шьётся через USB прямо в браузере. Для V4 скачайте файл своей ревизии на странице загрузки.', en: 'V3 flashes over USB right in the browser. For V4, download the file for your revision from the download page.' },
   'how.step2.title': { ru: 'Установите APK', en: 'Install APK' },
   'how.step2.desc': { ru: 'Скачайте приложение MeshTRX на Android и подключитесь к модулю по BLE.', en: 'Download MeshTRX app on Android and connect to the module via BLE.' },
   'how.step3.title': { ru: 'Общайтесь', en: 'Communicate' },
@@ -52,13 +52,22 @@ export const translations = {
 
   // Hardware
   'hw.title': { ru: 'Оборудование', en: 'Hardware' },
-  'hw.subtitle': { ru: 'Основной модуль MeshTRX', en: 'Main MeshTRX module' },
+  'hw.subtitle': { ru: 'Поддерживаются обе платы', en: 'Both boards are supported' },
   'hw.chip': { ru: 'Чип', en: 'Chip' },
   'hw.lora': { ru: 'LoRa', en: 'LoRa' },
+  'hw.freq': { ru: '868 МГц', en: '868 MHz' },
   'hw.power': { ru: 'Мощность', en: 'Power' },
   'hw.ble': { ru: 'BLE', en: 'BLE' },
   'hw.battery': { ru: 'Питание', en: 'Battery' },
   'hw.antenna': { ru: 'Антенна', en: 'Antenna' },
+  'hw.boards': { ru: 'Какая прошивка какой плате', en: 'Which firmware for which board' },
+  'hw.board.col': { ru: 'Плата', en: 'Board' },
+  'hw.board.what': { ru: 'Что внутри', en: 'What is inside' },
+  'hw.board.file': { ru: 'Файл прошивки', en: 'Firmware file' },
+  'hw.board.v3': { ru: 'SX1262 без внешнего усилителя', en: 'SX1262 with no external amplifier' },
+  'hw.board.v42': { ru: 'Усилитель GC1109', en: 'GC1109 front-end' },
+  'hw.board.v43': { ru: 'Усилитель KCT8103L', en: 'KCT8103L front-end' },
+  'hw.board.note': { ru: 'Ревизия напечатана на плате мелким шрифтом рядом с разъёмом антенны. Прошивка от чужой ревизии запустится, но усилитель будет управляться не тем выводом: устройство станет слышать хуже или не выйдет в эфир вовсе.', en: 'The revision is printed in small type on the board next to the antenna connector. Firmware for the wrong revision will boot, but it drives the amplifier from the wrong pin: the device hears worse, or does not transmit at all.' },
 
   // Roadmap
   'roadmap.badge': { ru: 'В разработке', en: 'In development' },
@@ -66,8 +75,6 @@ export const translations = {
   'roadmap.desc': { ru: 'Проект активно развивается. Вот что будет добавлено в ближайших версиях.', en: 'The project is actively evolving. Here\'s what will be added in upcoming versions.' },
   'roadmap.soon': { ru: 'Скоро', en: 'Soon' },
   'roadmap.planned': { ru: 'Планируется', en: 'Planned' },
-  'roadmap.v4.title': { ru: 'Heltec LoRa 32 V4', en: 'Heltec LoRa 32 V4' },
-  'roadmap.v4.desc': { ru: 'Поддержка нового модуля: ESP32-S3R2, SX1262 до 28 dBm, OLED 0.96", USB-C, разъём для GNSS-модуля и солнечной панели.', en: 'New module support: ESP32-S3R2, SX1262 up to 28 dBm, 0.96" OLED, USB-C, GNSS and solar panel connectors.' },
   'roadmap.encrypt.title': { ru: 'Шифрование', en: 'Encryption' },
   'roadmap.encrypt.desc': { ru: 'End-to-end шифрование голоса и сообщений для приватной связи.', en: 'End-to-end encryption for voice and messages for private communication.' },
   'roadmap.devices.title': { ru: 'Расширение устройств', en: 'More devices' },
@@ -120,7 +127,7 @@ export const translations = {
   'dl.feedback.tg': { ru: 'Написать отзыв в Telegram', en: 'Send feedback on Telegram' },
   'dl.step3.desc': { ru: 'Откройте скачанный файл и следуйте инструкции установки.', en: 'Open the downloaded file and follow the installation instructions.' },
   'dl.step4.title': { ru: 'Подключите модуль', en: 'Connect the module' },
-  'dl.step4.desc': { ru: 'Включите Bluetooth, откройте MeshTRX и подключитесь к Heltec V3.', en: 'Enable Bluetooth, open MeshTRX and connect to Heltec V3.' },
+  'dl.step4.desc': { ru: 'Включите Bluetooth, откройте MeshTRX и подключитесь к устройству.', en: 'Enable Bluetooth, open MeshTRX and connect to the device.' },
   'dl.firmware': { ru: 'Прошивка LoRa-модуля', en: 'LoRa module firmware' },
   'dl.firmware_hint': {
     ru: 'Выберите файл по надписи на плате: V3, V4 (ревизия 4.2) или V4.3. У ревизий V4 разные усилители, и прошивка от 4.2 на плате 4.3 работает вслепую — приём заметно хуже.',
@@ -139,6 +146,8 @@ export const translations = {
   'flash.select': { ru: 'Выбрать порт', en: 'Select port' },
   'flash.btn': { ru: 'Прошить', en: 'Flash' },
   'flash.btn.busy': { ru: 'Прошивка...', en: 'Flashing...' },
+  'flash.v4.title': { ru: 'У вас V4?', en: 'Got a V4?' },
+  'flash.v4.desc': { ru: 'Мастер в браузере заливает образ для V3. У ревизий V4 другие усилители, и этот образ на них управляет усилителем не тем выводом. Файл для своей ревизии возьмите на странице загрузки и прошейте через esptool.', en: 'The in-browser wizard writes the V3 image. The V4 revisions use different front-end chips, and this image drives the amplifier from the wrong pin on them. Take the file for your revision from the download page and flash it with esptool.' },
   'flash.idle': { ru: 'Подключите Heltec V3 по USB и нажмите "Выбрать порт"', en: 'Connect Heltec V3 via USB and click "Select port"' },
   'flash.port.ok': { ru: 'Порт выбран. Зажмите BOOT на модуле, нажмите RST, отпустите BOOT — затем нажмите "Прошить".', en: 'Port selected. Hold BOOT on module, press RST, release BOOT — then click "Flash".' },
   'flash.connecting': { ru: 'Подключение к устройству...', en: 'Connecting to device...' },

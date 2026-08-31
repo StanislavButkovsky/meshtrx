@@ -30,13 +30,13 @@ export const META: Record<Locale, { title: string; description: string; tagline:
   ru: {
     title: 'MeshTRX — Off-grid голосовая связь',
     description:
-      'Голосовая связь, сообщения и файлы без интернета и сотовых сетей. Работает на Heltec V3 + Android.',
+      'Голосовая связь, сообщения и файлы без интернета и сотовых сетей. Работает на Heltec V3 и V4 + Android.',
     tagline: 'Off-grid голосовая связь через LoRa mesh-сеть',
   },
   en: {
     title: 'MeshTRX — Off-grid voice communication',
     description:
-      'Voice, messages and files with no internet and no cellular network. Runs on Heltec V3 + Android.',
+      'Voice, messages and files with no internet and no cellular network. Runs on Heltec V3 and V4 + Android.',
     tagline: 'Off-grid voice communication over a LoRa mesh network',
   },
 };

@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { isWebSerialSupported, requestPort, flashFirmware, type FlashProgress as FlashProgressType } from '@/lib/flash-utils';
+import Link from 'next/link';
 import { DOWNLOAD_LINKS, VERSION } from '@/lib/constants';
 import { useLanguage } from '@/components/LanguageProvider';
 import type { TranslationKey } from '@/lib/i18n';
@@ -80,6 +81,20 @@ export default function FlashWizard() {
             {i < 2 && <div className="w-8 h-px bg-border" />}
           </div>
         ))}
+      </div>
+
+      {/* Мастер заливает образ V3 — единственный, для которого здесь лежат
+          загрузчик и таблица разделов. Владелец V4, не заметив этого, получит
+          плату, которая управляет усилителем не тем выводом: слышно хуже или
+          эфира нет вовсе. Поэтому предупреждение стоит до кнопок, а не после. */}
+      <div className="mb-4 p-4 rounded-xl bg-amber-500/5 border border-amber-500/30">
+        <h4 className="text-sm font-semibold text-amber-400 mb-1">{t('flash.v4.title')}</h4>
+        <p className="text-sm text-text-secondary leading-relaxed">
+          {t('flash.v4.desc')}{' '}
+          <Link href="/download/" className="text-accent hover:underline">
+            {t('nav.download')}
+          </Link>
+        </p>
       </div>
 
       <div className="p-6 rounded-xl bg-bg-card border border-border space-y-4">
