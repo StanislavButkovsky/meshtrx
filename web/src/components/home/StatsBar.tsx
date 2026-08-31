@@ -6,7 +6,7 @@ import type { TranslationKey } from '@/lib/i18n';
 const STATS: { value: string; unitKey: TranslationKey; labelKey: TranslationKey; hintKey?: TranslationKey }[] = [
   { value: '5+', unitKey: 'stats.range.unit', labelKey: 'stats.range', hintKey: 'stats.range.hint' },
   { value: '23', unitKey: 'stats.channels.unit', labelKey: 'stats.channels' },
-  { value: '160', unitKey: 'stats.latency.unit', labelKey: 'stats.latency' },
+  { value: '10', unitKey: 'stats.ptt.unit', labelKey: 'stats.ptt' },
   { value: '3200', unitKey: 'stats.bitrate' as TranslationKey, labelKey: 'stats.bitrate' },
 ];
 

@@ -141,11 +141,12 @@ meshtrx/
 |-----------|-------|
 | Frequency | 863.15–869.75 MHz (EU868) |
 | Channels | 23 (300 kHz spacing) |
-| Modulation | LoRa SF7 / BW250 / CR 4/5 |
+| Modulation | LoRa SF7 / BW250 / CR 4/7 |
 | TX Power | 1–22 dBm (default 14) |
 | Audio Codec | Codec2 3200 bps |
-| Audio Latency | ~160 ms |
-| Packet Size | 71 bytes (voice) |
+| Voice Packet | 39 bytes: 7 header + 32 payload |
+| Speech per Packet | 80 ms (4 Codec2 frames of 20 ms) |
+| Time on Air | ~53 ms per voice packet |
 
 ## Website
 

@@ -170,9 +170,17 @@ python3 -m venv .venv
 |----------|----------|
 | Битрейт | 3200 bps |
 | Фрейм | 20 мс / 8 байт |
-| Пакет | 8 фреймов = 64 байт = 160 мс |
-| Задержка | ~160 мс |
-| LoRa airtime | ~20 мс |
+| Пакет | 4 фрейма = 32 байта = 80 мс |
+| LoRa-пакет | 39 байт (7 заголовок + 32 аудио) |
+| Время в эфире | ~53 мс |
+
+Задержка складывается из нескольких мест. Первое неустранимо: пока не набралось
+80 мс речи, отправлять нечего — это нижняя граница, заданная размером пакета.
+Дальше добавляется передача в устройство по Bluetooth (интервал соединения
+30–50 мс), время пакета в эфире, обратный путь по Bluetooth и буфер
+воспроизведения. Сквозную задержку на живом железе мы не мерили, поэтому числа
+здесь не приводим: разговор идёт как по рации — сказал, отпустил, дождался
+ответа.
 
 ### Сколько можно говорить: предел 10 секунд
 
@@ -571,8 +579,8 @@ wake=BUTTON\`.
 | Кодек | Codec2 3200 bps |
 | Частота дискретизации | 8000 Гц |
 | Фрейм | 160 сэмплов = 20 мс = 8 байт |
-| Пакет | 8 фреймов = 64 байт = 160 мс |
-| LoRa пакет | 71 байт (7 заголовок + 64 аудио) |
+| Пакет | 4 фрейма = 32 байта = 80 мс |
+| LoRa пакет | 39 байт (7 заголовок + 32 аудио) |
 
 ### BLE протокол
 
@@ -581,14 +589,14 @@ wake=BUTTON\`.
 | Сервис | Nordic UART Service (NUS) |
 | MTU | 128 байт |
 | Команды | 40+ (0x01–0x28) |
-| Аудио пакет | 68 байт (cmd + flags + 64 payload) |
+| Аудио пакет | 36 байт (cmd + flags + отправитель + 32 payload) |
 | Авторизация | 4-значный PIN (из MAC) |
 
 ### Пакеты LoRa
 
 | Тип | ID | Размер |
 |-----|-----|--------|
-| Голос | 0xA0 | 71 байт |
+| Голос | 0xA0 | 39 байт |
 | Текст | 0xB0 | до 91 байт |
 | Файл (заголовок) | 0xC0 | 36 байт |
 | Файл (чанк) | 0xC1 | до 128 байт |
@@ -753,9 +761,17 @@ To transmit, hold the button with the mouse or press the space bar — with the 
 |-----------|-------|
 | Bitrate | 3200 bps |
 | Frame | 20 ms / 8 bytes |
-| Packet | 8 frames = 64 bytes = 160 ms |
-| Latency | ~160 ms |
-| LoRa airtime | ~20 ms |
+| Packet | 4 frames = 32 bytes = 80 ms |
+| LoRa packet | 39 bytes (7 header + 32 audio) |
+| Time on air | ~53 ms |
+
+The delay comes from several places. The first cannot be removed: until 80 ms of
+speech has accumulated there is nothing to send — that is the floor, set by the
+packet size. On top of it come the Bluetooth hop to the device (connection
+interval 30–50 ms), the packet's time on air, the Bluetooth hop back and the
+playback buffer. We have not measured the end-to-end delay on real hardware, so
+no figure is given here: a conversation goes the way it goes on a radio — speak,
+release, wait for the answer.
 
 ### How long you may talk: the ten-second limit
 
@@ -1131,8 +1147,8 @@ Five tabs: **PTT**, **Chat**, **Files**, **Map**, **Settings**. The active tab i
 | Codec | Codec2 3200 bps |
 | Sample rate | 8000 Hz |
 | Frame | 160 samples = 20 ms = 8 bytes |
-| Packet | 8 frames = 64 bytes = 160 ms |
-| LoRa packet | 71 bytes (7 header + 64 audio) |
+| Packet | 4 frames = 32 bytes = 80 ms |
+| LoRa packet | 39 bytes (7 header + 32 audio) |
 
 ### BLE protocol
 
@@ -1141,14 +1157,14 @@ Five tabs: **PTT**, **Chat**, **Files**, **Map**, **Settings**. The active tab i
 | Service | Nordic UART Service (NUS) |
 | MTU | 128 bytes |
 | Commands | 40+ (0x01–0x28) |
-| Audio packet | 68 bytes (cmd + flags + 64 payload) |
+| Audio packet | 36 bytes (cmd + flags + sender + 32 payload) |
 | Authorisation | a 4-digit PIN (derived from the MAC) |
 
 ### LoRa packets
 
 | Type | ID | Size |
 |------|-----|------|
-| Voice | 0xA0 | 71 bytes |
+| Voice | 0xA0 | 39 bytes |
 | Text | 0xB0 | up to 91 bytes |
 | File (header) | 0xC0 | 36 bytes |
 | File (chunk) | 0xC1 | up to 128 bytes |

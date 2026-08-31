@@ -47,8 +47,8 @@ const indexRu = `# MeshTRX
 
 Факты, о которых спрашивают чаще всего:
 
-- Голос идёт кодеком Codec2 на 3200 бит/с, задержка около 160 мс. Одна передача ограничена десятью секундами: LoRa работает в полудуплексе, и пока говорит один, остальных не слышно.
-- 23 канала в диапазоне 863,15–869,75 МГц с шагом 300 кГц, мощность передатчика 1–22 дБм, дальность до 5 км и больше в прямой видимости.
+- Голос идёт вокодером Codec2 на 3200 бит/с. Кадр — 20 мс речи и 8 байт; в одном LoRa-пакете четыре кадра, то есть 80 мс речи и 32 байта, а весь пакет в эфире — 39 байт вместе с семибайтным заголовком. Одна передача ограничена десятью секундами: LoRa работает в полудуплексе, и пока говорит один, остальных не слышно.
+- 23 канала в диапазоне 863,15–869,75 МГц с шагом 300 кГц, модуляция SF7 / BW 250 кГц / CR 4/7, мощность передатчика 1–22 дБм, дальность до 5 км и больше в прямой видимости.
 - Поддерживаются Heltec V3, V4 rev 4.2 и V4 rev 4.3. Прошивки у ревизий разные: чужая запустится, но усилитель будет управляться не тем выводом.
 - Телефон или компьютер подключается к устройству по Bluetooth LE и служит экраном, микрофоном и клавиатурой.
 - Кроме голоса: текст до 84 символов, файлы до 100 КБ, карта и тактический радар с азимутом и расстоянием до станций, режим ретранслятора.
@@ -88,8 +88,8 @@ App ${APP}, firmware ${FIRMWARE}, updated ${DATE}. Licensed CC BY-NC 4.0: free u
 
 The facts people ask about most often:
 
-- Voice runs through the Codec2 vocoder at 3200 bps. One transmission is capped at ten seconds: LoRa is half-duplex, and while one station speaks nobody else can be heard.
-- 23 channels across 863.15–869.75 MHz, 300 kHz apart, transmit power 1–22 dBm, range up to 5 km and beyond in line of sight.
+- Voice runs through the Codec2 vocoder at 3200 bps. A frame is 20 ms of speech in 8 bytes; one LoRa packet carries four frames, so 80 ms of speech in 32 bytes, and the whole packet on air is 39 bytes including a seven-byte header. One transmission is capped at ten seconds: LoRa is half-duplex, and while one station speaks nobody else can be heard.
+- 23 channels across 863.15–869.75 MHz, 300 kHz apart, SF7 / BW 250 kHz / CR 4/7 modulation, transmit power 1–22 dBm, range up to 5 km and beyond in line of sight.
 - Heltec V3, V4 rev 4.2 and V4 rev 4.3 are supported. The revisions need different firmware: the wrong build will boot, but it drives the amplifier from the wrong pin.
 - A phone or computer connects to the device over Bluetooth LE and acts as its screen, microphone and keyboard.
 - Besides voice: text up to 84 characters, files up to 100 KB, a map and a tactical radar with bearing and distance to each station, and a repeater mode.

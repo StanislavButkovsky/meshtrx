@@ -20,10 +20,10 @@ export const translations = {
   'stats.range': { ru: 'Дальность связи', en: 'Communication range' },
   'stats.range.hint': { ru: 'С ретранслятором — ещё дальше', en: 'Even further with a repeater' },
   'stats.channels': { ru: 'LoRa каналов', en: 'LoRa channels' },
-  'stats.latency': { ru: 'Задержка голоса', en: 'Voice latency' },
+  'stats.ptt': { ru: 'Одна передача', en: 'One transmission' },
   'stats.bitrate': { ru: 'Codec2 битрейт', en: 'Codec2 bitrate' },
   'stats.channels.unit': { ru: 'кан.', en: 'ch.' },
-  'stats.latency.unit': { ru: 'мс', en: 'ms' },
+  'stats.ptt.unit': { ru: 'с', en: 's' },
   'stats.range.unit': { ru: 'км', en: 'km' },
 
   // How it works
@@ -38,7 +38,7 @@ export const translations = {
   // Features
   'features.title': { ru: 'Возможности', en: 'Features' },
   'feature.voice.title': { ru: 'Голосовая связь', en: 'Voice communication' },
-  'feature.voice.desc': { ru: 'PTT голос через LoRa с кодеком Codec2. Задержка ~160ms, слышно чётко.', en: 'PTT voice over LoRa with Codec2 codec. ~160ms latency, clear audio.' },
+  'feature.voice.desc': { ru: 'PTT голос через LoRa кодеком Codec2 на 3200 бит/с. Разборчиво и без интернета.', en: 'PTT voice over LoRa with the Codec2 vocoder at 3200 bps. Intelligible, with no internet.' },
   'feature.msg.title': { ru: 'Сообщения', en: 'Messages' },
   'feature.msg.desc': { ru: 'Текстовые сообщения с гарантированной доставкой и подтверждением.', en: 'Text messages with guaranteed delivery and confirmation.' },
   'feature.file.title': { ru: 'Передача файлов', en: 'File transfer' },
@@ -196,7 +196,7 @@ export const translations = {
   'about.diff.r1.x': { ru: 'Голосовая связь, а к ней текст и файлы', en: 'Voice communication, plus text and files' },
   'about.diff.r2.a': { ru: 'Голос', en: 'Voice' },
   'about.diff.r2.m': { ru: 'Не передаётся', en: 'Not supported' },
-  'about.diff.r2.x': { ru: 'Codec2 3200 бит/с, задержка около 160 мс', en: 'Codec2 at 3200 bps, about 160 ms of latency' },
+  'about.diff.r2.x': { ru: 'Codec2 3200 бит/с: 80 мс речи в пакете из 39 байт', en: 'Codec2 at 3200 bps: 80 ms of speech in a 39-byte packet' },
   'about.diff.r3.a': { ru: 'Как доходит сообщение', en: 'How a message travels' },
   'about.diff.r3.m': { ru: 'Через сеть, до трёх пересылок, с задержкой', en: 'Across the mesh, up to three hops, with delay' },
   'about.diff.r3.x': { ru: 'Напрямую или через один ретранслятор — слышно сразу', en: 'Directly or through a single repeater — heard immediately' },
