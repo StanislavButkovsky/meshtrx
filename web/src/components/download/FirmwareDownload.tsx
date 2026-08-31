@@ -18,7 +18,7 @@ export default function FirmwareDownload() {
             <span className="px-2 py-0.5 rounded bg-accent/10 text-accent text-xs font-medium">
               v{VERSION.firmware}
             </span>
-            <span>{VERSION.date}</span>
+            <span>{VERSION.firmwareDate}</span>
           </div>
           <div className="flex flex-wrap gap-3">
             <a
