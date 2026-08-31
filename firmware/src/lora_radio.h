@@ -89,6 +89,8 @@ uint8_t loraGetChannel();
 
 // Power management
 void loraSetPowerMode(LoRaPowerMode mode);
+// Усыпить радио перед выключением устройства (возврата не предполагается)
+void loraSleepForPowerOff();
 LoRaPowerMode loraGetPowerMode();
 bool loraSendWake(uint8_t* data, size_t len);  // с длинной преамбулой
 // Диагностика состояния чипа (для тестовой консоли)

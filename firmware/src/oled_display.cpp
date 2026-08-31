@@ -114,6 +114,23 @@ void oledShowMessage(const char* line1, const char* line2, uint16_t durationMs) 
   u8g2.sendBuffer();
 }
 
+// Крупная надпись во весь экран. Нужна там, где сообщение должно быть понятно
+// с вытянутой руки и без чтения: выключение видят краем глаза, проверяя, что
+// рация действительно погасла, а не осталась включённой в кармане.
+void oledShowBig(const char* text, const char* sub) {
+  oledWake();
+  u8g2.setPowerSave(0);
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_logisoso24_tr);
+  u8g2.drawStr((128 - (int)u8g2.getStrWidth(text)) / 2, 38, text);
+  if (sub && *sub) {
+    u8g2.setFont(u8g2_font_6x10_tf);
+    u8g2.drawStr((128 - (int)u8g2.getStrWidth(sub)) / 2, 58, sub);
+  }
+  u8g2.sendBuffer();
+  u8g2.setFont(u8g2_font_6x10_tf);   // остальной экран рисуется мелким
+}
+
 void oledShowRepeater(uint8_t channel, float freqMHz, int8_t txPower, bool dutyCycle,
                       int16_t rssi, int8_t snr, uint8_t lastTtlFrom, uint8_t lastTtlTo,
                       const char* lastPktType, uint32_t fwdCount, uint32_t dropCount,

@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <nvs_flash.h>
 #include <esp_sleep.h>
+#include <driver/rtc_io.h>
 #include <driver/gpio.h>
 #include <esp_mac.h>
 #include <esp_pm.h>
@@ -209,8 +210,23 @@ static void logBootInfo() {
   bootCount = prefs.getUInt("boot_count", 0) + 1;
   prefs.putUInt("boot_count", bootCount);
   prefs.end();
-  LOG_F("EVT BOOT reason=%s code=%d count=%lu heap=%lu\n",
-    name, (int)r, (unsigned long)bootCount, (unsigned long)ESP.getFreeHeap());
+  // Причина пробуждения печатается отдельно: после выключения кнопкой
+  // устройство стартует как после сброса, и без этой строки не отличить
+  // «разбудили кнопкой» от «дёрнули питание» — а вопросы будут именно такие.
+  const char* woke = "";
+  if (r == ESP_RST_DEEPSLEEP) {
+    switch (esp_sleep_get_wakeup_cause()) {
+      // Кнопка на плате может отозваться и как EXT0, и как GPIO — какой из
+      // источников сработает первым, зависит от того, что включено в этой
+      // сборке. Для человека это одно и то же: разбудили кнопкой.
+      case ESP_SLEEP_WAKEUP_EXT0:
+      case ESP_SLEEP_WAKEUP_GPIO: woke = " wake=BUTTON"; break;
+      case ESP_SLEEP_WAKEUP_EXT1: woke = " wake=EXT1";   break;
+      default:                    woke = " wake=OTHER";  break;
+    }
+  }
+  LOG_F("EVT BOOT reason=%s code=%d count=%lu heap=%lu%s\n",
+    name, (int)r, (unsigned long)bootCount, (unsigned long)ESP.getFreeHeap(), woke);
 }
 
 static void setupPowerManagement() {
@@ -408,6 +424,58 @@ static void loadSettings() {
 // ================================================================
 // Кнопка USER (GPIO0)
 // ================================================================
+
+// Сколько держать кнопку, чтобы устройство выключилось. Три секунды в обычном
+// режиме: меньше — выключалось бы от случайного нажатия в кармане, больше —
+// человек решит, что кнопка не работает, и отпустит. В режиме ретранслятора
+// порог выше: там удержания до трёх секунд уже заняты сбросом статистики и
+// выходом из режима.
+#define POWER_OFF_HOLD_MS           3000
+#define POWER_OFF_HOLD_REPEATER_MS  8000
+
+static uint32_t lastHoldHintMs = 0;
+
+// Выключение устройства. Выключателя питания на плате нет, а держать рацию
+// включённой круглые сутки никто не хочет: батарея садится за ночь. Глубокий
+// сон — единственное, что здесь можно назвать выключением: ток падает до
+// микроампер, а пробуждение по той же кнопке равносильно подаче питания,
+// потому что выход из deep sleep на ESP32 это полный сброс.
+static void powerOff() {
+  LOG_D("[Power] Выключение по кнопке");
+  oledShowBig("SLEEP", "press button to wake");
+  delay(1500);
+
+  // Гасим всё, что ест ток: объявления в эфире, радио с усилителем, экран
+  // вместе с внешним питанием.
+  bleStopAdvertising();
+  loraSleepForPowerOff();
+  digitalWrite(PIN_LED, LOW);
+  oledOff();
+
+  // Кнопку нужно дождаться отпущенной, иначе устройство проснётся тем же
+  // нажатием, которым его выключили, и человек увидит, что «не выключается».
+  while (digitalRead(PIN_USER_BTN) == LOW) delay(10);
+  delay(50);   // дребезг контактов
+
+  // Кнопка подтянута к питанию и замыкает на землю, поэтому будим по низкому
+  // уровню. Механизм — ext0: у ESP32-S3 нет esp_deep_sleep_enable_gpio_wakeup
+  // (SOC_GPIO_SUPPORT_DEEPSLEEP_WAKEUP не объявлен), а ext0 поддерживается и
+  // работает с любым RTC-выводом, каким GPIO0 и является. Подтяжку удерживаем
+  // во сне — иначе вход повиснет в воздухе и устройство проснётся от наводки.
+  rtc_gpio_pullup_en((gpio_num_t)PIN_USER_BTN);
+  rtc_gpio_pulldown_dis((gpio_num_t)PIN_USER_BTN);
+  esp_err_t werr = esp_sleep_enable_ext0_wakeup((gpio_num_t)PIN_USER_BTN, 0);
+  if (werr != ESP_OK) {
+    // Уснуть без будильника — значит превратить рацию в кирпич до отключения
+    // питания. Лучше не засыпать вовсе и честно сказать об этом на экране.
+    LOG_F("[Power] пробуждение по кнопке недоступно: 0x%x\n", werr);
+    oledShowBig("ERROR", "sleep unavailable");
+    delay(2000);
+    esp_restart();
+  }
+  esp_deep_sleep_start();
+}
+
 static void handleUserButton() {
   bool pressed = (digitalRead(PIN_USER_BTN) == LOW);
 
@@ -416,12 +484,30 @@ static void handleUserButton() {
     userBtnPressed = true;
   }
 
+  if (pressed && userBtnPressed) {
+    uint32_t held = millis() - userBtnPressTime;
+    uint32_t limit = repeaterIsEnabled() ? POWER_OFF_HOLD_REPEATER_MS
+                                         : POWER_OFF_HOLD_MS;
+    // Обратный отсчёт на экране. Без него человек держит кнопку вслепую и
+    // отпускает на второй секунде, решив, что ничего не происходит.
+    if (held > 1200 && held < limit && millis() - lastHoldHintMs > 250) {
+      lastHoldHintMs = millis();
+      char hint[20];
+      snprintf(hint, sizeof(hint), "off in %lu...",
+               (unsigned long)((limit - held + 999) / 1000));
+      oledWake();
+      oledShowMessage("HOLD BUTTON", hint, 400);
+    }
+  }
+
   if (!pressed && userBtnPressed) {
     uint32_t held = millis() - userBtnPressTime;
     userBtnPressed = false;
 
     if (repeaterIsEnabled()) {
-      if (held > 3000) {
+      if (held >= POWER_OFF_HOLD_REPEATER_MS) {
+        powerOff();
+      } else if (held > 3000) {
         oledWake();
         oledShowMessage("NORMAL MODE", "Restarting...", 1000);
         delay(1000);
@@ -435,9 +521,8 @@ static void handleUserButton() {
         oledWake();
       }
     } else {
-      if (held > 5000 && callGetState() == CALL_EMERGENCY_TX) {
-        callCancel();
-        oledShowMessage("SOS CANCELLED", "", 2000);
+      if (held >= POWER_OFF_HOLD_MS) {
+        powerOff();
       } else if (held > 1000) {
         // Длинное нажатие (>1с) — показать PIN
         oledWake();
@@ -1914,6 +1999,10 @@ bool testHookSetChannel(uint8_t ch) {
   prefs.putUChar("channel", ch);
   prefs.end();
   return ok;
+}
+
+void testHookPowerOff() {
+  powerOff();
 }
 
 void testHookInfo() {

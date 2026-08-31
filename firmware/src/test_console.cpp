@@ -289,6 +289,9 @@ static void handleLine(char* line) {
   }
 
   if (strcmp(cmd, "INFO") == 0) { testHookInfo(); return; }
+  // Кнопку стенд нажать не может, а проверять выключение надо: команда
+  // делает ровно то же, что удержание кнопки три секунды.
+  if (strcmp(cmd, "POWEROFF") == 0) { evt("EVT POWEROFF\n"); testHookPowerOff(); return; }
 
   if (strcmp(cmd, "TESTMODE") == 0) {
     char* arg = nextTok(&p);

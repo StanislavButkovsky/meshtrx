@@ -42,6 +42,8 @@ bool testHookCall(const char* kind, const uint8_t* target4);
 bool testHookCallResponse(const char* kind, uint8_t seq);
 bool testHookSetChannel(uint8_t ch);
 void testHookInfo();
+// Выключение устройства — то же, что удержание кнопки, но проверяемое стендом
+void testHookPowerOff();
 uint8_t testHookCurrentChannel();
 uint32_t testHookBootCount();
 

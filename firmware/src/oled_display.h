@@ -16,6 +16,8 @@ void oledShowMain(uint8_t channel, float freqMHz, int16_t rssi, int8_t snr,
 
 // Временное сообщение (показать на N секунд)
 void oledShowMessage(const char* line1, const char* line2, uint16_t durationMs = 3000);
+// Крупная надпись по центру экрана (выключение, важные состояния)
+void oledShowBig(const char* text, const char* sub = nullptr);
 
 // Режим ретранслятора
 void oledShowRepeater(uint8_t channel, float freqMHz, int8_t txPower, bool dutyCycle,

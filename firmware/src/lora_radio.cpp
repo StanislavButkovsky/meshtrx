@@ -368,6 +368,19 @@ void loraPaDisable() {
 #endif
 }
 
+void loraSleepForPowerOff() {
+  // Здесь, в отличие от LORA_POWER_SLEEP, зовём именно radio.sleep(): после
+  // него startReceive() возвращает -705 и радио надо инициализировать заново,
+  // но возвращаться нам и не придётся — выход из глубокого сна на ESP32 это
+  // полный сброс. Зато потребление чипа падает с полутора миллиампер до
+  // единиц микроампер, а ради этого всё и затевалось.
+  MutexGuard g;
+  loraPaDisable();
+  radio.sleep();
+  rxArmed = false;
+  txInProgress = false;
+}
+
 bool loraSendWake(uint8_t* data, size_t len) {
   // Отправка с длинной преамбулой — будит устройства в duty cycle mode.
   // Вся последовательность (преамбула → TX → возврат режима) под одним mutex:
