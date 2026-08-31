@@ -2,7 +2,7 @@
 
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import type { Components } from 'react-markdown';
+import type { Components, UrlTransform } from 'react-markdown';
 
 function slugify(text: string): string {
   return text
@@ -29,10 +29,25 @@ const components: Components = {
   },
 };
 
-export default function DocContent({ content }: { content: string }) {
+interface Props {
+  content: string;
+  /** Добавочные обработчики разметки: статьи подставляют так свои иллюстрации. */
+  extra?: Components;
+  /**
+   * Своя обработка адресов. По умолчанию react-markdown вычищает всё, кроме
+   * известных ему схем, — это нужная защита, и снимать её целиком нельзя.
+   */
+  urlTransform?: UrlTransform;
+}
+
+export default function DocContent({ content, extra, urlTransform }: Props) {
   return (
     <div className="prose-mesh">
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{ ...components, ...extra }}
+        urlTransform={urlTransform}
+      >
         {content}
       </ReactMarkdown>
     </div>

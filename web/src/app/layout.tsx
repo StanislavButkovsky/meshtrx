@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { SITE } from '@/lib/constants';
+import { SITE, OG_IMAGE } from '@/lib/constants';
 import { LanguageProvider } from '@/components/LanguageProvider';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
@@ -18,6 +18,16 @@ export const metadata: Metadata = {
     url: SITE.url,
     siteName: SITE.name,
     type: 'website',
+    images: [OG_IMAGE],
+  },
+  // Без явной карточки Telegram и X показывают ссылку голым текстом, а на
+  // ссылку с картинкой нажимают заметно чаще — а ссылками на проект делятся
+  // в основном как раз там.
+  twitter: {
+    card: 'summary_large_image',
+    title: SITE.name,
+    description: SITE.description,
+    images: [OG_IMAGE.url],
   },
 };
 

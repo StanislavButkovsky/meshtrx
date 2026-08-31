@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { SITE, VERSION } from '@/lib/constants';
+import { ARTICLES } from '@/content/articles';
 
 // Экспорт статический, поэтому карта считается один раз при сборке.
 export const dynamic = 'force-static';
@@ -19,14 +20,28 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // Страница загрузки меняется каждый релиз — на ней версии и файлы
     { path: 'download/', changeFrequency: 'weekly', priority: 0.9 },
     { path: 'docs/', changeFrequency: 'weekly', priority: 0.8 },
+    { path: 'articles/', changeFrequency: 'monthly', priority: 0.7 },
     { path: 'flash/', changeFrequency: 'monthly', priority: 0.7 },
     { path: 'about/', changeFrequency: 'monthly', priority: 0.6 },
   ];
 
-  return pages.map(({ path, changeFrequency, priority }) => ({
-    url: `${SITE.url}/${path}`,
-    lastModified: updated,
-    changeFrequency,
-    priority,
+  // У статьи своя дата: она не переписывается с каждым релизом, и подставлять
+  // ей дату версии — значит каждый раз звать поисковик перечитывать текст,
+  // который не менялся.
+  const articles: MetadataRoute.Sitemap = ARTICLES.map((article) => ({
+    url: `${SITE.url}/articles/${article.slug}/`,
+    lastModified: new Date(article.date),
+    changeFrequency: 'yearly',
+    priority: 0.6,
   }));
+
+  return [
+    ...pages.map(({ path, changeFrequency, priority }) => ({
+      url: `${SITE.url}/${path}`,
+      lastModified: updated,
+      changeFrequency,
+      priority,
+    })),
+    ...articles,
+  ];
 }
