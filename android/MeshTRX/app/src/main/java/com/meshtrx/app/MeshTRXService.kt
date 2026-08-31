@@ -22,6 +22,9 @@ class MeshTRXService : Service() {
         // Предел одной передачи; столько же стоит в прошивке и в записи
         // голосовых сообщений, чтобы правило было одно для всех режимов
         const val PTT_MAX_SECONDS = 10
+        // Приём по умолчанию усилен вдвое: с голосом из Codec2 на штатной
+        // громкости телефона на улице ничего не слышно
+        const val DEFAULT_RX_VOLUME = 200
     }
 
     inner class LocalBinder : Binder() {
@@ -57,9 +60,7 @@ class MeshTRXService : Service() {
         voxEngine = VoxEngine()
 
         audioEngine.init()
-        // Настройка звука окончания передачи переживает перезапуск: человек
-        // выключает его один раз, а не каждый раз после открытия приложения.
-        audioEngine.rogerBeep = prefs.getBoolean("roger_beep", true)
+        loadAudioSettings()
         setupCallbacks()
         setupGpsForwarding()
         loadSavedPeers()
@@ -207,7 +208,15 @@ class MeshTRXService : Service() {
 
     fun forgetAndScan() {
         disconnect()
-        prefs.edit().clear().apply()
+        // Забываем устройство, а не всю жизнь приложения. Раньше здесь стоял
+        // clear(): вместе с адресом ноды пропадали переписка, история файлов,
+        // список абонентов, позывной и настройки звука — хотя человек в меню
+        // выбрал всего лишь «Новое устройство».
+        val editor = prefs.edit()
+            .remove("last_device_addr")
+            .remove("last_device_name")
+        prefs.all.keys.filter { it.startsWith("auth_") }.forEach { editor.remove(it) }
+        editor.apply()
         ServiceState.deviceName.value = ""
         startScan(showPicker = true)
     }
@@ -526,14 +535,51 @@ class MeshTRXService : Service() {
         bleManager.sendSettings(json)
     }
 
-    fun setVoxThreshold(value: Int) { voxEngine.threshold = value }
-    fun setVoxHangtime(ms: Long) { voxEngine.hangtimeMs = ms }
+    // Настройки звука переживают перезапуск. До этого они жили только в памяти:
+    // человек подбирал порог VOX под свой голос и шум вокруг, закрывал
+    // приложение — и следующий разговор начинался с заводских значений, причём
+    // молча. Заметить такое трудно: выглядит как «VOX опять срабатывает не
+    // вовремя», а не как потерянная настройка.
+    private fun loadAudioSettings() {
+        val volume = prefs.getInt("rx_volume", DEFAULT_RX_VOLUME)
+        audioEngine.volumeBoost = volume / 100f
+        audioEngine.squelchThreshold = prefs.getInt("ptt_rms", 0)
+        audioEngine.rogerBeep = prefs.getBoolean("roger_beep", true)
+        voxEngine.threshold = prefs.getInt("vox_threshold", VoxEngine.DEFAULT_THRESHOLD)
+        voxEngine.hangtimeMs = prefs.getLong("vox_hangtime", VoxEngine.DEFAULT_HANGTIME_MS)
+        ServiceState.rxVolume.value = volume
+    }
+
+    fun setRxVolume(percent: Int) {
+        audioEngine.volumeBoost = percent / 100f
+        ServiceState.rxVolume.value = percent
+        prefs.edit().putInt("rx_volume", percent).apply()
+    }
+
+    fun setPttRms(value: Int) {
+        audioEngine.squelchThreshold = value
+        prefs.edit().putInt("ptt_rms", value).apply()
+    }
+
+    fun setVoxThreshold(value: Int) {
+        voxEngine.threshold = value
+        prefs.edit().putInt("vox_threshold", value).apply()
+    }
+
+    fun setVoxHangtime(ms: Long) {
+        voxEngine.hangtimeMs = ms
+        prefs.edit().putLong("vox_hangtime", ms).apply()
+    }
 
     fun setRogerBeep(enabled: Boolean) {
         audioEngine.rogerBeep = enabled
         prefs.edit().putBoolean("roger_beep", enabled).apply()
     }
 
+    fun rxVolume(): Int = prefs.getInt("rx_volume", DEFAULT_RX_VOLUME)
+    fun pttRms(): Int = prefs.getInt("ptt_rms", 0)
+    fun voxThreshold(): Int = voxEngine.threshold
+    fun voxHangtime(): Long = voxEngine.hangtimeMs
     fun rogerBeepEnabled(): Boolean = prefs.getBoolean("roger_beep", true)
 
     fun sendTextMessage(text: String, destId: String? = null, destName: String? = null) {

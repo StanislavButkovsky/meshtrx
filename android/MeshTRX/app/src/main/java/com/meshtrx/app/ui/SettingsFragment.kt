@@ -91,14 +91,13 @@ class SettingsFragment : Fragment() {
         // Громкость приёма
         val tvRxVolume = v.findViewById<TextView>(R.id.tvRxVolume)
         val seekRxVolume = v.findViewById<SeekBar>(R.id.seekRxVolume)
-        seekRxVolume.progress = ServiceState.rxVolume.value ?: 200
+        seekRxVolume.progress = service?.rxVolume() ?: (ServiceState.rxVolume.value ?: 200)
         tvRxVolume.text = getString(R.string.rx_volume, seekRxVolume.progress)
         seekRxVolume.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(sb: SeekBar?, value: Int, fromUser: Boolean) {
                 if (fromUser) {
                     val vol = value.coerceAtLeast(50) // минимум 50%
-                    ServiceState.rxVolume.value = vol
-                    service?.audioEngine?.volumeBoost = vol / 100f
+                    service?.setRxVolume(vol)
                     tvRxVolume.text = getString(R.string.rx_volume, vol)
                 }
             }
@@ -109,13 +108,13 @@ class SettingsFragment : Fragment() {
         // PTT RMS (шумоподавление)
         val tvPttRms = v.findViewById<TextView>(R.id.tvPttRms)
         val seekPttRms = v.findViewById<SeekBar>(R.id.seekPttRms)
-        val currentRms = service?.audioEngine?.squelchThreshold ?: 0
+        val currentRms = service?.pttRms() ?: 0
         seekPttRms.progress = currentRms
         tvPttRms.text = getString(R.string.ptt_rms, currentRms)
         seekPttRms.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(sb: SeekBar?, value: Int, fromUser: Boolean) {
                 if (fromUser) {
-                    service?.audioEngine?.squelchThreshold = value
+                    service?.setPttRms(value)
                     tvPttRms.text = getString(R.string.ptt_rms, value)
                 }
             }
@@ -135,6 +134,16 @@ class SettingsFragment : Fragment() {
         val seekVoxThreshold = v.findViewById<SeekBar>(R.id.seekVoxThreshold)
         val tvVoxHangtime = v.findViewById<TextView>(R.id.tvVoxHangtime)
         val seekVoxHangtime = v.findViewById<SeekBar>(R.id.seekVoxHangtime)
+
+        // Ползунки VOX раньше не заполнялись вовсе и всегда показывали значения
+        // из разметки: подобранный порог оставался в силе, а на экране стояло
+        // «800», и человек правил настройку вслепую.
+        val currentVoxThreshold = service?.voxThreshold() ?: VoxEngine.DEFAULT_THRESHOLD
+        val currentVoxHangtime = (service?.voxHangtime() ?: VoxEngine.DEFAULT_HANGTIME_MS).toInt()
+        seekVoxThreshold.progress = currentVoxThreshold
+        tvVoxThreshold.text = getString(R.string.vox_threshold, currentVoxThreshold)
+        seekVoxHangtime.progress = currentVoxHangtime
+        tvVoxHangtime.text = getString(R.string.vox_hangtime, currentVoxHangtime)
 
         seekVoxThreshold.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(sb: SeekBar?, value: Int, fromUser: Boolean) {
