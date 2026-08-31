@@ -6,6 +6,7 @@ export const translations = {
   'nav.download': { ru: 'Скачать', en: 'Download' },
   'nav.flash': { ru: 'Прошивка', en: 'Flash' },
   'nav.docs': { ru: 'Документация', en: 'Docs' },
+  'nav.articles': { ru: 'Статьи', en: 'Articles' },
   'nav.about': { ru: 'О проекте', en: 'About' },
 
   // Hero
@@ -215,6 +216,14 @@ export const translations = {
 
   // Docs
   'docs.toc': { ru: 'Содержание', en: 'Table of contents' },
+
+  // Articles
+  'articles.title': { ru: 'Статьи', en: 'Articles' },
+  'articles.subtitle': { ru: 'Как MeshTRX устроен внутри, почему сделан именно так и чего это стоило.', en: 'How MeshTRX works inside, why it was built this way, and what it cost.' },
+  'articles.reading': { ru: 'мин чтения', en: 'min read' },
+  'articles.read': { ru: 'Читать', en: 'Read' },
+  'articles.back': { ru: 'Все статьи', en: 'All articles' },
+  'articles.empty': { ru: 'Пока ни одной статьи нет.', en: 'No articles yet.' },
 
   // Footer
   'footer.tagline': { ru: 'Off-grid голосовая связь через LoRa mesh-сеть', en: 'Off-grid voice communication via LoRa mesh network' },

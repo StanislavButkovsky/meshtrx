@@ -25,6 +25,14 @@ const FIRMWARE = pick('firmware');
 const DATE = constants.match(/date:\s*'([^']+)'/g)?.pop()?.match(/'([^']+)'/)?.[1] ?? '?';
 const SITE = 'https://meshtrx.com';
 
+// Статьи разбираются регулярным выражением по той же причине, что и версии
+// выше: это .mjs, а articles.ts — TypeScript, и тащить сюда сборщик ради двух
+// строк не стоит. Если разбор ничего не нашёл, раздел просто не попадёт в
+// указатель — пустой список честнее выдуманного.
+const articlesSrc = readFileSync(resolve(here, '..', 'src', 'content', 'articles.ts'), 'utf-8');
+const articles = [...articlesSrc.matchAll(/slug: '([^']+)',\s*\n\s*date: '([^']+)',\s*\n\s*title: \{\s*\n\s*ru: '([^']+)'/g)]
+  .map(([, slug, date, title]) => ({ slug, date, title }));
+
 const guideRu = readFileSync(resolve(repo, 'docs', 'USER_GUIDE.md'), 'utf-8');
 const guideEn = readFileSync(resolve(repo, 'docs', 'USER_GUIDE.en.md'), 'utf-8');
 
@@ -50,9 +58,16 @@ const index = `# MeshTRX
 - [User guide in English, full text](${SITE}/llms-full.en.txt): the same guide in English.
 - [Документация на сайте](${SITE}/docs/): то же руководство в вёрстке, с оглавлением.
 
+## Статьи
+
+Разборы того, как проект устроен внутри. Числа в них взяты из исходников.
+
+${articles.map((a) => `- [${a.title}](${SITE}/articles/${a.slug}/), ${a.date}`).join('\n')}
+
 ## Страницы сайта
 
 - [О проекте](${SITE}/about/): зачем понадобился ещё один проект, что общего с Meshtastic и чем отличается.
+- [Статьи](${SITE}/articles/): список всех разборов.
 - [Скачать](${SITE}/download/): прошивки для каждой ревизии платы и APK для Android.
 - [Прошивка из браузера](${SITE}/flash/): заливка прошивки по USB прямо из Chrome или Edge.
 
@@ -70,6 +85,7 @@ writeFileSync(resolve(publicDir, 'llms.txt'), index, 'utf-8');
 writeFileSync(resolve(publicDir, 'llms-full.txt'), header('ru') + guideRu, 'utf-8');
 writeFileSync(resolve(publicDir, 'llms-full.en.txt'), header('en') + guideEn, 'utf-8');
 
+console.log(`[gen-llms] статей в указателе: ${articles.length}`);
 console.log(`[gen-llms] llms.txt (${Math.round(index.length / 1024)} КБ), ` +
   `llms-full.txt (${Math.round(guideRu.length / 1024)} КБ), ` +
   `llms-full.en.txt (${Math.round(guideEn.length / 1024)} КБ) — версия ${APP}`);

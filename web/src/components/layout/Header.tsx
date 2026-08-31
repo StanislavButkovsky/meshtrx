@@ -12,6 +12,7 @@ const NAV_ITEMS: { href: string; key: TranslationKey }[] = [
   { href: '/download/', key: 'nav.download' },
   { href: '/flash/', key: 'nav.flash' },
   { href: '/docs/', key: 'nav.docs' },
+  { href: '/articles/', key: 'nav.articles' },
   { href: '/about/', key: 'nav.about' },
 ];
 
