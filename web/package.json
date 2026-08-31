@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "prebuild": "node scripts/sync-docs.mjs",
+    "sync-docs": "node scripts/sync-docs.mjs"
   },
   "dependencies": {
     "esptool-js": "^0.5.7",
