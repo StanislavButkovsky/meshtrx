@@ -93,7 +93,21 @@
         <SeekBar android:id="@+id/seekPttRms"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:max="1000" android:progress="0"
-            android:layout_marginBottom="16dp" />
+            android:layout_marginBottom="8dp" />
+
+        <!-- Звук окончания передачи (roger beep) -->
+        <LinearLayout
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:gravity="center_vertical"
+            android:layout_marginBottom="16dp">
+            <TextView android:layout_width="0dp" android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="@string/roger_beep" android:textSize="13sp" android:textColor="#cccccc" />
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switchRogerBeep"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_marginStart="8dp" android:checked="true" />
+        </LinearLayout>
 
         <!-- VOX -->
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"

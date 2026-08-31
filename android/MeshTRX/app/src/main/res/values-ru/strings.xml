@@ -172,6 +172,7 @@ MeshTRX v%2$s</string>
     <string name="speaker">Динамик</string>
     <string name="rx_volume">Громкость приёма: %d%%</string>
     <string name="ptt_rms">PTT RMS: %d (отсечка шума)</string>
+    <string name="roger_beep">Звук окончания передачи</string>
     <string name="repeater_title">Ретранслятор</string>
     <string name="repeater_warning">Устройство перезагрузится в режиме ретранслятора. Подключитесь к WiFi для мониторинга.</string>
     <string name="wifi_ssid">WiFi SSID (опционально)</string>

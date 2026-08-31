@@ -123,6 +123,13 @@ class SettingsFragment : Fragment() {
             override fun onStopTrackingTouch(sb: SeekBar?) {}
         })
 
+        // Звук окончания передачи
+        val switchRogerBeep = v.findViewById<SwitchMaterial>(R.id.switchRogerBeep)
+        switchRogerBeep.isChecked = service?.rogerBeepEnabled() ?: true
+        switchRogerBeep.setOnCheckedChangeListener { _, checked ->
+            service?.setRogerBeep(checked)
+        }
+
         // VOX
         val tvVoxThreshold = v.findViewById<TextView>(R.id.tvVoxThreshold)
         val seekVoxThreshold = v.findViewById<SeekBar>(R.id.seekVoxThreshold)

@@ -57,6 +57,9 @@ class MeshTRXService : Service() {
         voxEngine = VoxEngine()
 
         audioEngine.init()
+        // Настройка звука окончания передачи переживает перезапуск: человек
+        // выключает его один раз, а не каждый раз после открытия приложения.
+        audioEngine.rogerBeep = prefs.getBoolean("roger_beep", true)
         setupCallbacks()
         setupGpsForwarding()
         loadSavedPeers()
@@ -525,6 +528,13 @@ class MeshTRXService : Service() {
 
     fun setVoxThreshold(value: Int) { voxEngine.threshold = value }
     fun setVoxHangtime(ms: Long) { voxEngine.hangtimeMs = ms }
+
+    fun setRogerBeep(enabled: Boolean) {
+        audioEngine.rogerBeep = enabled
+        prefs.edit().putBoolean("roger_beep", enabled).apply()
+    }
+
+    fun rogerBeepEnabled(): Boolean = prefs.getBoolean("roger_beep", true)
 
     fun sendTextMessage(text: String, destId: String? = null, destName: String? = null) {
         val seq = msgSeq++

@@ -172,6 +172,7 @@ MeshTRX v%2$s</string>
     <string name="speaker">Speaker</string>
     <string name="rx_volume">RX Volume: %d%%</string>
     <string name="ptt_rms">PTT RMS: %d (noise gate)</string>
+    <string name="roger_beep">End-of-transmission tone</string>
     <string name="repeater_title">Repeater</string>
     <string name="repeater_warning">Device will restart in repeater mode. Connect to WiFi AP to monitor.</string>
     <string name="wifi_ssid">WiFi SSID (optional)</string>

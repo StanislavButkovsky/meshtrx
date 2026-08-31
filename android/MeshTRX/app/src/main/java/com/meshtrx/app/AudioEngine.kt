@@ -30,6 +30,10 @@ class AudioEngine {
     var onRmsLevel: ((Int) -> Unit)? = null
     var volumeBoost = 2.0f // усиление приёма (1.0 = норма, 3.0 = макс)
     var squelchThreshold = 0 // порог шумоподавления RMS (0 = отключён)
+    // Короткий сигнал в конце чужой передачи. Кому-то он нужен — иначе не
+    // понять, договорил собеседник или связь оборвалась; кого-то раздражает,
+    // особенно в помещении. Поэтому выключаемый, а не зашитый.
+    @Volatile var rogerBeep = true
 
     fun init() {
         codec2.init(Codec2Wrapper.MODE_3200)
@@ -189,7 +193,7 @@ class AudioEngine {
     fun playEncodedPacket(codec2Data: ByteArray, isLastPacket: Boolean = false) {
         if (isLastPacket) {
             // PTT_END — payload нулевой, не декодировать (иначе Codec2 выдаёт шум)
-            playRogerBeep()
+            if (rogerBeep) playRogerBeep()
             return
         }
         val pcm = codec2.decodePacket(codec2Data)
