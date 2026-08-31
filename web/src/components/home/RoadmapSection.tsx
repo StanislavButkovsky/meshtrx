@@ -3,11 +3,15 @@
 import { useLanguage } from '@/components/LanguageProvider';
 import type { TranslationKey } from '@/lib/i18n';
 
+// Статусы взяты из docs/ROADMAP.md, а не проставлены на глаз: «Скоро» — это
+// раздел «Ближайшее: недели», «Планируется» — «Среднесрочное: месяцы».
+// Раньше здесь стояло наоборот: шифрование числилось в «Скоро», хотя лежит в
+// среднесрочном, а готовый настольный клиент — в «Планируется».
 const PLANS: { status: 'soon' | 'planned'; titleKey: TranslationKey; descKey: TranslationKey }[] = [
-  { status: 'soon', titleKey: 'roadmap.encrypt.title', descKey: 'roadmap.encrypt.desc' },
-  { status: 'planned', titleKey: 'roadmap.devices.title', descKey: 'roadmap.devices.desc' },
-  { status: 'planned', titleKey: 'roadmap.desktop.title', descKey: 'roadmap.desktop.desc' },
+  { status: 'soon', titleKey: 'roadmap.desktop.title', descKey: 'roadmap.desktop.desc' },
+  { status: 'planned', titleKey: 'roadmap.encrypt.title', descKey: 'roadmap.encrypt.desc' },
   { status: 'planned', titleKey: 'roadmap.mesh.title', descKey: 'roadmap.mesh.desc' },
+  { status: 'planned', titleKey: 'roadmap.devices.title', descKey: 'roadmap.devices.desc' },
 ];
 
 export default function RoadmapSection() {
