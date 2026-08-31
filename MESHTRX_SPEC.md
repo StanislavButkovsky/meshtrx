@@ -141,7 +141,7 @@ build_flags =
 // Максимальный размер пакета LoRa SF7 BW250: 222 байта (то же что BW500)
 // Два типа пакетов:
 
-// --- Аудио пакет (71 байт) ---
+// --- Аудио пакет (39 байт) ---
 #pragma pack(push, 1)
 struct LoRaAudioPacket {
   uint8_t  type;        // байт 0: 0xA0 = аудио
@@ -150,10 +150,12 @@ struct LoRaAudioPacket {
   uint8_t  flags;       // байт 3: бит0=PTT_START, бит1=PTT_END, бит2=ROGER_BEEP, бит3=VOX
   uint8_t  ttl;         // байт 4: Time-To-Live (по умолчанию 2; ретранслятор -1; при 0 — не ретранслировать)
   uint8_t  sender[2];   // байты 5-6: последние 2 байта MAC (идентификатор)
-  uint8_t  payload[64]; // байты 7–70: Codec2 3200 bps (8 фреймов × 8 байт)
+  uint8_t  payload[32]; // байты 7–38: Codec2 3200 bps (4 фрейма × 8 байт)
 };
 #pragma pack(pop)
-// Итого LoRaAudioPacket: 7 (заголовок) + 64 (payload) = 71 байт
+// Итого LoRaAudioPacket: 7 (заголовок) + 32 (payload) = 39 байт
+// Четыре фрейма, а не восемь: меньше пакет — меньше слышна потеря. Восемьдесят
+// миллисекунд речи вместо ста шестидесяти, и провал при потере вдвое короче.
 
 // --- Текстовый пакет (макс. 91 байт) ---
 #pragma pack(push, 1)
@@ -368,7 +370,7 @@ struct LoRaCallResponse {
 Частота:       863.150 МГц (канал 0)
 Bandwidth:     250 кГц     (оптимальный баланс: 23 канала + скорость 10.9 кбит/с)
 SpreadFactor:  7            (SF7; Codec2 требует 1.2 кбит/с — запас ×9)
-CodingRate:    5            (CR 4/5)
+CodingRate:    7            (CR 4/7 — больше избыточности ради надёжности)
 SyncWord:      0x34         (приватная сеть, не конфликтует с LoRaWAN 0x34/0x12)
 Power:         14 дБм       (EU868 лимит 25мВт; вне EU можно до 22 дБм)
 Preamble:      8 символов
@@ -454,7 +456,7 @@ MTU: запросить 128 байт при подключении
   Байт 0: тип сообщения
     0x01 = AUDIO_DATA     (телефон→ESP: отправить в LoRa)
     0x02 = AUDIO_DATA     (ESP→телефон: получено из LoRa)
-           BLE аудио пакет: 68 байт (cmd[1] + flags[1] + sender[2] + payload[64])
+           BLE аудио пакет: 36 байт (cmd[1] + flags[1] + sender[2] + payload[32])
     0x03 = PTT_START      (телефон→ESP: начать передачу)
     0x04 = PTT_END        (телефон→ESP: закончить передачу)
     0x05 = SET_CHANNEL    (телефон→ESP: байт 1 = номер канала 0–22)
@@ -1545,7 +1547,7 @@ target_link_libraries(codec2jni android log)
 Шаг 1: Прошивка ESP32 (firmware/) ✓
   → packet.h, lora_radio, ble_service, oled_display, audio_codec
   → vox, roger_beep, beacon, repeater, call_manager, main.cpp
-  → Codec2 1200bps (6 байт/фрейм, 8 фреймов/пакет)
+  → Codec2 3200 бит/с (8 байт на кадр, 4 кадра в пакете)
   → BLE PIN авторизация на уровне приложения (0x25/0x26)
   → OLED: авто-сон 60с, батарея, PIN по кнопке USER
   → LED: TX=горит, RX=вспышка, BLE=5с, idle=выключен

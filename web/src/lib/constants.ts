@@ -20,17 +20,10 @@ export const VERSION = {
   date: '2026-08-31',
 };
 
-export const STATS = [
-  { value: '5+', unit: 'км', label: 'Дальность связи', hint: 'С ретранслятором — ещё дальше' },
-  { value: '23', unit: 'кан.', label: 'LoRa каналов' },
-  { value: '160', unit: 'мс', label: 'Задержка голоса' },
-  { value: '3200', unit: 'bps', label: 'Codec2 битрейт' },
-];
-
 export const FEATURES = [
   {
     title: 'Голосовая связь',
-    description: 'PTT голос через LoRa с кодеком Codec2. Задержка ~160ms, слышно чётко.',
+    description: 'PTT голос через LoRa кодеком Codec2 на 3200 бит/с. Разборчиво и без интернета.',
     icon: 'mic',
   },
   {

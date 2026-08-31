@@ -68,7 +68,7 @@
 #define MAX_GROUP_MEMBERS       8
 #define MAX_SAVED_GROUPS        8
 
-// === Аудио пакет (71 байт) ===
+// === Аудио пакет (39 байт: 7 заголовок + 32 полезной нагрузки) ===
 #pragma pack(push, 1)
 struct LoRaAudioPacket {
   uint8_t  type;        // 0xA0
