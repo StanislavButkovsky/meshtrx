@@ -484,7 +484,8 @@ python3 -m venv .venv
 | Нажатие | Действие |
 |---------|----------|
 | Короткое (<1 сек) | Включить экран на 30 сек |
-| Длинное (>1 сек) | Показать PIN и имя устройства на 10 сек |
+| Среднее (>1 сек) | Показать PIN и имя устройства на 10 сек |
+| Долгое (>3 сек) | Выключить устройство |
 
 ### В режиме ретранслятора
 
@@ -493,6 +494,23 @@ python3 -m venv .venv
 | Короткое | Включить экран |
 | Среднее (>1 сек) | Сбросить статистику |
 | Длинное (>3 сек) | Выйти из режима ретранслятора |
+| Долгое (>8 сек) | Выключить устройство |
+
+### Выключение и включение
+
+Выключателя питания на плате нет, поэтому его роль играет кнопка. Держите её
+три секунды: на экране крупно появится **SLEEP**, и устройство уснёт — радио,
+усилитель и экран обесточиваются, потребление падает до микроампер, то есть
+батареи хватает на месяцы ожидания.
+
+Включается тем же нажатием: короткого хватает. Выход из этого сна — полный
+старт устройства, как после подачи питания, поэтому связь и настройки
+восстанавливаются сами. В журнале это видно строкой \`reason=DEEPSLEEP
+wake=BUTTON\`.
+
+В режиме ретранслятора порог больше — восемь секунд: там короткие удержания
+уже заняты сбросом статистики и выходом из режима. Пока вы держите кнопку, на
+экране идёт обратный отсчёт, так что вслепую держать не придётся.
 
 ---
 
@@ -1034,7 +1052,8 @@ The channel can be changed:
 | Press | Action |
 |-------|--------|
 | Short (<1 s) | Turn the screen on for 30 s |
-| Long (>1 s) | Show the PIN and the device name for 10 s |
+| Medium (>1 s) | Show the PIN and the device name for 10 s |
+| Long (>3 s) | Turn the device off |
 
 ### In repeater mode
 
@@ -1043,6 +1062,15 @@ The channel can be changed:
 | Short | Turn the screen on |
 | Medium (>1 s) | Reset the statistics |
 | Long (>3 s) | Leave repeater mode |
+| Very long (>8 s) | Turn the device off |
+
+### Turning the device off and on
+
+There is no power switch on the board, so the button plays that role. Hold it for three seconds: **SLEEP** appears on the screen in large type and the device goes to sleep — radio, amplifier and display lose power, consumption drops to microamps, and a battery lasts for months of standby.
+
+The same button turns it back on; a short press is enough. Waking from this sleep is a full start, exactly as after applying power, so the link and the settings come back on their own. In the log it shows as \`reason=DEEPSLEEP wake=BUTTON\`.
+
+In repeater mode the threshold is longer — eight seconds: there the shorter holds are already taken by resetting the statistics and leaving the mode. While you hold the button a countdown runs on the screen, so you are not holding it blind.
 
 ---
 

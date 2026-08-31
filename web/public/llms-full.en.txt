@@ -1,6 +1,6 @@
 # MeshTRX — full documentation
 
-> App 4.4.5, firmware 4.4.4, updated 2026-08-31. Source: https://meshtrx.com/docs/
+> App 4.4.5, firmware 4.4.6, updated 2026-08-31. Source: https://meshtrx.com/docs/
 
 ---
 
@@ -449,7 +449,8 @@ The channel can be changed:
 | Press | Action |
 |-------|--------|
 | Short (<1 s) | Turn the screen on for 30 s |
-| Long (>1 s) | Show the PIN and the device name for 10 s |
+| Medium (>1 s) | Show the PIN and the device name for 10 s |
+| Long (>3 s) | Turn the device off |
 
 ### In repeater mode
 
@@ -458,6 +459,15 @@ The channel can be changed:
 | Short | Turn the screen on |
 | Medium (>1 s) | Reset the statistics |
 | Long (>3 s) | Leave repeater mode |
+| Very long (>8 s) | Turn the device off |
+
+### Turning the device off and on
+
+There is no power switch on the board, so the button plays that role. Hold it for three seconds: **SLEEP** appears on the screen in large type and the device goes to sleep — radio, amplifier and display lose power, consumption drops to microamps, and a battery lasts for months of standby.
+
+The same button turns it back on; a short press is enough. Waking from this sleep is a full start, exactly as after applying power, so the link and the settings come back on their own. In the log it shows as `reason=DEEPSLEEP wake=BUTTON`.
+
+In repeater mode the threshold is longer — eight seconds: there the shorter holds are already taken by resetting the statistics and leaving the mode. While you hold the button a countdown runs on the screen, so you are not holding it blind.
 
 ---
 
