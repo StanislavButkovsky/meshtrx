@@ -277,7 +277,8 @@ Use the filter drop-down to show messages from one particular station or from ev
 
 1. Go to the **Files** tab
 2. Press **Photo** — the gallery opens
-3. Pick a photo (it is compressed to 100 KB automatically)
+3. Pick a photo — the app scales it down to 320×426, re-encodes it as JPEG
+   and strips the metadata; the result is usually 5–20 KB
 4. Confirm sending
 5. Progress is shown in the list
 
@@ -296,6 +297,8 @@ Use the filter drop-down to show messages from one particular station or from ev
 | Interval | 100 ms |
 | Throughput | ~1.2 KB/s |
 | An 11 KB photo | ~10 seconds |
+
+The hundred kilobytes is a ceiling for any file, not the size a photo is squeezed to: a photo prepared by the app takes 5–20 KB and goes out in about ten seconds. The ceiling exists for two reasons at once. First, the device's memory: an incoming file is held whole in the radio's RAM, and there is about a hundred kilobytes of it free, so a request for more is refused outright rather than dropped halfway. Second, the air: the channel is single and half-duplex, and for the whole transfer nobody else can talk or send a message. Hence the rule of thumb: the smaller the file, the less of the shared channel you take.
 
 ### What you can do with a file
 

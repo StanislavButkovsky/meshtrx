@@ -311,7 +311,8 @@ python3 -m venv .venv
 
 1. Перейдите на вкладку **Файлы**
 2. Нажмите **Фото** — откроется галерея
-3. Выберите фото (автоматически сжимается до 100 КБ)
+3. Выберите фото — приложение само уменьшит его до 320×426 точек,
+   пережмёт в JPEG и срежет метаданные; на выходе обычно 5–20 КБ
 4. Подтвердите отправку
 5. Прогресс виден в списке
 
@@ -330,6 +331,15 @@ python3 -m venv .venv
 | Интервал | 100 мс |
 | Скорость | ~1.2 КБ/с |
 | 11 КБ фото | ~10 секунд |
+
+Сто килобайт — это потолок для любого файла, а не размер, до которого
+дожимается снимок: подготовленное приложением фото занимает 5–20 КБ и уходит
+секунд за десять. Потолок стоит по двум причинам сразу. Первая — память
+устройства: файл целиком лежит в оперативке рации, а её там около сотни
+килобайт свободной, поэтому запрос на больший размер прошивка отклоняет, а не
+обрывает передачу на середине. Вторая — эфир: канал один и полудуплексный, и
+всё время передачи остальные не могут ни поговорить, ни отправить сообщение.
+Отсюда и правило: чем меньше файл, тем меньше вы занимаете общий канал.
 
 ### Действия с файлами
 
@@ -894,7 +904,8 @@ Use the filter drop-down to show messages from one particular station or from ev
 
 1. Go to the **Files** tab
 2. Press **Photo** — the gallery opens
-3. Pick a photo (it is compressed to 100 KB automatically)
+3. Pick a photo — the app scales it down to 320×426, re-encodes it as JPEG
+   and strips the metadata; the result is usually 5–20 KB
 4. Confirm sending
 5. Progress is shown in the list
 
@@ -913,6 +924,8 @@ Use the filter drop-down to show messages from one particular station or from ev
 | Interval | 100 ms |
 | Throughput | ~1.2 KB/s |
 | An 11 KB photo | ~10 seconds |
+
+The hundred kilobytes is a ceiling for any file, not the size a photo is squeezed to: a photo prepared by the app takes 5–20 KB and goes out in about ten seconds. The ceiling exists for two reasons at once. First, the device's memory: an incoming file is held whole in the radio's RAM, and there is about a hundred kilobytes of it free, so a request for more is refused outright rather than dropped halfway. Second, the air: the channel is single and half-duplex, and for the whole transfer nobody else can talk or send a message. Hence the rule of thumb: the smaller the file, the less of the shared channel you take.
 
 ### What you can do with a file
 
