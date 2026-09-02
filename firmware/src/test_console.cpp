@@ -398,20 +398,13 @@ static void handleLine(char* line) {
     if (a1 && a2 && a3) {
       digitalWrite(PA_FEM_POWER, atoi(a1) ? HIGH : LOW);
       digitalWrite(PA_FEM_EN,    atoi(a2) ? HIGH : LOW);
-#ifdef PA_FEM_TX_MODE
-      digitalWrite(PA_FEM_TX_MODE, atoi(a3) ? HIGH : LOW);
-#endif
-#ifdef PA_FEM_RX_MODE
-      digitalWrite(PA_FEM_RX_MODE, atoi(a3) ? HIGH : LOW);
+#ifdef PA_FEM_CTX
+      digitalWrite(PA_FEM_CTX, atoi(a3) ? HIGH : LOW);
 #endif
     }
-    evt("EVT FEM rev=%d power=%d en=%d mode=%d\n", BOARD_V4_REV,
+    evt("EVT FEM rev=%d power=%d en=%d ctx=%d\n", BOARD_V4_REV,
       digitalRead(PA_FEM_POWER), digitalRead(PA_FEM_EN),
-#ifdef PA_FEM_TX_MODE
-      digitalRead(PA_FEM_TX_MODE));
-#else
-      digitalRead(PA_FEM_RX_MODE));
-#endif
+      digitalRead(PA_FEM_CTX));
 #else
     evt("EVT FEM board=v3 note=no_fem\n");
 #endif

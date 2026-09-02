@@ -109,11 +109,8 @@ void loraInit() {
 #if defined(BOARD_V4) && !defined(DISABLE_FEM)
   pinMode(PA_FEM_POWER, OUTPUT);
   pinMode(PA_FEM_EN, OUTPUT);
-#ifdef PA_FEM_TX_MODE
-  pinMode(PA_FEM_TX_MODE, OUTPUT);
-#endif
-#ifdef PA_FEM_RX_MODE
-  pinMode(PA_FEM_RX_MODE, OUTPUT);
+#ifdef PA_FEM_CTX
+  pinMode(PA_FEM_CTX, OUTPUT);
 #endif
   // Приём/передачу усилителя переключает сам SX1262 линией DIO2. Делать это
   // ещё и из программы значит управлять одним входом с двух сторон.
@@ -158,8 +155,8 @@ static bool loraSendLocked(uint8_t* data, size_t len) {
   rxArmed = false;
   radio.setDio1Action(onTxDone);
 
-#ifdef PA_FEM_TX_MODE
-  digitalWrite(PA_FEM_TX_MODE, HIGH);  // полная мощность усилителя на время передачи
+#ifdef PA_FEM_CTX
+  digitalWrite(PA_FEM_CTX, HIGH);  // сигнал через усилитель мощности
 #endif
 
   int state = radio.startTransmit(data, len);
@@ -185,9 +182,10 @@ static bool loraSendLocked(uint8_t* data, size_t len) {
   txInProgress = false;
   radioAccount(RADIO_ACC_STANDBY);
 
-#ifdef PA_FEM_TX_MODE
-  // GPIO46 — strapping-пин: держим его низким везде, кроме самой передачи
-  digitalWrite(PA_FEM_TX_MODE, LOW);
+#ifdef PA_FEM_CTX
+  // Вне передачи линия низкая: это и приём через малошумящий усилитель, и
+  // безопасное состояние strapping-пина GPIO46 на плате 4.2.
+  digitalWrite(PA_FEM_CTX, LOW);
 #endif
 
   if (!loraTxDone) {
@@ -344,11 +342,8 @@ void loraPaEnable() {
 #if defined(BOARD_V4) && !defined(DISABLE_FEM)
   digitalWrite(PA_FEM_POWER, HIGH);  // питание усилителя
   digitalWrite(PA_FEM_EN, HIGH);     // CSD: микросхема включена
-#ifdef PA_FEM_TX_MODE
-  digitalWrite(PA_FEM_TX_MODE, LOW); // 4.2: обход PA, пока не передаём
-#endif
-#ifdef PA_FEM_RX_MODE
-  digitalWrite(PA_FEM_RX_MODE, LOW); // 4.3: приём через малошумящий усилитель
+#ifdef PA_FEM_CTX
+  digitalWrite(PA_FEM_CTX, LOW);   // приём через малошумящий усилитель
 #endif
   Serial.println("[LoRa] PA ON");
 #endif
@@ -356,11 +351,8 @@ void loraPaEnable() {
 
 void loraPaDisable() {
 #if defined(BOARD_V4) && !defined(DISABLE_FEM)
-#ifdef PA_FEM_TX_MODE
-  digitalWrite(PA_FEM_TX_MODE, LOW);
-#endif
-#ifdef PA_FEM_RX_MODE
-  digitalWrite(PA_FEM_RX_MODE, LOW);
+#ifdef PA_FEM_CTX
+  digitalWrite(PA_FEM_CTX, LOW);
 #endif
   digitalWrite(PA_FEM_EN, LOW);
   digitalWrite(PA_FEM_POWER, LOW);   // полностью снять питание усилителя
