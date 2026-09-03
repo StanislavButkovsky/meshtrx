@@ -1,6 +1,6 @@
 # MeshTRX — full documentation
 
-> App 4.4.5, firmware 4.4.6, updated 2026-08-31. Source: https://meshtrx.ru/docs/
+> App 4.4.5, firmware 4.4.7, updated 2026-08-31. Source: https://meshtrx.ru/docs/
 
 ---
 
@@ -97,6 +97,25 @@ pio run -e heltec_wifi_lora_32_V43 --target upload --upload-port /dev/ttyUSB0   
 ```
 
 After updating the firmware, **update the app as well**: the two agree on a shared protocol, and the pair "new firmware + old app" may fail to find each other over Bluetooth.
+
+**Flashing by hand, with esptool.** You will need this for a V4: the wizard on the site only writes the V3 image. The firmware file alone is not enough — after a full erase the board has neither a bootloader nor a partition table left, and it goes into an endless reboot loop. Four files are needed, each at its own address:
+
+```bash
+esptool.py --chip esp32s3 --port COM3 --baud 921600 \
+  write_flash -z --flash_mode dio --flash_freq 80m --flash_size 16MB \
+  0x0     bootloader-v4.bin \
+  0x8000  partitions-v4.bin \
+  0xe000  boot_app0.bin \
+  0x10000 firmware-v4.3-<version>.bin
+```
+
+The two mistakes people make most often:
+
+- **On the ESP32-S3 the bootloader goes to `0x0`, not `0x1000`.** `0x1000` is the address for the older ESP32; with it the board powers up and immediately reboots, over and over.
+- **The V4 has 16 MB of flash**, hence `--flash_size 16MB`. The V3 has 8 MB and its own bootloader and partition table: `bootloader.bin` and `partitions.bin`.
+
+All four files sit on the [download page](/download/) next to the firmware images.
+
 
 ### 2. Installing the app
 
