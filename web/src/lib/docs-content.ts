@@ -106,6 +106,31 @@ pio run -e heltec_wifi_lora_32_V43 --target upload --upload-port /dev/ttyUSB0   
 общему протоколу, и старая пара «новая прошивка + старое приложение» может
 не найти друг друга по Bluetooth.
 
+**Прошивка вручную, через esptool.** Понадобится, если прошиваете V4: мастер на
+сайте заливает только образ V3. Одного файла прошивки мало — после полного
+стирания на плате не остаётся ни загрузчика, ни таблицы разделов, и она уходит
+в бесконечную перезагрузку. Нужны четыре файла, каждый по своему адресу:
+
+\`\`\`bash
+esptool.py --chip esp32s3 --port COM3 --baud 921600 \\
+  write_flash -z --flash_mode dio --flash_freq 80m --flash_size 16MB \\
+  0x0     bootloader-v4.bin \\
+  0x8000  partitions-v4.bin \\
+  0xe000  boot_app0.bin \\
+  0x10000 firmware-v4.3-<версия>.bin
+\`\`\`
+
+Два места, где ошибаются чаще всего:
+
+- **Загрузчик у ESP32-S3 лежит по адресу \`0x0\`, а не \`0x1000\`.** Адрес \`0x1000\`
+  — от старого ESP32; с ним плата включается и сразу перезагружается, по кругу.
+- **У V4 флеш на 16 МБ**, поэтому \`--flash_size 16MB\`. У V3 — 8 МБ, и файлы
+  загрузчика с таблицей разделов у него свои: \`bootloader.bin\` и
+  \`partitions.bin\`.
+
+Все четыре файла лежат на [странице загрузки](/download/) рядом с прошивками.
+
+
 ### 2. Установка приложения
 
 Скачайте APK со [страницы загрузки](/download/) и разрешите установку из
@@ -718,6 +743,25 @@ pio run -e heltec_wifi_lora_32_V43 --target upload --upload-port /dev/ttyUSB0   
 \`\`\`
 
 After updating the firmware, **update the app as well**: the two agree on a shared protocol, and the pair "new firmware + old app" may fail to find each other over Bluetooth.
+
+**Flashing by hand, with esptool.** You will need this for a V4: the wizard on the site only writes the V3 image. The firmware file alone is not enough — after a full erase the board has neither a bootloader nor a partition table left, and it goes into an endless reboot loop. Four files are needed, each at its own address:
+
+\`\`\`bash
+esptool.py --chip esp32s3 --port COM3 --baud 921600 \\
+  write_flash -z --flash_mode dio --flash_freq 80m --flash_size 16MB \\
+  0x0     bootloader-v4.bin \\
+  0x8000  partitions-v4.bin \\
+  0xe000  boot_app0.bin \\
+  0x10000 firmware-v4.3-<version>.bin
+\`\`\`
+
+The two mistakes people make most often:
+
+- **On the ESP32-S3 the bootloader goes to \`0x0\`, not \`0x1000\`.** \`0x1000\` is the address for the older ESP32; with it the board powers up and immediately reboots, over and over.
+- **The V4 has 16 MB of flash**, hence \`--flash_size 16MB\`. The V3 has 8 MB and its own bootloader and partition table: \`bootloader.bin\` and \`partitions.bin\`.
+
+All four files sit on the [download page](/download/) next to the firmware images.
+
 
 ### 2. Installing the app
 
