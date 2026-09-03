@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { VERSION, DOWNLOAD_LINKS } from '@/lib/constants';
 import { useLanguage } from '@/components/LanguageProvider';
 
@@ -64,6 +65,38 @@ export default function FirmwareDownload() {
           <p className="text-xs text-text-secondary mt-3">
             {t('dl.firmware_hint')}
           </p>
+
+          {/* Мастер прошивки в браузере умеет только V3, владельцу V4 нужен
+              esptool — а к нему, кроме самой прошивки, ещё три файла. Раньше
+              они лежали в каталоге без единой ссылки: человек из группы нашёл
+              их, только подставив адреса руками. */}
+          <div className="mt-5 pt-4 border-t border-border">
+            <h3 className="text-sm font-semibold text-text-primary mb-1">
+              {t('dl.manual.title')}
+            </h3>
+            <p className="text-xs text-text-secondary mb-3">
+              {t('dl.manual.desc')}{' '}
+              <Link href="/docs/#прошивка-устройства" className="text-accent hover:underline">
+                {t('dl.manual.docs')}
+              </Link>
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { href: '/downloads/bootloader-v4.bin', label: 'bootloader-v4.bin', addr: '0x0' },
+                { href: '/downloads/partitions-v4.bin', label: 'partitions-v4.bin', addr: '0x8000' },
+                { href: '/downloads/boot_app0.bin', label: 'boot_app0.bin', addr: '0xe000' },
+              ].map((f) => (
+                <a
+                  key={f.href}
+                  href={f.href}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-bg border border-border text-xs text-text-secondary hover:border-accent/40 hover:text-accent transition-colors"
+                >
+                  <code>{f.label}</code>
+                  <span className="text-text-secondary/60">{f.addr}</span>
+                </a>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>

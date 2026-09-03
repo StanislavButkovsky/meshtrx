@@ -112,6 +112,15 @@ pio run -e heltec_wifi_lora_32_V43 --target upload --upload-port /dev/ttyUSB0   
 в бесконечную перезагрузку. Нужны четыре файла, каждый по своему адресу:
 
 \`\`\`bash
+# esptool 5.x — команда и ключи через дефисы
+esptool --chip esp32s3 --port COM3 --baud 921600 \\
+  write-flash -z --flash-mode dio --flash-freq 80m --flash-size 16MB \\
+  0x0     bootloader-v4.bin \\
+  0x8000  partitions-v4.bin \\
+  0xe000  boot_app0.bin \\
+  0x10000 firmware-v4.3-<версия>.bin
+
+# esptool 4.x — то же самое, но через подчёркивания
 esptool.py --chip esp32s3 --port COM3 --baud 921600 \\
   write_flash -z --flash_mode dio --flash_freq 80m --flash_size 16MB \\
   0x0     bootloader-v4.bin \\
@@ -119,6 +128,10 @@ esptool.py --chip esp32s3 --port COM3 --baud 921600 \\
   0xe000  boot_app0.bin \\
   0x10000 firmware-v4.3-<версия>.bin
 \`\`\`
+
+Версию покажет \`esptool version\`. В пятой версии команды и ключи переехали на
+дефисы, а сам вызов стал просто \`esptool\`; со старым написанием она откажется
+работать.
 
 Два места, где ошибаются чаще всего:
 
@@ -128,7 +141,8 @@ esptool.py --chip esp32s3 --port COM3 --baud 921600 \\
   загрузчика с таблицей разделов у него свои: \`bootloader.bin\` и
   \`partitions.bin\`.
 
-Все четыре файла лежат на [странице загрузки](/download/) рядом с прошивками.
+Все четыре файла лежат на [странице загрузки](/download/), в блоке «Ручная
+прошивка V4» под кнопками с прошивками.
 
 
 ### 2. Установка приложения
@@ -747,6 +761,15 @@ After updating the firmware, **update the app as well**: the two agree on a shar
 **Flashing by hand, with esptool.** You will need this for a V4: the wizard on the site only writes the V3 image. The firmware file alone is not enough — after a full erase the board has neither a bootloader nor a partition table left, and it goes into an endless reboot loop. Four files are needed, each at its own address:
 
 \`\`\`bash
+# esptool 5.x — the command and flags use dashes
+esptool --chip esp32s3 --port COM3 --baud 921600 \\
+  write-flash -z --flash-mode dio --flash-freq 80m --flash-size 16MB \\
+  0x0     bootloader-v4.bin \\
+  0x8000  partitions-v4.bin \\
+  0xe000  boot_app0.bin \\
+  0x10000 firmware-v4.3-<version>.bin
+
+# esptool 4.x — the same thing with underscores
 esptool.py --chip esp32s3 --port COM3 --baud 921600 \\
   write_flash -z --flash_mode dio --flash_freq 80m --flash_size 16MB \\
   0x0     bootloader-v4.bin \\
@@ -755,12 +778,14 @@ esptool.py --chip esp32s3 --port COM3 --baud 921600 \\
   0x10000 firmware-v4.3-<version>.bin
 \`\`\`
 
+\`esptool version\` tells you which one you have. In version 5 the commands and flags moved to dashes and the entry point became plain \`esptool\`; the old spelling is refused.
+
 The two mistakes people make most often:
 
 - **On the ESP32-S3 the bootloader goes to \`0x0\`, not \`0x1000\`.** \`0x1000\` is the address for the older ESP32; with it the board powers up and immediately reboots, over and over.
 - **The V4 has 16 MB of flash**, hence \`--flash_size 16MB\`. The V3 has 8 MB and its own bootloader and partition table: \`bootloader.bin\` and \`partitions.bin\`.
 
-All four files sit on the [download page](/download/) next to the firmware images.
+All four files sit on the [download page](/download/), in the "Flashing a V4 by hand" block under the firmware buttons.
 
 
 ### 2. Installing the app
