@@ -167,6 +167,10 @@ export const translations = {
   'flash.unavailable.desc': { ru: 'Веб-прошивка находится в доработке. Используйте PlatformIO для прошивки модуля.', en: 'Web flashing is being reworked. Use PlatformIO to flash the module.' },
 
   // About page
+  'dl.manual.title': { ru: 'Ручная прошивка V4', en: 'Flashing a V4 by hand' },
+  'dl.manual.desc': { ru: 'Мастер в браузере заливает только образ V3. Для V4 нужен esptool, а к нему — ещё три файла, каждый по своему адресу. Порядок и команда —', en: 'The browser wizard only writes the V3 image. A V4 needs esptool, and three more files besides the firmware, each at its own address. The steps and the command are in the' },
+  'dl.manual.docs': { ru: 'в документации', en: 'documentation' },
+
   'about.title': { ru: 'О проекте', en: 'About' },
   'about.desc1': { ru: 'MeshTRX — это система off-grid голосовой связи, построенная на LoRa mesh-сети. Позволяет общаться голосом, обмениваться текстовыми сообщениями и передавать файлы без интернета и сотовых сетей.', en: 'MeshTRX is an off-grid voice communication system built on a LoRa mesh network. It enables voice communication, text messaging and file transfer without internet or cellular networks.' },
   'about.desc2': { ru: 'Система работает на модулях Heltec WiFi LoRa 32 V3 и V4 (ESP32-S3 + SX1262). К модулю по Bluetooth подключается Android-приложение или настольный клиент для компьютера. Голос кодируется с помощью Codec2 (3200 бит/с) и передаётся через LoRa на расстояние до 5+ км, а любой модуль можно перевести в режим ретранслятора и растянуть покрытие дальше.', en: 'The system runs on Heltec WiFi LoRa 32 V3 and V4 modules (ESP32-S3 + SX1262). An Android app or a desktop client connects to the module over Bluetooth. Voice is encoded with Codec2 (3200 bps) and carried over LoRa up to 5+ km, and any module can be switched into repeater mode to stretch coverage further.' },
