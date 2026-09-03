@@ -15,10 +15,14 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import fcntl
 import os
+import socket
+import ssl
 import sys
 import time
+import urllib.parse
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -30,10 +34,19 @@ from docs_index import DocsIndex   # noqa: E402
 ENV_FILE = Path.home() / ".config" / "meshtrx" / "telegram.env"
 LOCK_FILE = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share")) \
     / "meshtrx" / "daemon.lock"
-API = "https://api.telegram.org/bot{token}/{method}"
+API_HOST = "api.telegram.org"
+API = "https://{host}/bot{token}/{method}"
 POLL_TIMEOUT = 25                  # секунд держим длинный опрос
 MAX_NET_FAILURES = 20              # подряд — считаем, что путь до Telegram пропал
 DOCS_PULL_INTERVAL = 15 * 60       # как часто подтягиваем документацию из репозитория
+
+# Адреса Telegram на случай, когда обращаться приходится по адресу, а не по
+# имени. Список тот же, что в pick_telegram_route.py: системный резолв на
+# сервере отдаёт нерабочий вариант, ради которого всё и затевалось.
+ENDPOINT_IPS = [
+    "149.154.167.220", "149.154.167.51", "149.154.175.50",
+    "149.154.171.5", "149.154.175.100", "91.108.56.130", "149.154.166.110",
+]
 
 
 def acquire_lock():
@@ -65,23 +78,78 @@ def load_env() -> dict:
                 continue
             key, val = line.split("=", 1)
             values[key.strip()] = val.strip().strip('"').strip("'")
-    for key in ("MESHTRX_TG_BOT_TOKEN", "MESHTRX_TG_CHAT_ID"):
+    for key in ("MESHTRX_TG_BOT_TOKEN", "MESHTRX_TG_CHAT_ID", "MESHTRX_TG_PROXY"):
         if os.environ.get(key):
             values[key] = os.environ[key]
     return values
 
 
+def _tls_without_sni() -> ssl.SSLContext:
+    """Проверка цепочки остаётся, проверка имени — нет.
+
+    Так приходится делать, когда до Telegram мы идём по адресу, а не по имени:
+    имя в TLS-приветствии (SNI) — ровно то, по чему нас и отсекают, а для
+    адреса SNI не отправляется вовсе и соединение проходит. Имя при этом
+    проверяется, но один раз и вручную — при старте, в check_endpoint(): там
+    мы смотрим, что в сертификате действительно значится api.telegram.org.
+    Без этой проверки прокси мог бы подсунуть свой сертификат.
+    """
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    return ctx
+
+
+def check_endpoint(ip: str, proxy: str | None) -> bool:
+    """Убедиться, что по этому адресу отвечает именно Telegram: сертификат
+    выдан на api.telegram.org и подписан известным центром."""
+    try:
+        if proxy:
+            parsed = urllib.parse.urlparse(proxy)
+            raw = socket.create_connection((parsed.hostname, parsed.port), timeout=8)
+            req = f"CONNECT {ip}:443 HTTP/1.1\r\nHost: {ip}:443\r\n"
+            if parsed.username:
+                token = base64.b64encode(
+                    f"{parsed.username}:{parsed.password or ''}".encode()).decode()
+                req += f"Proxy-Authorization: Basic {token}\r\n"
+            raw.sendall((req + "\r\n").encode())
+            answer = raw.recv(256)
+            if b" 200 " not in answer.split(b"\r\n")[0]:
+                raw.close()
+                return False
+        else:
+            raw = socket.create_connection((ip, 443), timeout=8)
+
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        with ctx.wrap_socket(raw) as tls:
+            cert = tls.getpeercert()
+        names = {v for k, v in cert.get("subjectAltName", ()) if k == "DNS"}
+        # Telegram отдаёт wildcard, поэтому сравниваем и его
+        return API_HOST in names or "*.telegram.org" in names
+    except OSError:
+        return False
+
+
 class Bot:
-    def __init__(self, token: str, allowed_chats: set[int]):
+    def __init__(self, token: str, allowed_chats: set[int],
+                 proxy: str | None = None, host: str | None = None):
         self.token = token
         self.allowed = allowed_chats
+        self.proxy = proxy
+        # Куда обращаться: по имени (обычный случай) или по адресу — когда имя
+        # в TLS-приветствии режет фильтрация по пути.
+        self.host = host or API_HOST
+        self.by_ip = self.host != API_HOST
         # Установка соединения и чтение разведены намеренно. Длинный опрос
         # честно висит полминуты и это норма, а вот первое соединение после
         # паузы на этом сервере иногда пропадает бесследно: TCP не встаёт
         # вовсе, зато следующая попытка проходит за 0,15 с. С общим таймаутом
         # каждый такой случай стоил бы полминуты тишины.
-        self.http = httpx.Client(timeout=httpx.Timeout(
-            connect=6.0, read=POLL_TIMEOUT + 10, write=15.0, pool=10.0))
+        self.http = httpx.Client(
+            timeout=httpx.Timeout(connect=6.0, read=POLL_TIMEOUT + 10,
+                                  write=15.0, pool=10.0),
+            proxy=self.proxy or None,
+            verify=_tls_without_sni() if self.by_ip else True)
         self.conn = store.connect()
         self.docs = DocsIndex()
         self.net_failures = 0
@@ -89,7 +157,15 @@ class Bot:
     # ---------------------------------------------------------------- сеть
     def call(self, method: str, **params):
         try:
-            r = self.http.post(API.format(token=self.token, method=method), json=params)
+            # Заголовок Host ставим на сам запрос, а не на клиента: заданный
+            # у клиента, httpx подставляет его и в CONNECT к прокси — прокси
+            # видит запретное имя и отвечает 502, хотя до адреса дошёл бы.
+            # Без Host нас не поймёт уже Telegram: по адресу он отдаёт не
+            # ответ бота, а редирект на сайт.
+            headers = {"Host": API_HOST} if self.by_ip else None
+            r = self.http.post(
+                API.format(host=self.host, token=self.token, method=method),
+                json=params, headers=headers)
             data = r.json()
             if not data.get("ok"):
                 print(f"[tg] {method}: {data.get('description')}", flush=True)
@@ -271,7 +347,24 @@ def main() -> int:
         if part:
             allowed.add(int(part))
 
-    bot = Bot(token, set() if args.chats else allowed)
+    proxy = env.get("MESHTRX_TG_PROXY") or None
+    host = None
+    if proxy:
+        # Через прокси имя api.telegram.org в TLS-приветствии отсекается по
+        # пути: соединение открывается и молча висит. По адресу того же сервера
+        # запрос проходит, поэтому ищем адрес, за которым отвечает настоящий
+        # Telegram — проверяя это по сертификату, а не по факту соединения.
+        for ip in ENDPOINT_IPS:
+            if check_endpoint(ip, proxy):
+                host = ip
+                print(f"[tg] через прокси, адрес {ip}", flush=True)
+                break
+        if host is None:
+            print("[tg] через прокси не отвечает ни один адрес Telegram",
+                  file=sys.stderr)
+            return 1
+
+    bot = Bot(token, set() if args.chats else allowed, proxy=proxy, host=host)
     try:
         bot.run(only_list_chats=args.chats)
     except KeyboardInterrupt:

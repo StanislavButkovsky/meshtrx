@@ -19,10 +19,12 @@ IPv6-адрес, до которого связи нет, а из известн
 
 from __future__ import annotations
 
+import os
 import re
 import socket
 import ssl
 import sys
+from pathlib import Path
 
 HOSTS = "/etc/hosts"
 NAME = "api.telegram.org"
@@ -77,7 +79,31 @@ def write_hosts(ip: str) -> None:
     open(HOSTS, "w", encoding="utf-8").write(text)
 
 
+def proxy_configured() -> bool:
+    """С прокси подбирать маршрут незачем: наружу мы выходим не отсюда, а
+    /etc/hosts к этому пути отношения не имеет. Раньше скрипт в такой ситуации
+    честно не находил ни одного адреса и валил сервис в цикл перезапуска —
+    хотя бот через прокси прекрасно работал бы."""
+    if os.environ.get("MESHTRX_TG_PROXY"):
+        return True
+    env = Path("/opt/meshtrx/.config/meshtrx/telegram.env")
+    if not env.exists():
+        env = Path.home() / ".config" / "meshtrx" / "telegram.env"
+    try:
+        for line in env.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line.startswith("MESHTRX_TG_PROXY=") and line.split("=", 1)[1].strip():
+                return True
+    except OSError:
+        pass
+    return False
+
+
 def main() -> int:
+    if proxy_configured():
+        print("задан прокси — маршрут подбирать не нужно")
+        return 0
+
     for ip in CANDIDATES:
         if alive(ip):
             try:
