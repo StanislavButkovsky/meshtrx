@@ -149,10 +149,7 @@ class Bot:
             timeout=httpx.Timeout(connect=6.0, read=POLL_TIMEOUT + 10,
                                   write=15.0, pool=10.0),
             proxy=self.proxy or None,
-            verify=_tls_without_sni() if self.by_ip else True,
-            # Обращаясь по адресу, имя сервера сообщаем заголовком: без него
-            # Telegram не поймёт, чей это запрос, и ответит редиректом.
-            headers={"Host": API_HOST} if self.by_ip else None)
+            verify=_tls_without_sni() if self.by_ip else True)
         self.conn = store.connect()
         self.docs = DocsIndex()
         self.net_failures = 0
@@ -160,9 +157,15 @@ class Bot:
     # ---------------------------------------------------------------- сеть
     def call(self, method: str, **params):
         try:
+            # Заголовок Host ставим на сам запрос, а не на клиента: заданный
+            # у клиента, httpx подставляет его и в CONNECT к прокси — прокси
+            # видит запретное имя и отвечает 502, хотя до адреса дошёл бы.
+            # Без Host нас не поймёт уже Telegram: по адресу он отдаёт не
+            # ответ бота, а редирект на сайт.
+            headers = {"Host": API_HOST} if self.by_ip else None
             r = self.http.post(
                 API.format(host=self.host, token=self.token, method=method),
-                json=params)
+                json=params, headers=headers)
             data = r.json()
             if not data.get("ok"):
                 print(f"[tg] {method}: {data.get('description')}", flush=True)
