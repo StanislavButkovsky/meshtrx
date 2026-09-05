@@ -19,7 +19,11 @@ data class ChatMessage(
     val status: MessageStatus,
     val time: String,
     val timeMs: Long = System.currentTimeMillis(),
-    val voicePath: String? = null  // путь к .c2 файлу голосового сообщения
+    val voicePath: String? = null,  // путь к .c2 файлу голосового сообщения
+    // Номер, под которым сообщение ушло в эфир. По нему приходит подтверждение
+    // доставки, и без него сопоставить ответ с сообщением нечем: время
+    // отправки к номеру никакого отношения не имеет.
+    val seq: Int? = null
 )
 
 data class Peer(

@@ -596,7 +596,8 @@ class MeshTRXService : Service() {
             status = if (isAddressed) MessageStatus.SENDING else MessageStatus.SENT,
             time = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
                 .format(java.util.Date()),
-            timeMs = now
+            timeMs = now,
+            seq = seq
         )
         val list = ServiceState.messages.value?.toMutableList() ?: mutableListOf()
         list.add(msg)
@@ -754,8 +755,15 @@ class MeshTRXService : Service() {
                 Log.d(TAG, "Message ACK seq=$ackSeq")
                 // Найти сообщение с этим seq и пометить как доставленное
                 val list = ServiceState.messages.value?.toMutableList() ?: return
+                // Ищем по номеру, под которым сообщение ушло в эфир. Раньше
+                // сравнивали остаток от времени отправки — время и номер не
+                // связаны ничем, поэтому совпадение выпадало примерно раз на
+                // двести пятьдесят шесть: подтверждение приходило, но не
+                // находило своё сообщение. Человек видел крестик «не
+                // доставлено» на сообщении, которое дошло, а приложение ещё и
+                // повторяло его три раза, занимая эфир впустую.
                 val idx = list.indexOfLast { it.isOutgoing && it.status == MessageStatus.SENDING &&
-                    ((it.id % 256).toInt() == ackSeq || (it.timeMs % 256).toInt() == ackSeq) }
+                    it.seq != null && (it.seq and 0xFF) == ackSeq }
                 if (idx >= 0) {
                     list[idx] = list[idx].copy(status = MessageStatus.DELIVERED)
                     ServiceState.messages.postValue(list)
@@ -1360,7 +1368,7 @@ class MeshTRXService : Service() {
         val json = msgs.joinToString("\n") { m ->
             "${m.id}\t${m.text.replace("\t", " ").replace("\n", " ")}\t${m.isOutgoing}\t${m.senderId}\t" +
             "${m.senderName}\t${m.destId ?: ""}\t${m.destName ?: ""}\t${m.rssi ?: ""}\t" +
-            "${m.status.name}\t${m.time}\t${m.timeMs}\t${m.voicePath ?: ""}"
+            "${m.status.name}\t${m.time}\t${m.timeMs}\t${m.voicePath ?: ""}\t${m.seq ?: ""}"
         }
         prefs.edit().putString("saved_messages", json).commit()
     }
@@ -1389,7 +1397,8 @@ class MeshTRXService : Service() {
                 status = try { MessageStatus.valueOf(p[8]) } catch (_: Exception) { MessageStatus.DELIVERED },
                 time = p[9],
                 timeMs = timeMs,
-                voicePath = validVoice
+                voicePath = validVoice,
+                seq = p.getOrNull(12)?.toIntOrNull()
             )
         }
         if (msgs.isNotEmpty()) {
