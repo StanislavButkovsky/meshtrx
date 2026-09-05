@@ -19,6 +19,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from device import Device, discover_ports  # noqa: E402
+import phone as phone_mod  # noqa: E402
 
 # Типы LoRa-пакетов (packet.h)
 T_AUDIO, T_TEXT, T_TEXT_ACK = "A0", "B0", "B1"
@@ -529,12 +530,72 @@ def test_edge_cases(A: Device, B: Device):
           f"второй {done2.get('result') if done2 else '?'}")
 
 
+def test_phone(A: Device, B: Device):
+    """Путь от рации до экрана человека — то, чего не видит проверка эфира.
+
+    Радио может работать безупречно, а человек будет видеть крестик «не
+    доставлено»: ровно это и случилось в сентябре 2026, когда приложение
+    искало своё сообщение по остатку от времени отправки. Здесь телефон
+    подключён к плате B, адресат — плата A, и проверяется то, что видно
+    глазами: появилась ли галочка и не полетели ли лишние повторы.
+    """
+    print("\n[14] Телефон: адресное сообщение и отметка о доставке")
+    if not phone_mod.available():
+        print("  — телефон не подключён по adb, блок пропущен")
+        return
+
+    ph = phone_mod.Phone()
+    # Какая плата отзовётся телефону первой — неизвестно, поэтому берём PIN у
+    # обеих и сопоставляем по хвосту MAC, который приложение пишет в журнал.
+    # BLE-адрес на единицу больше основного, отсюда и два варианта хвоста.
+    pins = {}
+    for dev in (A, B):
+        ev = dev.pin()
+        if not ev:
+            continue
+        name = ev.get("name", "")            # MeshTRX-C4C8
+        pins[name[-4:-2].upper()] = ev.get("value", "")
+    ph.restart_app()
+    name = ph.connect(pins)
+    check("телефон подключился к рации", bool(name), name or "не подключился")
+    if not name:
+        return
+
+    target = A.info()
+    dest_cs = target.get("cs", "") if target else ""
+    A.drain()
+    ph.logcat_clear()
+    text = f"HARNESS-{int(time.time()) % 10000}"
+    sent = ph.send_text(dest_cs, text)
+    check("сообщение отправлено с телефона", sent, f"кому {dest_cs}: {text}")
+    if not sent:
+        return
+
+    time.sleep(12)
+    got = [e for e in A.collect("LORA_RX", 2.0) if e.get("type") == T_TEXT]
+    ack = ph.logcat(r"Message ACK")
+    status = ph.last_status()
+
+    check("рация-адресат приняла сообщение", len(got) >= 1,
+          f"пакетов {len(got)}")
+    check("подтверждение дошло до приложения", bool(ack),
+          ack[-1].split(": ")[-1] if ack else "нет строки ACK")
+    check("в чате отметка о доставке", status == "\u2713",
+          {"\u2713": "галочка", "\u2717": "крестик «не доставлено»",
+           "\u23f3": "так и ждёт подтверждения", "": "значка нет"}[status])
+    # Повторы — признак того, что подтверждение не нашло своё сообщение.
+    # Каждый лишний повтор занимает общий канал, мешая всем остальным.
+    retries = ph.logcat(r"\[Text\] Retry")
+    check("лишних повторов нет", not retries, f"повторов {len(retries)}")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--ports", default="",
                     help="через запятую; по умолчанию — найденные ttyUSB/ttyACM")
     ap.add_argument("--only", default="",
-                    help="ping,text,voice,files,beacon,idle,calls,repeater,channels,nack,load,edge")
+                    help="ping,text,voice,files,beacon,idle,calls,repeater,channels,"
+                         "nack,load,edge,phone")
     ap.add_argument("--logdir", default="/tmp/meshtrx-logs")
     args = ap.parse_args()
 
@@ -572,6 +633,9 @@ def main():
         if enabled("nack"):     test_nack_recovery(A, B)
         if enabled("load"):     test_concurrent_load(A, B)
         if enabled("edge"):     test_edge_cases(A, B)
+        # Телефон — после эфирных блоков: он занимает плату B по BLE, а
+        # тестовый режим и подключённое приложение друг другу мешают.
+        if enabled("phone"):    test_phone(A, B)
         # Ретранслятор идёт последним: он дважды перезагружает плату, и после
         # такой перезагрузки остальным блокам пришлось бы заново приводить её
         # в чувство — канал, мощность и тестовый режим сбрасываются.

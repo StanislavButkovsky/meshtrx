@@ -289,6 +289,13 @@ static void handleLine(char* line) {
   }
 
   if (strcmp(cmd, "INFO") == 0) { testHookInfo(); return; }
+  // PIN нужен стенду, чтобы подключить телефон: раньше его можно было
+  // узнать только из загрузочного лога, то есть перезагрузив плату.
+  if (strcmp(cmd, "PIN") == 0) {
+    evt("EVT PIN value=%04lu name=%s\n", (unsigned long)bleGetPin(),
+        bleGetDeviceName().c_str());
+    return;
+  }
   // Кнопку стенд нажать не может, а проверять выключение надо: команда
   // делает ровно то же, что удержание кнопки три секунды.
   if (strcmp(cmd, "POWEROFF") == 0) { evt("EVT POWEROFF\n"); testHookPowerOff(); return; }
