@@ -145,6 +145,13 @@ class Device:
         self.send("INFO")
         return self.wait("INFO", timeout)
 
+    def pin(self, timeout: float = 3.0) -> Event | None:
+        """PIN для подключения телефона. Раньше его можно было узнать только
+        из загрузочного лога, то есть перезагрузив плату."""
+        self.drain()
+        self.send("PIN")
+        return self.wait("PIN", timeout)
+
     def testmode(self, on: bool = True) -> Event | None:
         self.send(f"TESTMODE {'ON' if on else 'OFF'}")
         return self.wait("TESTMODE", 3.0)
