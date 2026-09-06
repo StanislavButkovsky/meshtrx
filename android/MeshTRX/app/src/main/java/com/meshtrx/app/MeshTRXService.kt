@@ -904,6 +904,15 @@ class MeshTRXService : Service() {
                             }
                         }
                         ServiceState.fileTransfers.postValue(list)
+                        // Голосовое сообщение в чате — это тот же файл, и до сих пор
+                        // его судьба до чата не доходила: текст получал галочку, а
+                        // голосовое навсегда оставалось «отправляется». Для человека
+                        // это одно и то же сообщение, поэтому статус переносим.
+                        updateVoiceMessageStatus(list[idx].fileName, when (status) {
+                            3 -> MessageStatus.DELIVERED
+                            1, 4, 5 -> MessageStatus.FAILED
+                            else -> null
+                        })
                     }
                 }
             }
@@ -1362,6 +1371,23 @@ class MeshTRXService : Service() {
     }
 
     // === Messages persistence ===
+
+    /** Перенести исход передачи файла на голосовое сообщение в чате.
+     *
+     * Связь по имени файла: голосовое кладётся на диск под тем же именем, под
+     * которым уходит в эфир, и путь к нему хранится в самом сообщении. */
+    private fun updateVoiceMessageStatus(fileName: String, status: MessageStatus?) {
+        if (status == null) return
+        val list = ServiceState.messages.value?.toMutableList() ?: return
+        val idx = list.indexOfLast {
+            it.isOutgoing && it.status == MessageStatus.SENDING &&
+                it.voicePath != null && it.voicePath.endsWith(fileName)
+        }
+        if (idx < 0) return
+        list[idx] = list[idx].copy(status = status)
+        ServiceState.messages.postValue(list)
+        saveMessages()
+    }
 
     fun saveMessages() {
         val msgs = ServiceState.messages.value ?: return
