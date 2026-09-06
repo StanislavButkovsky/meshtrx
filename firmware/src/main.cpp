@@ -685,6 +685,9 @@ static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr) 
       if (len < (int)sizeof(LoRaAudioPacket)) break;
       LoRaAudioPacket* pkt = (LoRaAudioPacket*)data;
       if (pkt->channel != currentChannel) break;
+      // Свой же голос, вернувшийся от ретранслятора: слышать себя с задержкой
+      // в полсекунды — худшее, что можно сделать с рацией.
+      if (pkt->sender[0] == senderMac[0] && pkt->sender[1] == senderMac[1]) break;
 
       // Отправить на телефон через BLE: cmd + flags + sender[2] + payload
       uint8_t bleData[4 + CODEC2_PKT_BYTES];
@@ -713,6 +716,12 @@ static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr) 
         uint16_t me = senderMac[0] | (senderMac[1] << 8);
         if (d != 0x0000 && d != me) break; // не нам
       }
+
+      // Своё же сообщение, вернувшееся от ретранслятора. Дедупликация тут не
+      // спасает: в её кеш попадает принятое, а собственное мы отправляли, а не
+      // принимали. Для человека это выглядело как дубль в общем чате — ровно
+      // это и заметили в группе, когда подняли третью ноду ретранслятором.
+      if (pkt->sender[0] == senderMac[0] && pkt->sender[1] == senderMac[1]) break;
 
       // Дедупликация (для broadcast repeat)
       if (textIsDuplicate(pkt->sender, pkt->seq)) break;
