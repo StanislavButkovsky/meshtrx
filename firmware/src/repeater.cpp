@@ -6,6 +6,48 @@
 #include <Arduino.h>
 #include <Preferences.h>
 
+static RepeaterNode nodes[REPEATER_NODES_MAX];
+static uint8_t nodeCount = 0;
+
+// Запомнить станцию по её маяку. Позывной и координаты обновляем каждый раз:
+// человек мог переименоваться или уехать, и показывать первое, что услышали,
+// было бы хуже, чем не показывать ничего.
+static void noteNode(const LoRaBeaconPacket* b, int16_t rssi, int8_t snr) {
+  int slot = -1;
+  for (uint8_t i = 0; i < nodeCount; i++) {
+    if (memcmp(nodes[i].id, b->device_id, 4) == 0) { slot = i; break; }
+  }
+  if (slot < 0) {
+    if (nodeCount < REPEATER_NODES_MAX) {
+      slot = nodeCount++;
+    } else {
+      // Список полон — вытесняем ту, о которой дольше всего не слышали
+      uint32_t oldest = nodes[0].last_seen_ms;
+      slot = 0;
+      for (uint8_t i = 1; i < nodeCount; i++) {
+        if (nodes[i].last_seen_ms < oldest) { oldest = nodes[i].last_seen_ms; slot = i; }
+      }
+      nodes[slot].beacons = 0;
+    }
+    memcpy(nodes[slot].id, b->device_id, 4);
+  }
+  RepeaterNode& n = nodes[slot];
+  memcpy(n.call_sign, b->call_sign, 8);
+  n.call_sign[8] = 0;
+  n.has_gps = (b->flags & BEACON_FLAG_GPS_VALID) != 0;
+  if (n.has_gps) { n.lat_e7 = b->lat_e7; n.lon_e7 = b->lon_e7; n.altitude_m = b->altitude_m; }
+  n.battery = b->battery;
+  n.rssi = rssi;
+  n.snr = snr;
+  n.last_seen_ms = millis();
+  n.beacons++;
+}
+
+uint8_t repeaterGetNodes(const RepeaterNode** out) {
+  *out = nodes;
+  return nodeCount;
+}
+
 static DedupEntry dedupCache[DEDUP_CACHE_SIZE];
 static uint8_t dedupHead = 0;
 static RepeaterStats stats;
@@ -75,6 +117,8 @@ static void updateStats(uint8_t type) {
 
 void repeaterInit() {
   memset(dedupCache, 0, sizeof(dedupCache));
+  memset(nodes, 0, sizeof(nodes));
+  nodeCount = 0;
   memset(&stats, 0, sizeof(stats));
   stats.min_rssi = 0;
   stats.max_rssi = -150;
@@ -193,6 +237,9 @@ void repeaterTask(void* param) {
       LoRaBeaconPacket* p = (LoRaBeaconPacket*)rxBuf;
       sender[0] = p->device_id[2]; sender[1] = p->device_id[3];
       seq = (uint8_t)(p->beacon_seq & 0xFF);
+      // Запоминаем станцию до дедупликации: повтор того же маяка — это тоже
+      // «слышу тебя сейчас», и время последнего появления обновить надо.
+      noteNode(p, rssi, snr);
       // Beacon не имеет TTL поля — используем TTL_DEFAULT
       ttlOffset = -1;
     } else if (pktType >= PKT_TYPE_CALL_ALL && pktType <= PKT_TYPE_CALL_CANCEL) {
