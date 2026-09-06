@@ -721,7 +721,15 @@ class MeshTRXService : Service() {
             BleManager.CMD_RECV_MESSAGE -> {
                 if (data.size >= 4) {
                     val rssiVal = data[1].toInt()
-                    val textEnd = data.indexOfFirst { it == 0.toByte() }.let { if (it < 2) data.size else it }
+                    // Конец текста ищем начиная с третьего байта, а не с начала
+                    // пакета. В начале лежат команда и RSSI, и когда RSSI равен
+                    // нулю, поиск «первого нуля» находил именно его: граница
+                    // текста уезжала в конец, к сообщению приклеивались два
+                    // байта адреса отправителя — те самые «mt» и «с» с
+                    // кракозяброй из группы, — а сам отправитель становился
+                    // неизвестным, «TX-??».
+                    val textEnd = (2 until data.size).firstOrNull { data[it] == 0.toByte() }
+                        ?: data.size
                     val text = String(data, 2, textEnd - 2, Charsets.UTF_8)
                     var senderId = "??"
                     if (textEnd + 2 < data.size) {
