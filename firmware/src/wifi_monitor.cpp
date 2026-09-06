@@ -135,7 +135,9 @@ static void handleMap() {
     "</style></head><body>"
     "<h1>MeshTRX — кого слышит ретранслятор</h1>"
     "<div class='tabs'><button id='bR' class='on'>Радар</button>"
-    "<button id='bM'>Карта</button><a href='/' style='margin-left:auto;align-self:center'>назад</a></div>"
+    "<button id='bM'>Карта</button>"
+    "<button id='bFit' style='display:none'>Показать всех</button>"
+    "<a href='/' style='margin-left:auto;align-self:center'>назад</a></div>"
     "<canvas id='radar' width='520' height='520'></canvas>"
     "<div id='map' style='display:none'></div>"
     "<table id='t'><thead><tr><th>Позывной</th><th>Сигнал</th><th>Батарея</th>"
@@ -178,14 +180,24 @@ static void handleMap() {
     "const x=cx+r*Math.cos(a),y=cy+r*Math.sin(a);"
     "C.fillStyle=n.age>600?'#33691e':'#4ade80';C.beginPath();C.arc(x,y,6,0,7);C.fill();"
     "C.fillStyle='#eee';C.fillText(n.cs+' '+Math.round(d)+' м',x+9,y+4)})}"
+    // Карта обновляется каждые пять секунд, и раньше при каждом обновлении
+    // подгонялась под все станции — то есть отменяла то, что человек только
+    // что сделал руками: приблизил, сдвинул, посмотрел. Теперь подгоняем один
+    // раз, при первом показе, и больше вид не трогаем. Кнопка «Показать всех»
+    // возвращает общий охват, когда он снова нужен.
+    "let userMoved=false;"
     "function drawMap(){"
     "const gps=nodes.filter(n=>n.gps);if(!gps.length)return;"
     "if(!map){map=L.map('map').setView([gps[0].lat,gps[0].lon],13);"
     "L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',"
-    "{maxZoom:19,attribution:'OpenStreetMap'}).addTo(map)}"
+    "{maxZoom:19,attribution:'OpenStreetMap'}).addTo(map);"
+    "map.on('movestart zoomstart',e=>{if(e.hard!==true)userMoved=true});"
+    "fitAll()}"
     "if(layer)layer.remove();layer=L.layerGroup().addTo(map);"
     "gps.forEach(n=>L.marker([n.lat,n.lon]).addTo(layer)"
-    ".bindPopup(n.cs+'<br>'+n.rssi+' dBm, '+age(n.age)));"
+    ".bindPopup(n.cs+'<br>'+n.rssi+' dBm, '+age(n.age)))}"
+    "function fitAll(){const gps=nodes.filter(n=>n.gps);if(!map||!gps.length)return;"
+    "userMoved=false;"
     "map.fitBounds(gps.map(n=>[n.lat,n.lon]),{maxZoom:15,padding:[30,30]})}"
     "function fill(){"
     "const tb=document.querySelector('#t tbody');tb.innerHTML='';"
@@ -197,7 +209,8 @@ static void handleMap() {
     "fill();drawRadar();if(map)drawMap()}catch(e){}}"
     "document.getElementById('bR').onclick=()=>{R.style.display='block';"
     "document.getElementById('map').style.display='none';"
-    "bR.classList.add('on');bM.classList.remove('on');drawRadar()};"
+    "bR.classList.add('on');bM.classList.remove('on');"
+    "document.getElementById('bFit').style.display='none';drawRadar()};"
     // Leaflet тянется из интернета, а его у ретранслятора может не быть —
     // в режиме точки доступа его нет наверняка. Поэтому грузим карту только
     // когда её попросили, и не держим из-за неё всю страницу: радар и список
@@ -217,7 +230,9 @@ static void handleMap() {
     "document.getElementById('bM').onclick=()=>{R.style.display='none';"
     "document.getElementById('map').style.display='block';"
     "bM.classList.add('on');bR.classList.remove('on');"
+    "document.getElementById('bFit').style.display='inline-block';"
     "loadLeaflet(()=>setTimeout(()=>{drawMap();if(map)map.invalidateSize()},50))};"
+    "document.getElementById('bFit').onclick=fitAll;"
     "tick();setInterval(tick,5000);"
     // Пароль сначала проверяем и только потом сохраняем: ретранслятор может
     // стоять на мачте, и опечатка оставила бы его без сети совсем.
