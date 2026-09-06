@@ -40,6 +40,13 @@ POLL_TIMEOUT = 25                  # секунд держим длинный о
 MAX_NET_FAILURES = 20              # подряд — считаем, что путь до Telegram пропал
 DOCS_PULL_INTERVAL = 15 * 60       # как часто подтягиваем документацию из репозитория
 
+# Картинки из группы: люди присылают скриншоты как главное доказательство —
+# «вот такие артефакты», «вот что показывает экран». Раньше в базу ложилась
+# пустая строка, и разбираться приходилось по одним лишь подписям вокруг.
+MEDIA_DIR = store.db_path().parent / "media"
+MEDIA_LIMIT_BYTES = 200 * 1024 * 1024   # столько храним, дальше вытесняем старые
+MAX_PHOTO_BYTES = 8 * 1024 * 1024       # больше и не пригодится: это скриншот
+
 # Адреса Telegram на случай, когда обращаться приходится по адресу, а не по
 # имени. Список тот же, что в pick_telegram_route.py: системный резолв на
 # сервере отдаёт нерабочий вариант, ради которого всё и затевалось.
@@ -198,6 +205,57 @@ class Bot:
             ok = self.call("sendMessage", **params).get("ok", False) and ok
         return ok
 
+    # ---------------------------------------------------------------- медиа
+    def fetch_photo(self, msg: dict) -> str | None:
+        """Скачать картинку из сообщения. Возвращает путь или None.
+
+        Берём самый крупный размер: Telegram отдаёт несколько превью, и
+        мелкие для чтения текста на скриншоте бесполезны.
+        """
+        sizes = msg.get("photo") or []
+        doc = msg.get("document") or {}
+        if sizes:
+            best = max(sizes, key=lambda p: p.get("file_size") or 0)
+            file_id, size = best.get("file_id"), best.get("file_size") or 0
+            ext = ".jpg"
+        elif str(doc.get("mime_type", "")).startswith("image/"):
+            file_id, size = doc.get("file_id"), doc.get("file_size") or 0
+            ext = Path(doc.get("file_name", "img.png")).suffix or ".png"
+        else:
+            return None
+        if not file_id or size > MAX_PHOTO_BYTES:
+            return None
+
+        info = self.call("getFile", file_id=file_id).get("result") or {}
+        remote = info.get("file_path")
+        if not remote:
+            return None
+        try:
+            url = (f"https://{self.host}/file/bot{self.token}/{remote}")
+            headers = {"Host": API_HOST} if self.by_ip else None
+            r = self.http.get(url, headers=headers)
+            if r.status_code != 200:
+                return None
+            MEDIA_DIR.mkdir(parents=True, exist_ok=True)
+            path = MEDIA_DIR / f"{msg.get('message_id')}{ext}"
+            path.write_bytes(r.content)
+            self.trim_media()
+            return str(path)
+        except Exception as e:                                   # noqa: BLE001
+            print(f"[tg] картинку не забрал: {e}", flush=True)
+            return None
+
+    @staticmethod
+    def trim_media() -> None:
+        """Держим каталог в рамках: диск на сервере не резиновый, а скриншоты
+        копятся сами собой. Вытесняем самые старые."""
+        files = sorted(MEDIA_DIR.glob("*"), key=lambda f: f.stat().st_mtime)
+        total = sum(f.stat().st_size for f in files)
+        while files and total > MEDIA_LIMIT_BYTES:
+            victim = files.pop(0)
+            total -= victim.stat().st_size
+            victim.unlink(missing_ok=True)
+
     # ---------------------------------------------------------------- команды
     def handle_command(self, cmd: str, args: str, msg: dict, chat: dict, user: dict):
         """Служебные ответы уходят без цитаты, ответы по существу — с цитатой.
@@ -255,7 +313,8 @@ class Bot:
             return
         chat = msg.get("chat", {})
         user = msg.get("from", {})
-        text = msg.get("text", "") or ""
+        # Подпись под картинкой — тоже текст, и команды в ней тоже работают
+        text = msg.get("text") or msg.get("caption") or ""
 
         if only_list_chats:
             print(f"чат {chat.get('id')}  «{chat.get('title') or chat.get('username')}»  "
@@ -267,7 +326,11 @@ class Bot:
         # себя сама и её идентификатор пришлось бы выискивать руками. Отвечать
         # и выполнять команды — только там, где разрешено.
         is_command = text.startswith("/")
-        store.save_message(self.conn, msg, chat, user, is_command)
+        media = self.fetch_photo(msg)
+        store.save_message(self.conn, msg, chat, user, is_command, media)
+        if media:
+            print(f"[tg] картинка от {user.get('username') or user.get('first_name')}: "
+                  f"{media}", flush=True)
 
         if self.allowed and chat.get("id") not in self.allowed:
             print(f"[tg] чат {chat.get('id')} «{chat.get('title') or chat.get('username')}»"
