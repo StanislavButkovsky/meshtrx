@@ -62,7 +62,16 @@ def _format(rows) -> str:
         stamp = time.strftime("%d.%m %H:%M", time.localtime(r["ts"]))
         mark = " (команда)" if r["is_command"] else ""
         reply = f" ↩{r['reply_to']}" if r["reply_to"] else ""
-        lines.append(f"[{r['id']}] {stamp} {r['user_name']}{mark}{reply}: {r['text']}")
+        # Картинку словами не перескажешь, поэтому помечаем прямо в строке:
+        # человек прислал скриншот как главное доказательство, и пропустить
+        # его — значит спорить с ним вслепую.
+        media = ""
+        try:
+            if r["media_path"]:
+                media = " [картинка, забрать: telegram_photo]"
+        except (IndexError, KeyError):
+            pass
+        lines.append(f"[{r['id']}] {stamp} {r['user_name']}{mark}{reply}{media}: {r['text']}")
     return "\n".join(lines)
 
 
@@ -79,6 +88,36 @@ def telegram_read(limit: int = 30, only_new: bool = True, mark_read: bool = True
     if mark_read and rows:
         store.mark_seen(conn, [r["id"] for r in rows])
     return _format(rows)
+
+
+@mcp.tool()
+def telegram_photo(message_id: int = 0, limit: int = 5) -> str:
+    """Картинки из группы: где они лежат на сервере.
+
+    Без message_id перечисляет последние присланные, с ним — показывает одну.
+    Файлы лежат на той же машине, что и бот; чтобы посмотреть, скопируйте их
+    к себе (scp) и откройте — по скриншоту обычно видно ровно то, что человек
+    и хотел показать: артефакты в тексте, экран устройства, уровни сигнала.
+    """
+    conn = store.connect()
+    if message_id:
+        rows = conn.execute(
+            "SELECT id, ts, user_name, text, media_path FROM messages WHERE id = ?",
+            (message_id,)).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT id, ts, user_name, text, media_path FROM messages"
+            " WHERE media_path IS NOT NULL ORDER BY ts DESC LIMIT ?", (limit,)).fetchall()
+    rows = [r for r in rows if r["media_path"]]
+    if not rows:
+        return "картинок нет"
+    out = []
+    for r in rows:
+        stamp = time.strftime("%d.%m %H:%M", time.localtime(r["ts"]))
+        exists = "" if Path(r["media_path"]).exists() else " (файла уже нет)"
+        caption = f" — {r['text']}" if r["text"] else ""
+        out.append(f"[{r['id']}] {stamp} {r['user_name']}{caption}\n    {r['media_path']}{exists}")
+    return "\n".join(out)
 
 
 @mcp.tool()

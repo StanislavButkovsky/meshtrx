@@ -25,7 +25,8 @@ CREATE TABLE IF NOT EXISTS messages (
     reply_to      INTEGER,
     is_command    INTEGER DEFAULT 0,
     ts            REAL NOT NULL,
-    seen          INTEGER DEFAULT 0             -- прочитано ли агентом
+    seen          INTEGER DEFAULT 0,            -- прочитано ли агентом
+    media_path    TEXT                          -- скачанная картинка, если была
 );
 
 CREATE TABLE IF NOT EXISTS outbox (
@@ -77,21 +78,33 @@ def connect() -> sqlite3.Connection:
     # читатель блокировал бы писателя на каждом обновлении.
     conn.execute("PRAGMA journal_mode=WAL")
     conn.executescript(SCHEMA)
+    # База на сервере создана раньше, чем появились картинки, а CREATE TABLE
+    # IF NOT EXISTS существующую таблицу не трогает — недостающий столбец
+    # добавляем руками, иначе демон упадёт на первом же фото.
+    have = {row["name"] for row in conn.execute("PRAGMA table_info(messages)")}
+    if "media_path" not in have:
+        conn.execute("ALTER TABLE messages ADD COLUMN media_path TEXT")
+        conn.commit()
     return conn
 
 
 # ---------------------------------------------------------------- сообщения
 
 def save_message(conn: sqlite3.Connection, msg: dict, chat: dict, user: dict,
-                 is_command: bool = False) -> None:
+                 is_command: bool = False, media_path: str | None = None) -> None:
+    # У картинки текста нет, зато бывает подпись — и раньше терялась и она:
+    # в базу ложилась пустая строка, а человек был уверен, что показал главное.
+    text = msg.get("text") or msg.get("caption") or ""
     conn.execute(
         "INSERT OR REPLACE INTO messages"
-        " (id, chat_id, chat_title, user_id, user_name, text, reply_to, is_command, ts, seen)"
-        " VALUES (?,?,?,?,?,?,?,?,?, COALESCE((SELECT seen FROM messages WHERE id=?), 0))",
+        " (id, chat_id, chat_title, user_id, user_name, text, reply_to, is_command, ts, seen,"
+        "  media_path)"
+        " VALUES (?,?,?,?,?,?,?,?,?, COALESCE((SELECT seen FROM messages WHERE id=?), 0), ?)",
         (msg.get("message_id"), chat.get("id"), chat.get("title") or chat.get("username"),
          user.get("id"), (user.get("username") or user.get("first_name") or "?"),
-         msg.get("text", ""), (msg.get("reply_to_message") or {}).get("message_id"),
-         1 if is_command else 0, msg.get("date", time.time()), msg.get("message_id")))
+         text, (msg.get("reply_to_message") or {}).get("message_id"),
+         1 if is_command else 0, msg.get("date", time.time()), msg.get("message_id"),
+         media_path))
     conn.commit()
 
 
