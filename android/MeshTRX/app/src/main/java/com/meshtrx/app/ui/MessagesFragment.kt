@@ -292,8 +292,11 @@ class MessagesFragment : Fragment() {
             val destStr = if (msg.isOutgoing && msg.destName != null) " → ${msg.destName}" else ""
             val statusStr = if (msg.isOutgoing && msg.destId != null) {
                 when (msg.status) {
-                    MessageStatus.SENDING -> " \u23F3"    // ⏳
-                    MessageStatus.DELIVERED -> " \u2713"  // ✓
+                    MessageStatus.SENDING -> " \u23F3"    // ⏳ ждём подтверждения
+                    MessageStatus.DELIVERED -> " \u2713"  // ✓ адресат подтвердил
+                    // ↑ — ушло в эфир, подтверждения нет. Не то же самое, что
+                    // «не доставлено»: потеряться мог и сам ответ.
+                    MessageStatus.SENT -> " \u2191"       // ↑
                     MessageStatus.FAILED -> " \u2717"     // ✗
                     else -> ""
                 }
