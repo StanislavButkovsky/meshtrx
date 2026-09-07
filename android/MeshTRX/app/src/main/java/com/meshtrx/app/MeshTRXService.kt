@@ -604,23 +604,32 @@ class MeshTRXService : Service() {
         ServiceState.messages.postValue(list)
         saveMessages()
 
-        // Адресное: retry до 3 раз с таймаутом 2 сек
+        // Адресное: повторяем, пока не придёт подтверждение.
+        //
+        // Паузы растут: через ретранслятор круг длиннее — сообщение идёт до
+        // него, оттуда к адресату, обратно летит подтверждение и снова через
+        // ретранслятор. Двух секунд на это не хватало, и приложение начинало
+        // слать повторы поверх ещё не пришедшего ответа, занимая тот же
+        // полудуплексный канал, по которому ответ и должен вернуться.
         if (isAddressed) {
             val msgId = now
             Thread {
-                for (attempt in 1..3) {
-                    Thread.sleep(2000)
-                    // Проверить получен ли ACK
+                for (pause in longArrayOf(3000, 5000, 8000)) {
+                    Thread.sleep(pause)
                     val current = ServiceState.messages.value?.find { it.id == msgId }
                     if (current?.status == MessageStatus.DELIVERED) return@Thread
-                    // Повтор
-                    Log.d(TAG, "[Text] Retry #$attempt for seq=$seq")
+                    Log.d(TAG, "[Text] Retry for seq=$seq")
                     bleManager.sendMessage(seq, destId, text)
                 }
-                // После 3 попыток без ACK — пометить как FAILED
+                // Подтверждения так и нет. Это не значит «не доставлено»:
+                // сообщение могло дойти, а потеряться могло подтверждение —
+                // ему возвращаться тем же занятым каналом. Крестик здесь врал,
+                // и человек, проверявший дальность в одиночку, поворачивал
+                // назад раньше времени. Поэтому «ушло, ответа нет» — отдельное
+                // состояние, а не отказ.
                 val current = ServiceState.messages.value?.find { it.id == msgId }
                 if (current?.status != MessageStatus.DELIVERED) {
-                    updateMessageStatus(msgId, MessageStatus.FAILED)
+                    updateMessageStatus(msgId, MessageStatus.SENT)
                 }
             }.start()
         }
@@ -770,8 +779,12 @@ class MeshTRXService : Service() {
                 // находило своё сообщение. Человек видел крестик «не
                 // доставлено» на сообщении, которое дошло, а приложение ещё и
                 // повторяло его три раза, занимая эфир впустую.
-                val idx = list.indexOfLast { it.isOutgoing && it.status == MessageStatus.SENDING &&
-                    it.seq != null && (it.seq and 0xFF) == ackSeq }
+                // Ищем и среди тех, что уже помечены «ответа нет»: подтверждение
+                // могло прийти позже, чем мы перестали ждать, — и тогда честнее
+                // поставить галочку задним числом, чем оставить сомнение.
+                val idx = list.indexOfLast { it.isOutgoing && it.seq != null &&
+                    (it.status == MessageStatus.SENDING || it.status == MessageStatus.SENT) &&
+                    (it.seq and 0xFF) == ackSeq }
                 if (idx >= 0) {
                     list[idx] = list[idx].copy(status = MessageStatus.DELIVERED)
                     ServiceState.messages.postValue(list)
