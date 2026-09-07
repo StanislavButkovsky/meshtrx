@@ -1207,7 +1207,37 @@ static void bleTaskFunc(void* param) {
     // === Передать принятый файл на телефон ===
     if (fileRxComplete && fileRxBuffer && bleIsConnected()) {
       fileRxComplete = false;
-      LOG_F("[File] Sending to phone: %d bytes via BLE\n", fileRxSize);
+
+      // Голос, принятый не полностью, отдаём телефону по первую же дыру.
+      //
+      // Пропущенный чанк — это нули в буфере, а Codec2 превращает их не в
+      // тишину, а в шум: человек слышал несколько слов, а дальше до конца
+      // записи шипение. Через ретранслятор такое случается заметно чаще —
+      // он повторяет пакеты в том же полудуплексном канале, и часть теряется.
+      // Лучше короткая фраза, чем фраза с полуминутой шума следом.
+      uint32_t sendSize = fileRxSize;
+      if (fileRxType == FILE_TYPE_VOICE || fileRxType == FILE_TYPE_PTT_VOICE) {
+        uint16_t whole = 0;
+        while (whole < fileRxChunksTotal && bitmap_get(fileRxBitmap, whole)) whole++;
+        if (whole < fileRxChunksTotal) {
+          uint32_t good = (uint32_t)whole * CHUNK_SIZE;
+          if (good < sendSize) {
+            LOG_F("[File] голос принят частично: %u из %u чанков, отдаём %lu из %lu байт\n",
+                  whole, fileRxChunksTotal, (unsigned long)good, (unsigned long)sendSize);
+            sendSize = good;
+          }
+        }
+      }
+      if (sendSize == 0) {
+        LOG_D("[File] голос не принят вовсе — телефону отдавать нечего");
+        free(fileRxBuffer);
+        fileRxBuffer = nullptr;
+        continue;
+      }
+      const uint32_t fileRxSizeOrig = fileRxSize;
+      fileRxSize = sendSize;
+      LOG_F("[File] Sending to phone: %d bytes via BLE (принято из %lu)\n",
+            fileRxSize, (unsigned long)fileRxSizeOrig);
 
       // Заголовок: cmd(1)+type(1)+size(4)+chunks(1)+sender(2)+name(20)=29
       uint8_t hdr[9 + 20];
