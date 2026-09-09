@@ -52,10 +52,20 @@ fi
 
 # Собирать надо при остановленном dev-сервере: они пишут в один .next и ломают
 # друг друга — сборка падает с PageNotFoundError, а сервер потом отдаёт 500.
-if pgrep -f "next dev" >/dev/null; then
-  echo "Запущен dev-сервер. Остановите его: pkill -f 'next dev'" >&2
-  exit 1
-fi
+#
+# Ищем именно свой: на машине живут и другие проекты на Next, и раньше выкладка
+# упиралась в чужой dev-сервер, предлагая его убить. Отличаем по рабочему
+# каталогу процесса — он и определяет, в чей .next пишут.
+HERE=$(pwd -P)
+for pid in $(pgrep -f "next dev" 2>/dev/null); do
+  cwd=$(readlink -f "/proc/$pid/cwd" 2>/dev/null) || continue
+  case "$cwd" in
+    "$HERE"|"$HERE"/*)
+      echo "Запущен dev-сервер этого проекта (pid $pid). Остановите его: kill $pid" >&2
+      exit 1
+      ;;
+  esac
+done
 
 rm -rf out-ru out-en
 for loc in ru en; do
