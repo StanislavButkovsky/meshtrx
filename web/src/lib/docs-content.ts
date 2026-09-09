@@ -428,6 +428,13 @@ python3 -m venv .venv
 
 ### Радио
 - **Канал** (0–22) — выбор рабочей частоты (863.15–869.75 МГц)
+- **Найти свободный канал** — рация проходит по всем каналам, слушает эфир и
+  показывает, где тише всего. Диапазон 868 МГц в городе людный: там работают
+  домофоны, метеостанции, счётчики, сигнализации, и занятый канал бьёт прежде
+  всего по голосу — ему нужно провести подряд десяток пакетов, тексту хватает
+  одного удачного окна. Сканирование занимает пару секунд, приём на это время
+  прерывается. **Выбранный канал нужно поставить на всех устройствах группы,
+  включая ретранслятор** — иначе они перестанут слышать друг друга
 - **Мощность TX** (1–22 дБм) — дальность передачи
 - **Duty Cycle EU868** — ограничение 1% для соответствия EU нормам
 
@@ -656,7 +663,7 @@ wake=BUTTON\`.
 | Coding Rate | 4/5 |
 | Sync Word | 0x34 |
 | Мощность | 1–22 дБм |
-| Дальность | до 5+ км (прямая видимость) |
+| Дальность | до 5+ км в прямой видимости; замеры в городе — голос ~1 км, текст ~2 км; в поле — голос до 2 км, дальше текст |
 
 ### Аудио кодек
 
@@ -1081,6 +1088,7 @@ Android LocationManager is used (works without Google services). Updates every 1
 
 ### Radio
 - **Channel** (0–22) — the working frequency (863.15–869.75 MHz)
+- **Find a free channel** — the radio walks through every channel, listens to the air and shows where it is quietest. The 868 MHz band is a crowded place in a city: door phones, weather stations, meters and alarms all live there, and a busy channel hits voice first — voice needs a dozen packets in a row, while text only needs one lucky gap. The scan takes a couple of seconds and reception pauses meanwhile. **The chosen channel must be set on every device in the group, the repeater included** — otherwise they stop hearing each other
 - **TX power** (1–22 dBm) — transmission range
 - **Duty cycle EU868** — the 1% limit for EU compliance
 
@@ -1257,7 +1265,7 @@ Five tabs: **PTT**, **Chat**, **Files**, **Map**, **Settings**. The active tab i
 | Coding rate | 4/5 |
 | Sync word | 0x34 |
 | Power | 1–22 dBm |
-| Range | up to 5+ km (line of sight) |
+| Range | up to 5+ km line of sight; measured in a city — voice ~1 km, text ~2 km; in open country — voice up to 2 km, text beyond that |
 
 ### Audio codec
 
