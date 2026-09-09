@@ -49,6 +49,11 @@ object ServiceState {
     val isPlayingVoice = MutableLiveData(false) // воспроизведение адресного голосового
     val isReceivingFile = MutableLiveData(false) // приём файла (адресный PTT и др.)
 
+    // Уровень шума по каналам после сканирования: пары «канал → дБм».
+    // Пусто, пока человек не попросил послушать эфир.
+    val channelNoise = MutableLiveData<List<Int>>(emptyList())
+    val channelBest = MutableLiveData(-1)
+
     // Events (one-shot) — UI подписывается
     val showPinDialog = MutableLiveData(false)
     val showDevicePicker = MutableLiveData(false)

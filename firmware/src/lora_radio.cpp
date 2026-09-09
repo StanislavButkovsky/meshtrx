@@ -373,6 +373,31 @@ void loraSleepForPowerOff() {
   txInProgress = false;
 }
 
+void loraScanChannels(int16_t* out, uint8_t count, uint8_t samples) {
+  // Слушаем каждый канал и запоминаем самый громкий отсчёт: помеха редко
+  // держится ровно, а вредит именно всплесками — по среднему тихий на вид
+  // канал может оказаться непригодным.
+  //
+  // Приём на время сканирования прерывается: радио одно, и пока оно ходит по
+  // диапазону, свои пакеты мы не слышим. Поэтому сканирование — действие по
+  // команде человека, а не фоновая задача.
+  MutexGuard g;
+  uint8_t saved = currentChannel;
+  for (uint8_t ch = 0; ch < count; ch++) {
+    radio.setFrequency(loraGetFrequency(ch));
+    radio.startReceive();
+    int16_t worst = -160;
+    for (uint8_t i = 0; i < samples; i++) {
+      delay(6);
+      int16_t level = (int16_t)radio.getRSSI(false);   // уровень эфира, не пакета
+      if (level > worst) worst = level;
+    }
+    out[ch] = worst;
+  }
+  radio.setFrequency(loraGetFrequency(saved));
+  loraStartReceiveLocked();
+}
+
 bool loraSendWake(uint8_t* data, size_t len) {
   // Отправка с длинной преамбулой — будит устройства в duty cycle mode.
   // Вся последовательность (преамбула → TX → возврат режима) под одним mutex:

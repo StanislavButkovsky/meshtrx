@@ -97,6 +97,9 @@ uint8_t loraGetChannel();
 void loraSetPowerMode(LoRaPowerMode mode);
 // Усыпить радио перед выключением устройства (возврата не предполагается)
 void loraSleepForPowerOff();
+// Прослушать все каналы и вернуть уровень шума по каждому (дБм).
+// На время сканирования приём прерывается.
+void loraScanChannels(int16_t* out, uint8_t count, uint8_t samples = 12);
 LoRaPowerMode loraGetPowerMode();
 bool loraSendWake(uint8_t* data, size_t len);  // с длинной преамбулой
 // Диагностика состояния чипа (для тестовой консоли)

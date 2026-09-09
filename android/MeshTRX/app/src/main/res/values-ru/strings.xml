@@ -30,6 +30,7 @@
     <string name="callsign_hint">Макс 8 символов</string>
     <string name="radio">Радио</string>
     <string name="channel_label">Канал</string>
+    <string name="scan_channels">Найти свободный канал</string>
     <string name="tx_power">Мощность TX: %d dBm</string>
     <string name="duty_cycle">Duty Cycle EU868</string>
     <string name="vox_threshold">Порог VOX: %d</string>

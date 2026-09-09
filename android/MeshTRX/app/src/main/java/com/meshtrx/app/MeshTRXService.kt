@@ -767,6 +767,16 @@ class MeshTRXService : Service() {
                     }
                 }
             }
+            BleManager.CMD_SCAN_RESULT -> {
+                // [cmd, лучший канал, уровень канала 0..22] — уровни знаковые
+                if (data.size >= 3) {
+                    val best = data[1].toInt() and 0xFF
+                    val levels = (2 until data.size).map { data[it].toInt() }
+                    ServiceState.channelNoise.postValue(levels)
+                    ServiceState.channelBest.postValue(best)
+                    Log.d(TAG, "Scan: тише всего канал $best (${levels.getOrNull(best)} дБм)")
+                }
+            }
             BleManager.CMD_MESSAGE_ACK -> {
                 val ackSeq = data[1].toInt() and 0xFF
                 Log.d(TAG, "Message ACK seq=$ackSeq")
