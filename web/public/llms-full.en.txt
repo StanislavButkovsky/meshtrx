@@ -1,6 +1,6 @@
 # MeshTRX — full documentation
 
-> App 4.4.8, firmware 4.4.11, updated 2026-09-07. Source: https://meshtrx.ru/docs/
+> App 4.4.9, firmware 4.4.12, updated 2026-09-09. Source: https://meshtrx.ru/docs/
 
 ---
 
@@ -384,6 +384,7 @@ Android LocationManager is used (works without Google services). Updates every 1
 
 ### Radio
 - **Channel** (0–22) — the working frequency (863.15–869.75 MHz)
+- **Find a free channel** — the radio walks through every channel, listens to the air and shows where it is quietest. The 868 MHz band is a crowded place in a city: door phones, weather stations, meters and alarms all live there, and a busy channel hits voice first — voice needs a dozen packets in a row, while text only needs one lucky gap. The scan takes a couple of seconds and reception pauses meanwhile. **The chosen channel must be set on every device in the group, the repeater included** — otherwise they stop hearing each other
 - **TX power** (1–22 dBm) — transmission range
 - **Duty cycle EU868** — the 1% limit for EU compliance
 
@@ -560,7 +561,7 @@ Five tabs: **PTT**, **Chat**, **Files**, **Map**, **Settings**. The active tab i
 | Coding rate | 4/5 |
 | Sync word | 0x34 |
 | Power | 1–22 dBm |
-| Range | up to 5+ km (line of sight) |
+| Range | up to 5+ km line of sight; measured in a city — voice ~1 km, text ~2 km; in open country — voice up to 2 km, text beyond that |
 
 ### Audio codec
 
