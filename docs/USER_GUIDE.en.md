@@ -378,6 +378,7 @@ Android LocationManager is used (works without Google services). Updates every 1
 
 ### Radio
 - **Channel** (0–22) — the working frequency (863.15–869.75 MHz)
+- **Find a free channel** — the radio walks through every channel, listens to the air and shows where it is quietest. The 868 MHz band is a crowded place in a city: door phones, weather stations, meters and alarms all live there, and a busy channel hits voice first — voice needs a dozen packets in a row, while text only needs one lucky gap. The scan takes a couple of seconds and reception pauses meanwhile. **The chosen channel must be set on every device in the group, the repeater included** — otherwise they stop hearing each other
 - **TX power** (1–22 dBm) — transmission range
 - **Duty cycle EU868** — the 1% limit for EU compliance
 

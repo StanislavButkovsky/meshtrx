@@ -1560,6 +1560,29 @@ static void handleBleData(uint8_t* data, size_t len) {
       break;
     }
 
+    case BLE_CMD_SCAN_CHANNELS: {
+      // Человек нажал «найти свободный канал». Слушаем весь диапазон и
+      // отдаём уровень шума по каждому каналу — пусть выбирает, видя картину,
+      // а не наугад. Приём при этом прерывается на пару секунд, поэтому
+      // сканируем только по команде.
+      int16_t noise[NUM_CHANNELS];
+      loraScanChannels(noise, NUM_CHANNELS);
+      uint8_t best = 0;
+      for (uint8_t i = 1; i < NUM_CHANNELS; i++) if (noise[i] < noise[best]) best = i;
+      uint8_t out[2 + NUM_CHANNELS];
+      out[0] = BLE_CMD_SCAN_RESULT;
+      out[1] = best;
+      for (uint8_t i = 0; i < NUM_CHANNELS; i++) {
+        int16_t v = noise[i];
+        if (v < -128) v = -128;
+        if (v > 0) v = 0;
+        out[2 + i] = (uint8_t)(int8_t)v;
+      }
+      bleSendNotify(out, sizeof(out));
+      LOG_F("[Scan] тише всего канал %u (%d дБм)\n", best, noise[best]);
+      break;
+    }
+
     case BLE_CMD_SEND_MESSAGE: {
       // Формат: [0x07, seq, dest_lo, dest_hi, text...]
       if (len < 5) break;

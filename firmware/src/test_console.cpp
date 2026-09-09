@@ -291,6 +291,20 @@ static void handleLine(char* line) {
   if (strcmp(cmd, "INFO") == 0) { testHookInfo(); return; }
   // PIN нужен стенду, чтобы подключить телефон: раньше его можно было
   // узнать только из загрузочного лога, то есть перезагрузив плату.
+  // Сканирование каналов: где тише всего в эфире
+  if (strcmp(cmd, "SCAN") == 0) {
+    int16_t noise[NUM_CHANNELS];
+    loraScanChannels(noise, NUM_CHANNELS);
+    uint8_t best = 0;
+    for (uint8_t i = 1; i < NUM_CHANNELS; i++) if (noise[i] < noise[best]) best = i;
+    for (uint8_t i = 0; i < NUM_CHANNELS; i++) {
+      evt("EVT SCAN ch=%u freq=%.3f noise=%d%s\n", i, loraGetFrequency(i), noise[i],
+          i == best ? " best=1" : "");
+    }
+    evt("EVT SCAN_END best=%u noise=%d\n", best, noise[best]);
+    return;
+  }
+
   if (strcmp(cmd, "PIN") == 0) {
     evt("EVT PIN value=%04lu name=%s\n", (unsigned long)bleGetPin(),
         bleGetDeviceName().c_str());

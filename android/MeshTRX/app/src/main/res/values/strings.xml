@@ -30,6 +30,7 @@
     <string name="callsign_hint">Max 8 characters</string>
     <string name="radio">Radio</string>
     <string name="channel_label">Channel</string>
+    <string name="scan_channels">Find a free channel</string>
     <string name="tx_power">TX Power: %d dBm</string>
     <string name="duty_cycle">Duty Cycle EU868</string>
     <string name="vox_threshold">VOX Threshold: %d</string>

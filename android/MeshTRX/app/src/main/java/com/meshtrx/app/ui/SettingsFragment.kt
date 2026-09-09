@@ -44,6 +44,38 @@ class SettingsFragment : Fragment() {
             spinnerChannel.setSelection(ch)
         }
 
+        // Поиск свободного канала
+        val btnScan = v.findViewById<Button>(R.id.btnScanChannels)
+        val tvScan = v.findViewById<TextView>(R.id.tvScanResult)
+        btnScan.setOnClickListener {
+            if (ServiceState.connectionState.value != BleState.CONNECTED) {
+                Toast.makeText(requireContext(), getString(R.string.disconnected),
+                    Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            tvScan.visibility = View.VISIBLE
+            tvScan.text = "Слушаю эфир…"
+            service?.bleManager?.scanChannels()
+        }
+        ServiceState.channelNoise.observe(viewLifecycleOwner) { levels ->
+            if (levels.isEmpty()) return@observe
+            val best = ServiceState.channelBest.value ?: -1
+            // Показываем три самых тихих канала и сам уровень: человеку важно
+            // видеть, есть ли вообще разница, а не только «вот этот лучше».
+            val quiet = levels.withIndex().sortedBy { it.value }.take(3)
+                .joinToString(", ") { "CH ${it.index} (${it.value} dBm)" }
+            val noisiest = levels.withIndex().maxByOrNull { it.value }
+            tvScan.visibility = View.VISIBLE
+            tvScan.text = buildString {
+                append("Тише всего: $quiet")
+                if (noisiest != null) {
+                    append("\nШумнее всего: CH ${noisiest.index} (${noisiest.value} dBm)")
+                }
+                append("\nКанал нужно сменить на всех устройствах, включая ретранслятор")
+            }
+            if (best in levels.indices) spinnerChannel.setSelection(best)
+        }
+
         // Очистка списка абонентов
         v.findViewById<Button>(R.id.btnClearPeers).setOnClickListener {
             androidx.appcompat.app.AlertDialog.Builder(requireContext())

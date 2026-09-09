@@ -56,7 +56,20 @@
             android:text="@string/channel_label" android:textSize="13sp" android:textColor="#cccccc" />
         <Spinner android:id="@+id/spinnerChannel"
             android:layout_width="match_parent" android:layout_height="44dp"
-            android:layout_marginBottom="8dp" />
+            android:layout_marginBottom="4dp" />
+
+        <!-- Поиск свободного канала: 868 МГц в городе людное место, и занятый
+             канал бьёт прежде всего по голосу — ему нужно провести подряд
+             десяток пакетов, тексту хватает одного удачного окна. -->
+        <Button android:id="@+id/btnScanChannels"
+            style="?android:attr/borderlessButtonStyle"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="@string/scan_channels" android:textSize="13sp"
+            android:textColor="#4ade80" android:paddingStart="0dp" />
+        <TextView android:id="@+id/tvScanResult"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:textSize="12sp" android:textColor="#888888"
+            android:layout_marginBottom="8dp" android:visibility="gone" />
 
         <TextView android:id="@+id/tvTxPower"
             android:layout_width="wrap_content" android:layout_height="wrap_content"

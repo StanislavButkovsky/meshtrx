@@ -61,6 +61,8 @@ class BleManager(private val context: Context) {
         const val CMD_FILE_UPLOAD_DATA = 0x31
         const val CMD_FILE_UPLOAD_STATUS = 0x32
         const val CMD_SCAN_PEERS = 0x33
+        const val CMD_SCAN_CHANNELS = 0x34
+        const val CMD_SCAN_RESULT = 0x35
     }
 
     private val bluetoothAdapter: BluetoothAdapter? =
@@ -163,6 +165,11 @@ class BleManager(private val context: Context) {
     fun sendPttStart() = send(byteArrayOf(CMD_PTT_START.toByte()))
     fun sendPttEnd() = send(byteArrayOf(CMD_PTT_END.toByte()))
     fun setChannel(ch: Int) = send(byteArrayOf(CMD_SET_CHANNEL.toByte(), ch.toByte()))
+
+    /** Попросить рацию прослушать все каналы и вернуть уровень шума по каждому. */
+    fun scanChannels() {
+        send(byteArrayOf(CMD_SCAN_CHANNELS.toByte()))
+    }
 
     fun sendMessage(seq: Int, destId: String?, text: String) {
         val textBytes = text.toByteArray(Charsets.UTF_8)

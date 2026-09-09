@@ -53,6 +53,8 @@
 #define BLE_CMD_FILE_UPLOAD_DATA   0x31  // телефон→ESP: чанк данных файла
 #define BLE_CMD_FILE_UPLOAD_STATUS 0x32  // ESP→телефон: статус загрузки/отправки
 #define BLE_CMD_SCAN_PEERS         0x33  // телефон→ESP: попросить соседей отозваться
+#define BLE_CMD_SCAN_CHANNELS      0x34  // телефон→ESP: прослушать все каналы
+#define BLE_CMD_SCAN_RESULT        0x35  // ESP→телефон: [best, уровень канала 0..22]
 // UPLOAD_STATUS values: 0=ACCEPTED, 1=BUSY, 2=SENDING, 3=DELIVERED, 4=FAILED, 5=NO_MEMORY
 
 extern bool bleConnected;
