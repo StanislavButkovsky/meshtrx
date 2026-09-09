@@ -554,7 +554,7 @@ Five tabs: **PTT**, **Chat**, **Files**, **Map**, **Settings**. The active tab i
 | Coding rate | 4/5 |
 | Sync word | 0x34 |
 | Power | 1–22 dBm |
-| Range | up to 5+ km (line of sight) |
+| Range | up to 5+ km line of sight; measured in a city — voice ~1 km, text ~2 km; in open country — voice up to 2 km, text beyond that |
 
 ### Audio codec
 
