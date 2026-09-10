@@ -433,8 +433,14 @@ python3 -m venv .venv
   домофоны, метеостанции, счётчики, сигнализации, и занятый канал бьёт прежде
   всего по голосу — ему нужно провести подряд десяток пакетов, тексту хватает
   одного удачного окна. Сканирование занимает пару секунд, приём на это время
-  прерывается. **Выбранный канал нужно поставить на всех устройствах группы,
-  включая ретранслятор** — иначе они перестанут слышать друг друга
+  прерывается
+- **Сменить канал у всех** — переводит на выбранный канал всю группу разом:
+  рация рассылает команду в эфир, и все, кто её слышит (включая ретранслятор),
+  переходят одновременно через 10 секунд. Обходить каждое устройство руками не
+  нужно — а это и не всегда возможно, часть раций в этот момент у других людей.
+  Тот, кто команду не услышал, остаётся на прежнем канале; тот, кто перешёл, но
+  за две минуты никого на новом канале не услышал, сам возвращается обратно —
+  так рация не остаётся в одиночестве там, куда за ней никто не пришёл
 - **Мощность TX** (1–22 дБм) — дальность передачи
 - **Duty Cycle EU868** — ограничение 1% для соответствия EU нормам
 
@@ -561,7 +567,8 @@ python3 -m venv .venv
 ### Смена канала
 
 Канал можно сменить:
-- Через **веб-интерфейс** (dropdown + кнопка Set)
+- Через **веб-интерфейс**: выпадающий список и кнопка **Set** — только у самого
+  ретранслятора, кнопка **Set all** — у всей сети сразу
 - Через **приложение** (подключиться по BLE и сменить в настройках)
 
 ### Выключение
@@ -1088,7 +1095,8 @@ Android LocationManager is used (works without Google services). Updates every 1
 
 ### Radio
 - **Channel** (0–22) — the working frequency (863.15–869.75 MHz)
-- **Find a free channel** — the radio walks through every channel, listens to the air and shows where it is quietest. The 868 MHz band is a crowded place in a city: door phones, weather stations, meters and alarms all live there, and a busy channel hits voice first — voice needs a dozen packets in a row, while text only needs one lucky gap. The scan takes a couple of seconds and reception pauses meanwhile. **The chosen channel must be set on every device in the group, the repeater included** — otherwise they stop hearing each other
+- **Find a free channel** — the radio walks through every channel, listens to the air and shows where it is quietest. The 868 MHz band is a crowded place in a city: door phones, weather stations, meters and alarms all live there, and a busy channel hits voice first — voice needs a dozen packets in a row, while text only needs one lucky gap. The scan takes a couple of seconds and reception pauses meanwhile
+- **Switch channel for everyone** — moves the whole group to the selected channel at once: the radio broadcasts the command and everyone who hears it, the repeater included, switches together after 10 seconds. No need to walk up to each device — which is not always possible anyway, since some radios are in other people's pockets. A radio that misses the command stays where it was; a radio that switched but heard nobody on the new channel for two minutes returns to the old one on its own, so it is never left alone somewhere nobody followed it
 - **TX power** (1–22 dBm) — transmission range
 - **Duty cycle EU868** — the 1% limit for EU compliance
 
@@ -1171,7 +1179,7 @@ The page refreshes every 5 seconds and shows:
 ### Changing the channel
 
 The channel can be changed:
-- from the **web interface** (drop-down plus the Set button)
+- from the **web interface**: the drop-down with **Set** changes the repeater itself, **Set all** moves the whole network
 - from the **app** (connect over BLE and change it in the settings)
 
 ### Turning it off

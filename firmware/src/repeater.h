@@ -57,4 +57,7 @@ bool repeaterIsEnabled();
 
 // Разослать в эфир команду перейти на другой канал и уйти туда самому
 void repeaterBroadcastChannel(uint8_t newChannel, uint8_t delaySec = 10);
+
+// Запланированный переход: канал и сколько секунд до него осталось
+bool repeaterPendingSwitch(uint8_t* to, uint32_t* secLeft);
 void repeaterSetEnabled(bool enabled);

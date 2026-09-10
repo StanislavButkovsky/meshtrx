@@ -59,6 +59,14 @@ static void handleRoot() {
   html += "<button type='submit' formaction='/channel_all'>Set all</button>";
   html += "</form></div>";
 
+  uint8_t pendTo = 0;
+  uint32_t pendSec = 0;
+  if (repeaterPendingSwitch(&pendTo, &pendSec)) {
+    html += "<p style='color:#4ade80'>Переход на CH " + String(pendTo) +
+            " &mdash; " + String(loraGetFrequency(pendTo), 2) + " MHz через " +
+            String(pendSec) + " с, вместе со всеми, кто услышал команду</p>";
+  }
+
   html += "<table>";
   html += "<tr><td>Uptime</td><td class='val'>" + String(hours) + "h " + String(mins) + "m " + String(secs) + "s</td></tr>";
   html += "<tr><td>Channel</td><td class='val'>CH " + String(ch) + " &mdash; " + String(freq, 2) + " MHz</td></tr>";
