@@ -167,8 +167,10 @@ void repeaterBroadcastChannel(uint8_t newChannel, uint8_t delaySec) {
   pkt.delay_sec = delaySec;
   // Трижды: одиночный пакет в полудуплексе легко пропадает, а цена пропажи —
   // рация, оставшаяся на прежнем канале в одиночестве.
+  // Длинная преамбула: рация без телефона слушает эфир урывками и просыпается
+  // только на неё — с обычной команду слышали лишь те, кто в разговоре.
   for (uint8_t i = 0; i < 3; i++) {
-    loraSend((uint8_t*)&pkt, sizeof(pkt));
+    loraSendWake((uint8_t*)&pkt, sizeof(pkt));
     vTaskDelay(pdMS_TO_TICKS(120 + (esp_random() % 120)));
   }
   loraStartReceive();
