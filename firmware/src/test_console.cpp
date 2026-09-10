@@ -291,6 +291,17 @@ static void handleLine(char* line) {
   if (strcmp(cmd, "INFO") == 0) { testHookInfo(); return; }
   // PIN нужен стенду, чтобы подключить телефон: раньше его можно было
   // узнать только из загрузочного лога, то есть перезагрузив плату.
+  // Рассылка канала от лица ретранслятора — тот же путь, что у кнопки Set all
+  if (strcmp(cmd, "REPCHALL") == 0) {
+    char* arg = nextTok(&p);
+    if (!arg) { evt("EVT ERR cmd=REPCHALL reason=need_channel\n"); return; }
+    uint8_t ch = (uint8_t)atoi(arg);
+    char* d = nextTok(&p);
+    repeaterBroadcastChannel(ch, d ? (uint8_t)atoi(d) : 10);
+    evt("EVT REPCHALL ch=%u\n", ch);
+    return;
+  }
+
   // Смена канала для всей группы
   if (strcmp(cmd, "CHALL") == 0) {
     char* arg = nextTok(&p);

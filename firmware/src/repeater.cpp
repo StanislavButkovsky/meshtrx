@@ -86,13 +86,18 @@ static void dedupAdd(const uint8_t* sender, uint8_t seq, uint8_t type) {
   dedupHead = (dedupHead + 1) % DEDUP_CACHE_SIZE;
 }
 
-// Смена канала по команде из эфира
-#define REPEATER_PROBE_MS 120000
+// Смена канала по команде из эфира. Окно ожидания у ретранслятора длиннее,
+// чем у рации: он сам молчит, а штатный маяк ноды подаёт раз в пять минут —
+// за две минуты «тишина» означала бы всего лишь, что никто не говорил.
+#define REPEATER_PROBE_MS 600000
 static uint32_t chgAt = 0;
 static uint32_t chgProbeUntil = 0;
 static uint8_t  chgFrom = 0;
 static uint8_t  chgTo = 0;
 static bool     chgHeard = false;
+// Команду разослал сам (человек нажал «Set all» на его странице) — тогда
+// возврата быть не должно: это осознанное решение, а не догадка по эфиру.
+static bool     chgSelf = false;
 static uint8_t  chgSeq = 0;
 // Свой номер канала main.cpp держит отдельно от радиомодуля, и по нему
 // отвечают INFO и телефон: не обновить его — и снаружи кажется, что
@@ -134,6 +139,17 @@ static void updateStats(uint8_t type) {
 // Перевести всю сеть на другой канал. Ретранслятор — самая заметная точка
 // сети: до него дотягиваются все, поэтому команду отсюда услышат те, кто
 // друг друга напрямую не слышит.
+// Запланирован ли переход и сколько секунд осталось. Страница молчала о том,
+// что команда принята, показывая прежний канал ещё десять секунд, — со стороны
+// это выглядело как «кнопка не сработала».
+bool repeaterPendingSwitch(uint8_t* to, uint32_t* secLeft) {
+  if (!chgAt) return false;
+  uint32_t now = millis();
+  if (to) *to = chgTo;
+  if (secLeft) *secLeft = chgAt > now ? (chgAt - now + 999) / 1000 : 0;
+  return true;
+}
+
 void repeaterBroadcastChannel(uint8_t newChannel, uint8_t delaySec) {
   if (newChannel >= NUM_CHANNELS || newChannel == loraGetChannel()) return;
   uint8_t mac[6];
@@ -151,8 +167,10 @@ void repeaterBroadcastChannel(uint8_t newChannel, uint8_t delaySec) {
   pkt.delay_sec = delaySec;
   // Трижды: одиночный пакет в полудуплексе легко пропадает, а цена пропажи —
   // рация, оставшаяся на прежнем канале в одиночестве.
+  // Длинная преамбула: рация без телефона слушает эфир урывками и просыпается
+  // только на неё — с обычной команду слышали лишь те, кто в разговоре.
   for (uint8_t i = 0; i < 3; i++) {
-    loraSend((uint8_t*)&pkt, sizeof(pkt));
+    loraSendWake((uint8_t*)&pkt, sizeof(pkt));
     vTaskDelay(pdMS_TO_TICKS(120 + (esp_random() % 120)));
   }
   loraStartReceive();
@@ -160,6 +178,7 @@ void repeaterBroadcastChannel(uint8_t newChannel, uint8_t delaySec) {
   chgFrom = loraGetChannel();
   chgTo = newChannel;
   chgAt = millis() + (uint32_t)delaySec * 1000;
+  chgSelf = true;
 }
 
 void repeaterInit() {
@@ -217,10 +236,15 @@ void repeaterTask(void* param) {
       prefs.begin("settings", false);
       prefs.putUChar("channel", chgTo);
       prefs.end();
-      chgProbeUntil = millis() + REPEATER_PROBE_MS;
+      chgProbeUntil = chgSelf ? 0 : millis() + REPEATER_PROBE_MS;
       chgHeard = false;
       loraStartReceive();
-      LOG_F("[Repeater] канал %u -> %u\n", chgFrom, chgTo);
+      // Отметиться на новом канале: ретранслятор молчалив, и рация, ушедшая
+      // сюда же, без его маяка решит, что осталась одна, и уйдёт обратно.
+      beaconSendNow();
+      loraStartReceive();
+      LOG_F("[Repeater] канал %u -> %u%s\n", chgFrom, chgTo,
+            chgSelf ? " (своя команда, возврата не будет)" : "");
     }
     // Никого не слышно на новом канале — вернуться, иначе ретранслятор
     // останется висеть там, куда за ним никто не пришёл.
@@ -331,6 +355,7 @@ void repeaterTask(void* param) {
         chgFrom = loraGetChannel();
         chgTo = p->new_channel;
         chgAt = millis() + (uint32_t)p->delay_sec * 1000;
+        chgSelf = false;
       }
     } else if (pktType >= PKT_TYPE_CALL_ALL && pktType <= PKT_TYPE_CALL_CANCEL) {
       // Вызовы: ttl в байте 2
