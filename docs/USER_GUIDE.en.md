@@ -442,7 +442,8 @@ A device can work as a standalone repeater — it receives LoRa packets and forw
 
 Once enabled, the device brings up WiFi:
 - **Without an SSID**: it creates the access point `MeshTRX-Repeater` (password: `meshtrx123`)
-- **With an SSID**: it joins that network (falling back to the access point on failure)
+- **With an SSID**: it joins that network and shuts its own access point down — one transmitter next to the antenna is enough. Any network works, a phone hotspot included; the repeater only needs internet for the map tiles
+- If the network stays gone for more than half a minute, the access point comes back on its own, so a phone next to the repeater can still reach the page. Right after a new network is saved the access point keeps running for three more minutes — otherwise you would be thrown off it exactly when the page shows you the new address
 
 The web interface is available at:
 - AP mode: `http://192.168.4.1`

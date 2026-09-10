@@ -12,6 +12,37 @@ static uint32_t startTime = 0;
 // Текущий канал — доступ из main.cpp
 extern uint8_t currentChannel;
 
+// Точка доступа нужна ровно тогда, когда до страницы иначе не добраться.
+// Держать её вместе с клиентом, как раньше, — лишний передатчик рядом с
+// приёмником: на 868 МГц он не попадает, но платы у нас тесные, и по питанию
+// это слышно. Поэтому: подключились к сети — точка гаснет, сеть пропала —
+// поднимается обратно, чтобы человек с телефоном рядом всё равно вошёл.
+static bool apUp = false;
+// Пока человек стоит на самой точке и настраивает сеть, гасить её нельзя:
+// он вылетит ровно в тот момент, когда ему показывают новый адрес.
+static uint32_t apHoldUntil = 0;
+// Есть ли сохранённая сеть — держим в памяти. Спрашивать NVS каждые пять
+// секунд незачем: ответ меняется только когда сеть сохраняют или забывают,
+// зато лог заполняется ошибками «ключа нет».
+static bool haveSavedNet = false;
+
+static void apStart() {
+  if (apUp) return;
+  WiFi.mode(WIFI_AP_STA);   // STA остаётся: клиент продолжает попытки
+  WiFi.softAP("MeshTRX-Repeater", "meshtrx123");
+  apUp = true;
+  Serial.printf("[WiFi] точка доступа поднята: %s\n",
+                WiFi.softAPIP().toString().c_str());
+}
+
+static void apStop() {
+  if (!apUp) return;
+  WiFi.softAPdisconnect(true);
+  WiFi.mode(WIFI_STA);
+  apUp = false;
+  Serial.println("[WiFi] точка доступа погашена — работаем клиентом сети");
+}
+
 static void handleRoot() {
   RepeaterStats stats = repeaterGetStats();
   uint32_t uptime = (millis() - startTime) / 1000;
@@ -324,7 +355,11 @@ static String staStatusText() {
 
 // Подключиться и подождать результата. Возвращает true, если получилось.
 static bool staTry(const String& ssid, const String& pass, uint32_t waitMs = 12000) {
-  WiFi.mode(WIFI_AP_STA);              // точку доступа не гасим ни на секунду
+  // На время проверки точка обязана работать: пароль может не подойти, и
+  // страница, с которой человек её вводит, не должна исчезнуть под ним.
+  WiFi.mode(WIFI_AP_STA);
+  apStart();
+  apHoldUntil = millis() + 180000;
   WiFi.begin(ssid.c_str(), pass.c_str());
   uint32_t start = millis();
   while (millis() - start < waitMs) {
@@ -381,8 +416,10 @@ static void handleWifiSave() {
     prefs.putString("wifi_ssid", ssid);
     prefs.putString("wifi_pass", pass);
     prefs.end();
+    haveSavedNet = true;
     Serial.printf("[WiFi] Сеть сохранена: %s, адрес %s\n",
                   ssid.c_str(), WiFi.localIP().toString().c_str());
+    apHoldUntil = millis() + 180000;   // три минуты на пересадку в свою сеть
   }
   server.send(200, "application/json",
     "{\"ok\":" + String(ok ? "true" : "false") +
@@ -398,8 +435,11 @@ static void handleWifiForget() {
   prefs.remove("wifi_ssid");
   prefs.remove("wifi_pass");
   prefs.end();
+  haveSavedNet = false;
   WiFi.disconnect(false, true);
-  WiFi.mode(WIFI_AP);
+  apUp = false;              // режим меняем заново, а не поверх прежнего
+  WiFi.mode(WIFI_AP_STA);
+  apStart();
   server.send(200, "application/json", "{\"ok\":true}");
 }
 
@@ -459,13 +499,14 @@ void wifiMonitorInit() {
   String ipStr = prefs.getString("static_ip", "");
   prefs.end();
 
+  haveSavedNet = ssid.length() > 0;
   if (ssid.length() > 0) {
     // И точка доступа, и клиент одновременно. Раньше при сохранённой сети
     // ретранслятор уходил в чистого клиента — и если сеть не поднялась (роутер
     // перезагружается, сменили пароль), попасть на его страницу было уже
     // нечем. Своя точка стоит копейки и остаётся всегда.
     WiFi.mode(WIFI_AP_STA);
-    WiFi.softAP("MeshTRX-Repeater", "meshtrx123");
+    apStart();
 
     // Статический IP если задан
     if (ipStr.length() > 0) {
@@ -486,8 +527,8 @@ void wifiMonitorInit() {
       timeout++;
     }
     if (WiFi.status() == WL_CONNECTED) {
-      Serial.printf("[WiFi] Connected: %s (точка доступа тоже работает: %s)\n",
-                    WiFi.localIP().toString().c_str(), WiFi.softAPIP().toString().c_str());
+      Serial.printf("[WiFi] Connected: %s\n", WiFi.localIP().toString().c_str());
+      apStop();
       // Сеть может пропасть и вернуться — переподключаемся сами, без участия
       // человека: до ретранслятора на мачте не дотянешься.
       WiFi.setAutoReconnect(true);
@@ -496,10 +537,9 @@ void wifiMonitorInit() {
                     ssid.c_str(), WiFi.softAPIP().toString().c_str());
     }
   } else {
-    // SoftAP по умолчанию
-    WiFi.mode(WIFI_AP);
-    WiFi.softAP("MeshTRX-Repeater", "meshtrx123");
-    Serial.printf("[WiFi] AP: %s\n", WiFi.softAPIP().toString().c_str());
+    // Сеть не сохранена — точка доступа единственный путь к странице
+    WiFi.mode(WIFI_AP_STA);
+    apStart();
   }
 
   server.on("/", handleRoot);
@@ -517,8 +557,26 @@ void wifiMonitorInit() {
 }
 
 void wifiMonitorTask(void* param) {
+  uint32_t lastCheck = 0;
+  uint32_t lostSince = 0;
   while (true) {
     server.handleClient();
+
+    // Раз в пять секунд смотрим, на месте ли сеть. Точку поднимаем не сразу:
+    // роутер, перезагружающийся минуту, иначе каждый раз возвращал бы нас в
+    // режим точки, а вместе с ним и лишний передатчик у самой антенны.
+    if (millis() - lastCheck > 5000) {
+      lastCheck = millis();
+      if (haveSavedNet) {
+        if (WiFi.status() == WL_CONNECTED) {
+          lostSince = 0;
+          if (!apHoldUntil || millis() > apHoldUntil) apStop();
+        } else {
+          if (!lostSince) lostSince = millis();
+          if (millis() - lostSince > 30000) apStart();
+        }
+      }
+    }
     vTaskDelay(pdMS_TO_TICKS(10));
   }
 }

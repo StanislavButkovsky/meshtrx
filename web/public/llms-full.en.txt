@@ -1,6 +1,6 @@
 # MeshTRX — full documentation
 
-> App 4.4.10, firmware 4.4.13, updated 2026-09-10. Source: https://meshtrx.ru/docs/
+> App 4.4.10, firmware 4.4.14, updated 2026-09-10. Source: https://meshtrx.ru/docs/
 
 ---
 
