@@ -57,6 +57,25 @@ class SettingsFragment : Fragment() {
             tvScan.text = "Слушаю эфир…"
             service?.bleManager?.scanChannels()
         }
+        // Перевести всю группу на выбранный канал
+        v.findViewById<Button>(R.id.btnChannelAll).setOnClickListener {
+            if (ServiceState.connectionState.value != BleState.CONNECTED) {
+                Toast.makeText(requireContext(), getString(R.string.disconnected),
+                    Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            val ch = spinnerChannel.selectedItemPosition
+            androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setMessage(getString(R.string.channel_all_confirm, ch))
+                .setPositiveButton("OK") { _, _ ->
+                    service?.bleManager?.setChannelForAll(ch)
+                    Toast.makeText(requireContext(), getString(R.string.channel_all_sent),
+                        Toast.LENGTH_LONG).show()
+                }
+                .setNegativeButton(getString(R.string.cancel), null)
+                .show()
+        }
+
         ServiceState.channelNoise.observe(viewLifecycleOwner) { levels ->
             if (levels.isEmpty()) return@observe
             val best = ServiceState.channelBest.value ?: -1
@@ -71,7 +90,7 @@ class SettingsFragment : Fragment() {
                 if (noisiest != null) {
                     append("\nШумнее всего: CH ${noisiest.index} (${noisiest.value} dBm)")
                 }
-                append("\nКанал нужно сменить на всех устройствах, включая ретранслятор")
+                append("\nЧтобы перевести всю группу разом — «Сменить канал у всех»")
             }
             if (best in levels.indices) spinnerChannel.setSelection(best)
         }

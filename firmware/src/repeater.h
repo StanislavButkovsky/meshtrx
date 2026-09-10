@@ -54,4 +54,7 @@ void repeaterTask(void* param);
 void repeaterResetStats();
 RepeaterStats repeaterGetStats();
 bool repeaterIsEnabled();
+
+// Разослать в эфир команду перейти на другой канал и уйти туда самому
+void repeaterBroadcastChannel(uint8_t newChannel, uint8_t delaySec = 10);
 void repeaterSetEnabled(bool enabled);

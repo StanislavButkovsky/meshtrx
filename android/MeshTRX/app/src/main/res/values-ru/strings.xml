@@ -181,4 +181,7 @@ MeshTRX v%2$s</string>
     <string name="static_ip">Статический IP (опционально)</string>
     <string name="activate_repeater">ВКЛЮЧИТЬ РЕТРАНСЛЯТОР</string>
     <string name="deactivate_repeater">Выключить ретранслятор</string>
+    <string name="channel_all">Сменить канал у всех</string>
+    <string name="channel_all_confirm">Все рации, которые сейчас слышат эфир, перейдут на CH %1$d через 10 секунд. Те, кто не услышит команду, останутся на прежнем канале.</string>
+    <string name="channel_all_sent">Команда отправлена, переход через 10 с</string>
 </resources>

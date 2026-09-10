@@ -152,6 +152,29 @@ static uint32_t batReadTimer = 0;
 
 // LoRa power mode — idle timer
 static uint32_t lastLoraActivityMs = 0;
+
+// === Отложенная смена канала для всей группы ===
+//
+// Кто команду не услышал, остался бы на прежнем канале и выпал из сети — а
+// вернуть его можно было бы только руками, подойдя к устройству. Поэтому после
+// перехода рация слушает новый канал, и если за две минуты не услышала никого,
+// возвращается сама. Потеря связи так лечится ожиданием, а не походом к каждой
+// рации в поле.
+#define CHANNEL_PROBE_MS   120000
+static uint32_t channelSwitchAt = 0;     // 0 — перехода не запланировано
+static uint8_t  channelSwitchTo = 0;
+static uint8_t  channelPrevious = 0;
+static uint32_t channelProbeUntil = 0;   // до какого времени ждём хоть кого-то
+static uint32_t channelSwitchedAt = 0;   // когда перешли — точка отсчёта «слышно ли кого»
+static uint32_t channelHelloAt = 0;      // когда отметиться маяком на новом канале
+static uint8_t  channelHelloLeft = 0;    // сколько отметок ещё осталось подать
+static uint8_t  chanDedupSender[2] = {0, 0};
+static uint8_t  chanDedupSeq = 0;
+static uint32_t chanDedupAt = 0;
+// Приём отдельно от общей активности: lastLoraActivityMs обновляет и собственная
+// передача, а нода, которая слышит только себя, как раз и должна вернуться назад.
+static uint32_t lastLoraRxMs = 0;
+static uint8_t  channelSetSeq = 0;
 #define LORA_IDLE_TIMEOUT_MS  10000  // 10 сек без активности → duty cycle
 
 static float getCachedBattery() {
@@ -611,6 +634,7 @@ static void loraTaskFunc(void* param) {
     if (loraRxFlag) {
       loraRxFlag = false;
       lastLoraActivityMs = millis();
+      lastLoraRxMs = millis();
 
       // Сначала забрать пакет из чипа и только потом менять режим:
       // startReceive() внутри смены режима сбрасывает буфер приёма, и пакет,
@@ -667,6 +691,48 @@ static void loraTaskFunc(void* param) {
 // ================================================================
 // Обработка принятого LoRa пакета
 // ================================================================
+// Разослать группе команду перейти на другой канал.
+//
+// Трижды, потому что одиночный пакет в полудуплексе легко теряется, а цена
+// потери здесь высокая: не услышавший останется на старом канале. Сами уходим
+// последними — пока мы на прежнем канале, команду ещё можно повторить.
+static void broadcastChannelSet(uint8_t newChannel, uint8_t delaySec = 10) {
+  if (newChannel >= NUM_CHANNELS || newChannel == currentChannel) return;
+  LoRaChannelSetPacket pkt;
+  memset(&pkt, 0, sizeof(pkt));
+  pkt.type = PKT_TYPE_CHANNEL_SET;
+  pkt.channel = currentChannel;
+  pkt.ttl = TTL_DEFAULT;
+  memcpy(pkt.sender, senderMac, 2);
+  pkt.seq = ++channelSetSeq;
+  pkt.new_channel = newChannel;
+  pkt.delay_sec = delaySec;
+  for (uint8_t i = 0; i < 3; i++) {
+    loraSend((uint8_t*)&pkt, sizeof(pkt));
+    delay(120 + (esp_random() % 120));
+  }
+  loraStartReceive();
+
+  channelPrevious = currentChannel;
+  channelSwitchTo = newChannel;
+  channelSwitchAt = millis() + (uint32_t)delaySec * 1000;
+  LOG_F("[Channel] разослал: всем на %u через %u с\n", newChannel, delaySec);
+}
+
+static void saveChannel(uint8_t ch) {
+  Preferences prefs;
+  prefs.begin("settings", false);
+  prefs.putUChar("channel", ch);
+  prefs.end();
+}
+
+// Сказать телефону, на каком мы теперь канале: иначе в приложении остаётся
+// прежний номер, и человек уверен, что ничего не поменялось.
+static void notifyChannel() {
+  uint8_t msg[2] = { BLE_CMD_SET_CHANNEL, currentChannel };
+  bleSendNotify(msg, sizeof(msg));
+}
+
 static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr) {
   if (len < 1) return;
 #ifdef TEST_CONSOLE
@@ -702,6 +768,37 @@ static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr) 
       // миллисекунд, а голос идёт 12 пакетов в секунду — задача приёма
       // не успевала вернуться в эфир и теряла до половины потока.
       // Экран обновляет bleTask раз в 500-1000 мс, и только когда он включён.
+      break;
+    }
+
+    case PKT_TYPE_CHANNEL_SET: {
+      if (len < (int)sizeof(LoRaChannelSetPacket)) break;
+      LoRaChannelSetPacket* pkt = (LoRaChannelSetPacket*)data;
+      if (pkt->channel != currentChannel) break;
+      if (pkt->sender[0] == senderMac[0] && pkt->sender[1] == senderMac[1]) break;
+      if (pkt->new_channel >= NUM_CHANNELS) break;
+      // Своя дедупликация, не общая с текстами: команда идёт тремя копиями,
+      // и тремя записями она вытесняла из кеша текстов чужие сообщения —
+      // те потом молча пропадали как «дубликаты».
+      if (millis() - chanDedupAt < 30000 &&
+          chanDedupSender[0] == pkt->sender[0] &&
+          chanDedupSender[1] == pkt->sender[1] &&
+          chanDedupSeq == pkt->seq) break;
+      chanDedupSender[0] = pkt->sender[0];
+      chanDedupSender[1] = pkt->sender[1];
+      chanDedupSeq = pkt->seq;
+      chanDedupAt = millis();
+      if (pkt->new_channel == currentChannel) break;
+
+      channelPrevious = currentChannel;
+      channelSwitchTo = pkt->new_channel;
+      channelSwitchAt = millis() + (uint32_t)pkt->delay_sec * 1000;
+      LOG_F("[Channel] переходим на %u через %u с (команда от %02X%02X)\n",
+            pkt->new_channel, pkt->delay_sec, pkt->sender[1], pkt->sender[0]);
+      oledWake();
+      char msg[22];
+      snprintf(msg, sizeof(msg), "CH %u -> %u", currentChannel, pkt->new_channel);
+      oledShowMessage(msg, "смена канала", 3000);
       break;
     }
 
@@ -1196,6 +1293,53 @@ static void bleTaskFunc(void* param) {
                    false, getCachedBattery());
     }
 
+    // === Отложенный переход на другой канал ===
+    if (channelSwitchAt && millis() >= channelSwitchAt) {
+      channelSwitchAt = 0;
+      LOG_F("[Channel] перехожу на %u (был %u)\n", channelSwitchTo, channelPrevious);
+      loraSetChannel(channelSwitchTo);
+      currentChannel = channelSwitchTo;
+      loraStartReceive(); // смена частоты приём не возобновляет
+      saveChannel(channelSwitchTo);
+      channelProbeUntil = millis() + CHANNEL_PROBE_MS;
+      channelSwitchedAt = millis();
+      lastLoraActivityMs = millis();
+      // Отметиться маяком: если все просто замолчат, каждый решит, что остался
+      // один, и вернётся обратно — переход развалится на ровном месте. Разброс
+      // по времени нужен, чтобы ноды не заглушили друг друга разом.
+      channelHelloAt = millis() + 2000 + (esp_random() % 6000);
+      channelHelloLeft = 3;
+      notifyChannel();
+    }
+
+    if (channelHelloAt && millis() >= channelHelloAt) {
+      beaconSendNow();
+      // Одной отметки мало: потеряйся она на коллизии — сосед решит, что
+      // остался один, и уйдёт обратно, разорвав только что собранную группу.
+      channelHelloLeft--;
+      channelHelloAt = channelHelloLeft ? millis() + 30000 + (esp_random() % 10000) : 0;
+    }
+
+    // Никого не слышно на новом канале — возвращаемся на прежний. Иначе рация,
+    // не услышавшая соседей, осталась бы в одиночестве до похода к ней руками.
+    if (channelProbeUntil && millis() > channelProbeUntil) {
+      bool heard = lastLoraRxMs > channelSwitchedAt;
+      channelProbeUntil = 0;
+      if (!heard) {
+        LOG_F("[Channel] на %u никого не слышно — возвращаюсь на %u\n",
+              currentChannel, channelPrevious);
+        loraSetChannel(channelPrevious);
+        currentChannel = channelPrevious;
+        loraStartReceive();
+        saveChannel(channelPrevious);
+        oledWake();
+        oledShowMessage("канал вернул", "никого не слышно", 3000);
+        notifyChannel();
+      } else {
+        LOG_D("[Channel] на новом канале есть жизнь — остаёмся");
+      }
+    }
+
     // === Принятый файл некому отдать (нет телефона) — освободить RAM ===
     if (fileRxComplete && fileRxBuffer && !bleIsConnected()) {
       fileRxComplete = false;
@@ -1557,6 +1701,12 @@ static void handleBleData(uint8_t* data, size_t len) {
                      loraIsDutyCycleEnabled(), pttActive, false,
                      getCachedBattery());
       }
+      break;
+    }
+
+    case BLE_CMD_SET_CHANNEL_ALL: {
+      if (len < 2) break;
+      broadcastChannelSet(data[1]);
       break;
     }
 
@@ -2061,6 +2211,10 @@ bool testHookSetChannel(uint8_t ch) {
   prefs.putUChar("channel", ch);
   prefs.end();
   return ok;
+}
+
+void testHookChannelAll(uint8_t channel, uint8_t delaySec) {
+  broadcastChannelSet(channel, delaySec);
 }
 
 void testHookPowerOff() {
