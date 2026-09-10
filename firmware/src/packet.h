@@ -17,6 +17,9 @@
 #define PKT_TYPE_CALL_ACCEPT    0xE4
 #define PKT_TYPE_CALL_REJECT    0xE5
 #define PKT_TYPE_CALL_CANCEL    0xE6
+// Смена канала для всей группы. Раньше канал меняли на каждой рации руками —
+// в поле это означает обойти всех, а ноды бывают у разных людей.
+#define PKT_TYPE_CHANNEL_SET    0xE7
 
 // === Флаги аудио пакета ===
 #define PKT_FLAG_PTT_START  0x01
@@ -158,6 +161,22 @@ struct LoRaFileEnd {
 
 // === Beacon (36 байт) ===
 #pragma pack(push, 1)
+// Команда «всем перейти на другой канал».
+//
+// Переключение отложенное и одновременное: получивший команду не прыгает
+// сразу, а ждёт общего момента — иначе он ушёл бы раньше, чем команду
+// услышали соседи, и сам же перестал бы её повторять.
+struct LoRaChannelSetPacket {
+  uint8_t  type;          // 0xE7
+  uint8_t  channel;       // на каком канале передана команда
+  uint8_t  ttl;
+  uint8_t  sender[2];
+  uint8_t  seq;           // для защиты от повторов
+  uint8_t  new_channel;   // куда переходим
+  uint8_t  delay_sec;     // через сколько секунд после приёма
+  uint16_t crc16;
+};
+
 struct LoRaBeaconPacket {
   uint8_t  type;          // 0xD0
   uint8_t  channel;

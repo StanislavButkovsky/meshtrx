@@ -53,7 +53,11 @@ static void handleRoot() {
     html += ">CH " + String(i) + " &mdash; " + String(f, 2) + " MHz</option>";
   }
   html += "</select>";
-  html += "<button type='submit'>Set</button></form></div>";
+  html += "<button type='submit'>Set</button>";
+  // Вторая кнопка той же формы: канал выбран один раз, а применить его можно
+  // либо к себе, либо ко всей сети — разводить два выпадающих списка незачем.
+  html += "<button type='submit' formaction='/channel_all'>Set all</button>";
+  html += "</form></div>";
 
   html += "<table>";
   html += "<tr><td>Uptime</td><td class='val'>" + String(hours) + "h " + String(mins) + "m " + String(secs) + "s</td></tr>";
@@ -96,6 +100,21 @@ static void handleSetChannel() {
     }
   }
   // Redirect обратно на главную
+  server.sendHeader("Location", "/");
+  server.send(302, "text/plain", "Redirecting...");
+}
+
+
+// Смена канала на всех станциях сразу: обойти рации руками получается не
+// всегда — часть их в этот момент в кармане у другого человека.
+static void handleSetChannelAll() {
+  if (server.hasArg("ch")) {
+    int ch = server.arg("ch").toInt();
+    if (ch >= 0 && ch < 23) {
+      repeaterBroadcastChannel((uint8_t)ch);
+      Serial.printf("[WiFi] Channel %d broadcast to all nodes\n", ch);
+    }
+  }
   server.sendHeader("Location", "/");
   server.send(302, "text/plain", "Redirecting...");
 }
@@ -477,6 +496,7 @@ void wifiMonitorInit() {
 
   server.on("/", handleRoot);
   server.on("/channel", handleSetChannel);
+  server.on("/channel_all", handleSetChannelAll);
   server.on("/api/nodes", handleNodes);
   server.on("/api/scan", handleScan);
   server.on("/api/wifi/state", handleWifiState);

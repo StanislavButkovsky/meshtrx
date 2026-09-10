@@ -63,6 +63,7 @@ class BleManager(private val context: Context) {
         const val CMD_SCAN_PEERS = 0x33
         const val CMD_SCAN_CHANNELS = 0x34
         const val CMD_SCAN_RESULT = 0x35
+        const val CMD_SET_CHANNEL_ALL = 0x36
     }
 
     private val bluetoothAdapter: BluetoothAdapter? =
@@ -165,6 +166,11 @@ class BleManager(private val context: Context) {
     fun sendPttStart() = send(byteArrayOf(CMD_PTT_START.toByte()))
     fun sendPttEnd() = send(byteArrayOf(CMD_PTT_END.toByte()))
     fun setChannel(ch: Int) = send(byteArrayOf(CMD_SET_CHANNEL.toByte(), ch.toByte()))
+
+    /** Перевести на другой канал всю группу: рация разошлёт команду в эфир,
+     *  и все, кто её услышит, перейдут одновременно. */
+    fun setChannelForAll(ch: Int) =
+        send(byteArrayOf(CMD_SET_CHANNEL_ALL.toByte(), ch.toByte()))
 
     /** Попросить рацию прослушать все каналы и вернуть уровень шума по каждому. */
     fun scanChannels() {

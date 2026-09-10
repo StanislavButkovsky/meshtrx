@@ -44,6 +44,8 @@ bool testHookSetChannel(uint8_t ch);
 void testHookInfo();
 // Выключение устройства — то же, что удержание кнопки, но проверяемое стендом
 void testHookPowerOff();
+// Разослать группе команду сменить канал (проверка стендом)
+void testHookChannelAll(uint8_t channel, uint8_t delaySec);
 uint8_t testHookCurrentChannel();
 uint32_t testHookBootCount();
 

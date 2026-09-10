@@ -181,4 +181,7 @@ MeshTRX v%2$s</string>
     <string name="static_ip">Static IP (optional)</string>
     <string name="activate_repeater">ACTIVATE REPEATER</string>
     <string name="deactivate_repeater">Deactivate Repeater</string>
+    <string name="channel_all">Switch channel for everyone</string>
+    <string name="channel_all_confirm">Every radio within range will move to CH %1$d in 10 seconds. Radios that miss the command stay on the current channel.</string>
+    <string name="channel_all_sent">Command sent, switching in 10 s</string>
 </resources>

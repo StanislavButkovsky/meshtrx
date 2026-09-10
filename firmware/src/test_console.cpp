@@ -291,6 +291,18 @@ static void handleLine(char* line) {
   if (strcmp(cmd, "INFO") == 0) { testHookInfo(); return; }
   // PIN нужен стенду, чтобы подключить телефон: раньше его можно было
   // узнать только из загрузочного лога, то есть перезагрузив плату.
+  // Смена канала для всей группы
+  if (strcmp(cmd, "CHALL") == 0) {
+    char* arg = nextTok(&p);
+    if (!arg) { evt("EVT ERR cmd=CHALL reason=need_channel\n"); return; }
+    uint8_t ch = (uint8_t)atoi(arg);
+    char* d = nextTok(&p);
+    uint8_t delaySec = d ? (uint8_t)atoi(d) : 10;
+    testHookChannelAll(ch, delaySec);
+    evt("EVT CHALL ch=%u delay=%u\n", ch, delaySec);
+    return;
+  }
+
   // Сканирование каналов: где тише всего в эфире
   if (strcmp(cmd, "SCAN") == 0) {
     int16_t noise[NUM_CHANNELS];

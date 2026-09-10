@@ -549,21 +549,28 @@ def test_phone(A: Device, B: Device):
     # обеих и сопоставляем по хвосту MAC, который приложение пишет в журнал.
     # BLE-адрес на единицу больше основного, отсюда и два варианта хвоста.
     pins = {}
+    names = {}
     for dev in (A, B):
         ev = dev.pin()
         if not ev:
             continue
         name = ev.get("name", "")            # MeshTRX-C4C8
         pins[name[-4:-2].upper()] = ev.get("value", "")
+        names[name] = dev
     ph.restart_app()
     name = ph.connect(pins)
     check("телефон подключился к рации", bool(name), name or "не подключился")
     if not name:
         return
 
-    target = A.info()
+    # Адресат — та плата, к которой телефон НЕ подключён. Телефон выбирает
+    # рацию сам, и когда он брал первую попавшуюся, сообщение уходило самому
+    # себе: в эфире ничего не появлялось, а проверка объявляла поломку связи.
+    phone_dev = names.get(name)
+    peer = B if phone_dev is A else A
+    target = peer.info()
     dest_cs = target.get("cs", "") if target else ""
-    A.drain()
+    peer.drain()
     ph.logcat_clear()
     text = f"HARNESS-{int(time.time()) % 10000}"
     sent = ph.send_text(dest_cs, text)
@@ -572,7 +579,7 @@ def test_phone(A: Device, B: Device):
         return
 
     time.sleep(12)
-    got = [e for e in A.collect("LORA_RX", 2.0) if e.get("type") == T_TEXT]
+    got = [e for e in peer.collect("LORA_RX", 2.0) if e.get("type") == T_TEXT]
     ack = ph.logcat(r"Message ACK")
     status = ph.last_status()
 

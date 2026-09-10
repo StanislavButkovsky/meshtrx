@@ -55,6 +55,7 @@
 #define BLE_CMD_SCAN_PEERS         0x33  // телефон→ESP: попросить соседей отозваться
 #define BLE_CMD_SCAN_CHANNELS      0x34  // телефон→ESP: прослушать все каналы
 #define BLE_CMD_SCAN_RESULT        0x35  // ESP→телефон: [best, уровень канала 0..22]
+#define BLE_CMD_SET_CHANNEL_ALL    0x36  // телефон→ESP: [канал] — сменить у всей группы
 // UPLOAD_STATUS values: 0=ACCEPTED, 1=BUSY, 2=SENDING, 3=DELIVERED, 4=FAILED, 5=NO_MEMORY
 
 extern bool bleConnected;

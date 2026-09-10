@@ -66,6 +66,13 @@
             android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:text="@string/scan_channels" android:textSize="13sp"
             android:textColor="#4ade80" android:paddingStart="0dp" />
+        <!-- Перевод всей группы: канал, выбранный на одной рации, бесполезен,
+             пока остальные слушают старый — а дойти до каждой не всегда можно. -->
+        <Button android:id="@+id/btnChannelAll"
+            style="?android:attr/borderlessButtonStyle"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="@string/channel_all" android:textSize="13sp"
+            android:textColor="#4ade80" android:paddingStart="0dp" />
         <TextView android:id="@+id/tvScanResult"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:textSize="12sp" android:textColor="#888888"
