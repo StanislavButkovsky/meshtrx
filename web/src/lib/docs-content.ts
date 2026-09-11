@@ -537,9 +537,11 @@ python3 -m venv .venv
 
 ### Подключение ретранслятора к домашней сети
 
-Ретранслятор всегда поднимает свою точку доступа \`MeshTRX-Repeater\`, а вдобавок
-может подключиться к обычной сети — тогда на его странице заработает карта, а
-сам он станет доступен из домашней сети по своему адресу.
+Ретранслятор поднимает свою точку доступа \`MeshTRX-Repeater\`, а может вместо
+неё подключиться к обычной сети — тогда на его странице заработает карта, а сам
+он станет доступен из этой сети по своему адресу. Годится любая сеть, в том
+числе раздача с телефона: ретранслятору нужен лишь выход в интернет для тайлов
+карты.
 
 В разделе «Сеть» на странице: **Обновить список** — поиск сетей вокруг, дальше
 выбираете свою, вводите пароль и жмёте **Проверить**. Ретранслятор подключится
@@ -548,10 +550,13 @@ python3 -m venv .venv
 Порядок именно такой не случайно: опечатка в пароле иначе оставила бы
 ретранслятор на мачте без связи.
 
-Своя точка доступа не выключается никогда, даже когда он подключён к домашней
-сети. Поэтому попасть на страницу можно всегда — и если роутер перезагрузился, и
-если сменили пароль. Кнопка **Забыть сеть** возвращает всё к исходному
-состоянию.
+Пока ретранслятор подключён к сети, своя точка доступа выключена: лишний
+передатчик у самой антенны ни к чему. Если сеть пропала дольше чем на полминуты
+— роутер перезагрузился, сменили пароль, — точка поднимается сама, и на страницу
+снова можно зайти с телефона рядом. Сразу после сохранения новой сети точка ещё
+три минуты работает в любом случае: иначе вы вылетели бы с неё ровно в тот
+момент, когда страница показывает новый адрес. Кнопка **Забыть сеть**
+возвращает всё к исходному состоянию.
 
 ### Веб-интерфейс
 
@@ -1159,7 +1164,8 @@ A device can work as a standalone repeater — it receives LoRa packets and forw
 
 Once enabled, the device brings up WiFi:
 - **Without an SSID**: it creates the access point \`MeshTRX-Repeater\` (password: \`meshtrx123\`)
-- **With an SSID**: it joins that network (falling back to the access point on failure)
+- **With an SSID**: it joins that network and shuts its own access point down — one transmitter next to the antenna is enough. Any network works, a phone hotspot included; the repeater only needs internet for the map tiles
+- If the network stays gone for more than half a minute, the access point comes back on its own, so a phone next to the repeater can still reach the page. Right after a new network is saved the access point keeps running for three more minutes — otherwise you would be thrown off it exactly when the page shows you the new address
 
 The web interface is available at:
 - AP mode: \`http://192.168.4.1\`
