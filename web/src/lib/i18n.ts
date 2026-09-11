@@ -237,6 +237,12 @@ export const translations = {
   'articles.read': { ru: 'Читать', en: 'Read' },
   'articles.back': { ru: 'Все статьи', en: 'All articles' },
   'articles.empty': { ru: 'Пока ни одной статьи нет.', en: 'No articles yet.' },
+  'articles.join.title': { ru: 'Проект делается в открытую', en: 'The project is built in the open' },
+  'articles.join.text': {
+    ru: 'Почти всё, о чём здесь написано, началось с чьего-то замера или жалобы в группе: там делятся дальностью из поля, ловят ошибки и спорят о том, что делать дальше. Расскажите, докуда добивают ваши рации, — или просто посмотрите, как это устроено изнутри.',
+    en: 'Almost everything written here started with someone\'s measurement or complaint in the group: people share field range figures, catch bugs and argue about what to build next. Tell us how far your radios reach — or just watch how it all works from the inside.',
+  },
+  'articles.join.button': { ru: 'Присоединиться к группе в Telegram', en: 'Join the Telegram group' },
 
   // Footer
   'footer.tagline': { ru: 'Off-grid голосовая связь через LoRa mesh-сеть', en: 'Off-grid voice communication via LoRa mesh network' },
