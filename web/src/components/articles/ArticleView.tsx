@@ -6,6 +6,7 @@ import type { Components } from 'react-markdown';
 import DocContent from '@/components/docs/DocContent';
 import PacketDiagram from '@/components/articles/PacketDiagram';
 import { useLanguage } from '@/components/LanguageProvider';
+import { SITE } from '@/lib/constants';
 import { readingMinutes, type Article } from '@/content/articles';
 
 // Иллюстрации живут в коде, а не в markdown: схема пакета должна пересчитываться
@@ -72,6 +73,21 @@ export default function ArticleView({ article }: { article: Article }) {
       <article>
         <DocContent content={article.body[locale]} extra={figureRenderer} urlTransform={allowFigureUrls} />
       </article>
+
+      {/* Приглашение стоит в шаблоне, а не в тексте каждой статьи: так оно
+          одинаково выглядит везде и появляется у статей, написанных раньше. */}
+      <aside className="mt-12 p-6 rounded-xl bg-bg-card border border-border">
+        <h2 className="text-lg font-bold mb-2">{t('articles.join.title')}</h2>
+        <p className="text-sm text-text-secondary mb-4">{t('articles.join.text')}</p>
+        <a
+          href={SITE.telegram}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-block px-4 py-2 rounded-lg bg-accent text-bg font-medium text-sm hover:opacity-90 transition-opacity"
+        >
+          {t('articles.join.button')}
+        </a>
+      </aside>
     </div>
   );
 }
