@@ -28,7 +28,10 @@ static bool haveSavedNet = false;
 
 static void apStart() {
   if (apUp) return;
-  WiFi.mode(WIFI_AP_STA);   // STA остаётся: клиент продолжает попытки
+  // Клиентскую часть держим включённой, только если есть куда подключаться:
+  // без сохранённой сети она всё равно бесполезна, а радио рядом с приёмником
+  // лишним не бывает.
+  WiFi.mode(haveSavedNet ? WIFI_AP_STA : WIFI_AP);
   WiFi.softAP("MeshTRX-Repeater", "meshtrx123");
   apUp = true;
   Serial.printf("[WiFi] точка доступа поднята: %s\n",
@@ -75,13 +78,19 @@ static void handleRoot() {
 
   // Форма выбора канала
   html += "<p><a href='/map' style='color:#4ade80'>Кого слышит ретранслятор →</a></p>";
-  html += "<div class='ch-form'><form method='GET' action='/channel'>";
-  html += "<select name='ch'>";
+  // В списке виден выбор человека, а не состояние рации: выбрал канал, но не
+  // нажал — и кажется, что ретранслятор путается в собственном канале.
+  // Поэтому текущий помечен прямо в списке, а autocomplete='off' не даёт
+  // браузеру восстанавливать прежний выбор при перезагрузке страницы (в
+  // Chrome этого и так не происходит, но поведение зависит от браузера).
+  html += "<div class='ch-form'><form method='GET' action='/channel' autocomplete='off'>";
+  html += "<select name='ch' autocomplete='off'>";
   for (int i = 0; i < 23; i++) {
     float f = 863.15f + i * 0.3f;
     html += "<option value='" + String(i) + "'";
     if (i == ch) html += " selected";
-    html += ">CH " + String(i) + " &mdash; " + String(f, 2) + " MHz</option>";
+    html += ">CH " + String(i) + " &mdash; " + String(f, 2) + " MHz" +
+            (i == ch ? String(" (сейчас)") : String("")) + "</option>";
   }
   html += "</select>";
   html += "<button type='submit'>Set</button>";
@@ -538,7 +547,6 @@ void wifiMonitorInit() {
     }
   } else {
     // Сеть не сохранена — точка доступа единственный путь к странице
-    WiFi.mode(WIFI_AP_STA);
     apStart();
   }
 
