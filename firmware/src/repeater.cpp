@@ -64,10 +64,11 @@ static char lastPktType[4] = "---";
 
 static bool dedupCheck(const uint8_t* sender, uint8_t seq, uint8_t type) {
   uint32_t now = millis();
+  uint32_t lifetime = (type == PKT_TYPE_AUDIO) ? DEDUP_AUDIO_MS : DEDUP_LIFETIME_MS;
   for (int i = 0; i < DEDUP_CACHE_SIZE; i++) {
     DedupEntry& e = dedupCache[i];
     if (e.timestamp == 0) continue;
-    if ((now - e.timestamp) > DEDUP_LIFETIME_MS) continue;
+    if ((now - e.timestamp) > lifetime) continue;
     if (e.sender[0] == sender[0] && e.sender[1] == sender[1] &&
         e.seq == seq && e.type == type) {
       return true;  // дубль
