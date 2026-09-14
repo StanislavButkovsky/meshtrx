@@ -41,6 +41,7 @@ static volatile bool pttActive = false;
 static volatile uint32_t pttStartedMs = 0;
 uint8_t currentChannel = DEFAULT_CHANNEL;
 static uint8_t audioSeqNum = 0;
+static bool     pttFirstPacket = true;  // следующий пакет — начало фразы
 static uint8_t textSeqNum = 0;
 static uint8_t senderMac[2] = {0};  // последние 2 байта MAC
 static int16_t lastRssi = 0;
@@ -1655,7 +1656,10 @@ static void handleBleData(uint8_t* data, size_t len) {
       pkt.channel = currentChannel;
       pkt.seq = audioSeqNum++;
       pkt.flags = 0;
-      if (pttActive && audioSeqNum == 1) pkt.flags |= PKT_FLAG_PTT_START;
+      if (pttActive && pttFirstPacket) {
+        pkt.flags |= PKT_FLAG_PTT_START;
+        pttFirstPacket = false;
+      }
       pkt.ttl = TTL_DEFAULT;
       memcpy(pkt.sender, senderMac, 2);
       memcpy(pkt.payload, data + 1, CODEC2_PKT_BYTES);
@@ -1665,7 +1669,11 @@ static void handleBleData(uint8_t* data, size_t len) {
 
     case BLE_CMD_PTT_START: {
       pttStart();
-      audioSeqNum = 0;
+      // Номер пакета сквозной, не с нуля на каждую фразу: ретранслятор
+      // отличает передачи по паре «отправитель + номер», и сброс делал вторую
+      // фразу в пределах его памяти неотличимой от первой — она пропадала
+      // целиком. Приёмник начало фразы узнаёт по флагу PTT_START, а не по нулю.
+      pttFirstPacket = true;
       lastLoraActivityMs = millis();
       LOG_D("[BLE] PTT START");
 
@@ -2101,7 +2109,7 @@ bool testHookSendText(uint16_t dest, const char* text) {
 bool testHookPtt(bool on) {
   if (on) {
     pttStart();
-    audioSeqNum = 0;
+    pttFirstPacket = true;
     lastLoraActivityMs = millis();
   } else {
     pttActive = false;
@@ -2114,7 +2122,7 @@ bool testHookSendAudio(uint16_t count, uint16_t gapMs) {
   bool wasPtt = pttActive;
   pttStart();                       // loraTask забирает из очереди только при PTT
   lastLoraActivityMs = millis();
-  audioSeqNum = 0;
+  pttFirstPacket = true;
   bool ok = true;
   for (uint16_t i = 0; i < count; i++) {
     LoRaAudioPacket pkt;
