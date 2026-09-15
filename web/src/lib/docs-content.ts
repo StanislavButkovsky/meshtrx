@@ -14,17 +14,18 @@ export const USER_GUIDE = `# MeshTRX — Руководство пользова
 2. [Аппаратура](#аппаратура)
 3. [Первое подключение](#первое-подключение)
 3.1. [Настольный клиент](#настольный-клиент-windows-linux-macos)
-4. [Голосовая связь (PTT)](#голосовая-связь-ptt)
-5. [Режимы прослушивания](#режимы-прослушивания)
-6. [Система вызовов](#система-вызовов)
-7. [Текстовые сообщения](#текстовые-сообщения)
-8. [Передача файлов](#передача-файлов)
-9. [Карта и радар](#карта-и-радар)
-10. [Настройки](#настройки)
-11. [Режим ретранслятора](#режим-ретранслятора)
-12. [Кнопка на устройстве](#кнопка-на-устройстве)
-13. [Индикация](#индикация)
-14. [Технические характеристики](#технические-характеристики)
+4. [Главный экран](#главный-экран)
+5. [Голосовая связь (PTT)](#голосовая-связь-ptt)
+6. [Режимы прослушивания](#режимы-прослушивания)
+7. [Система вызовов](#система-вызовов)
+8. [Текстовые сообщения](#текстовые-сообщения)
+9. [Передача файлов](#передача-файлов)
+10. [Карта и радар](#карта-и-радар)
+11. [Настройки](#настройки)
+12. [Режим ретранслятора](#режим-ретранслятора)
+13. [Кнопка на устройстве](#кнопка-на-устройстве)
+14. [Индикация](#индикация)
+15. [Технические характеристики](#технические-характеристики)
 
 ---
 
@@ -196,6 +197,40 @@ python3 -m venv .venv
 Передача голоса — удержание кнопки мышью или пробелом, с тем же пределом в 10
 секунд и тем же обратным отсчётом, что в телефоне. Подробности и разбор
 устройства программы — в [desktop/README.md](https://github.com/StanislavButkovsky/meshtrx/blob/master/desktop/README.md).
+
+---
+
+## Главный экран
+
+Экран собран под то, как рацией пользуются на самом деле: наверх смотрят, а
+нажимают внизу. Поэтому сверху вниз идут сводка о сети, режимы приёма, список
+последних вызовов, выбор адресата, строка состояния и только потом — кнопка
+**Говорить**, у самого низа, под большим пальцем. У настоящих раций кнопка
+вынесена на боковую грань и нажимается не глядя; на телефоне такого нет, и
+единственное, что можно сделать, — не заставлять тянуться к середине экрана.
+
+### Сводка о сети
+
+Две строки над всем остальным отвечают на вопрос «с кем я вообще сейчас на
+связи»:
+
+\`\`\`
+слышно 3 станции · ретранслятор TX-C4C8 (-71 dBm)
+последний: ANDREY, 2 мин назад · -88 dBm, SNR 7
+\`\`\`
+
+- **сколько станций слышно** — те, от кого приходили маяки или передачи за
+  время жизни абонента из настроек (по умолчанию час). Станция, замолчавшая
+  давно, в счёт не идёт: она в сети уже не участвует;
+- **ретранслятор** — отдельной строкой, с уровнем сигнала до него. Это главное,
+  что стоит знать перед разговором: если ретранслятор слышно, ваш голос
+  дотянется дальше собственной слышимости. Рация в режиме ретранслятора
+  помечает себя в маяке сама, приложению не нужно ничего настраивать;
+- **последнее движение в эфире** — кто выходил на связь, как давно и с каким
+  уровнем. По уровню видно не только «слышал», но и «дотянется ли ответ»:
+  −60 дБм это запас, −110 это предел.
+
+Позывного и канала здесь нет намеренно — они строкой выше, в шапке приложения.
 
 ---
 
@@ -486,6 +521,28 @@ python3 -m venv .venv
 
 Устройство может работать как автономный ретранслятор — принимает пакеты LoRa и пересылает их с уменьшением TTL.
 
+Работающий ретранслятор помечает себя в маяке, поэтому у станций рядом он
+виден отдельной строкой в сводке на главном экране: «ретранслятор TX-C4C8
+(−71 дБм)». Настраивать для этого ничего не нужно, но рации должны быть на
+прошивке 4.4.18 или новее, а приложение — 4.4.11 или новее.
+
+### Сколько голоса проходит через ретранслятор
+
+Через ретранслятор проходит примерно половина голосовых пакетов, и это не
+дефект. Он работает в том же канале и том же полудуплексе, что и все: пока
+повторяет чужой пакет, следующий он не слышит. Голосовой пакет занимает эфир
+около 53 мс, а отправляется каждые 80 мс — одна говорящая станция забирает
+две трети канала, повтор удваивает нагрузку, и она перестаёт помещаться.
+
+Для речи это терпимо: пропуск в 80 мс слышен как щелчок, а не как дыра. Для
+файлов было бы плохо, поэтому файлы идут с подтверждением и дозапросом
+потерянных кусков.
+
+Практический вывод: ретранслятор увеличивает охват, но не ёмкость эфира. Три
+ретранслятора, слышащие друг друга, голос в одном канале не пронесут — для
+такой сети нужны зоны и отдельная линия между ретрансляторами, и это пока в
+планах.
+
 ### Что ретранслируется
 
 | Тип пакета | Ретрансляция |
@@ -510,7 +567,9 @@ python3 -m venv .venv
 
 После включения устройство поднимает WiFi:
 - **Без SSID**: создаёт точку доступа \`MeshTRX-Repeater\` (пароль: \`meshtrx123\`)
-- **С SSID**: подключается к указанной сети (fallback на AP при неудаче)
+- **С SSID**: подключается к указанной сети и гасит собственную точку — лишний
+  передатчик рядом с приёмником мешает приёму. Если сеть пропала дольше чем на
+  полминуты, точка поднимается обратно
 
 Веб-интерфейс доступен по адресу:
 - AP режим: \`http://192.168.4.1\`
@@ -732,17 +791,18 @@ export const USER_GUIDE_EN = `# MeshTRX — User Guide
 2. [Hardware](#hardware)
 3. [First connection](#first-connection)
 3.1. [Desktop client](#desktop-client-windows-linux-macos)
-4. [Voice (PTT)](#voice-ptt)
-5. [Listening modes](#listening-modes)
-6. [Calls](#calls)
-7. [Text messages](#text-messages)
-8. [File transfer](#file-transfer)
-9. [Map and radar](#map-and-radar)
-10. [Settings](#settings)
-11. [Repeater mode](#repeater-mode)
-12. [The button on the device](#the-button-on-the-device)
-13. [Indicators](#indicators)
-14. [Specifications](#specifications)
+4. [The main screen](#the-main-screen)
+5. [Voice (PTT)](#voice-ptt)
+6. [Listening modes](#listening-modes)
+7. [Calls](#calls)
+8. [Text messages](#text-messages)
+9. [File transfer](#file-transfer)
+10. [Map and radar](#map-and-radar)
+11. [Settings](#settings)
+12. [Repeater mode](#repeater-mode)
+13. [The button on the device](#the-button-on-the-device)
+14. [Indicators](#indicators)
+15. [Specifications](#specifications)
 
 ---
 
@@ -883,6 +943,42 @@ python3 -m venv .venv
 The client needs the system Codec2 library (\`libcodec2\` on Linux and macOS, \`codec2.dll\` next to the program on Windows). If it is missing, the client says so at startup instead of silently staying mute.
 
 To transmit, hold the button with the mouse or press the space bar — with the same ten-second limit and the same countdown as on the phone. Details and a walk-through of the program are in [desktop/README.md](https://github.com/StanislavButkovsky/meshtrx/blob/master/desktop/README.md).
+
+---
+
+## The main screen
+
+The screen is laid out around how a radio is actually used: you look at the top
+and press at the bottom. So from top to bottom it goes network summary, listening
+modes, recent calls, who you are talking to, status line — and only then the
+**Talk** button, right at the bottom, under your thumb. Real radios put the
+button on the side where it is pressed without looking; a phone has nothing like
+that, and the one thing that can be done is not making you reach for the middle
+of the screen.
+
+### Network summary
+
+Two lines above everything else answer the question "who am I actually in touch
+with right now":
+
+\`\`\`
+3 stations heard · repeater TX-C4C8 (-71 dBm)
+last: ANDREY, 2 min ago · -88 dBm, SNR 7
+\`\`\`
+
+- **stations heard** — those whose beacons or transmissions arrived within the
+  peer lifetime from the settings (an hour by default). A station that went
+  quiet long ago is not counted: it is no longer part of the network;
+- **repeater** — on its own, with the signal level to it. That is the main thing
+  worth knowing before you speak: if the repeater is audible, your voice will
+  reach beyond your own coverage. A radio in repeater mode marks itself in its
+  beacon, so nothing needs configuring in the app;
+- **last movement on air** — who came on, how long ago, and at what level. The
+  level tells you not just "heard" but "will the answer make it back":
+  -60 dBm is margin, -110 dBm is the edge.
+
+Call sign and channel are deliberately absent here — they sit one line above, in
+the app's header.
 
 ---
 
@@ -1139,6 +1235,27 @@ The button sends the radio settings to the device and stores them in NVS.
 ## Repeater mode
 
 A device can work as a standalone repeater — it receives LoRa packets and forwards them, decrementing the TTL.
+
+A running repeater marks itself in its beacon, so nearby stations see it on its
+own line in the main screen summary: "repeater TX-C4C8 (-71 dBm)". Nothing needs
+configuring, but the radios need firmware 4.4.18 or newer and app 4.4.11 or newer.
+
+### How much voice gets through a repeater
+
+About half the voice packets make it through a repeater, and that is not a
+defect. It works in the same channel and the same half-duplex as everyone else:
+while it repeats one packet, it cannot hear the next. A voice packet occupies
+the air for about 53 ms and is sent every 80 ms — one talking station takes two
+thirds of the channel, repeating doubles the load, and it no longer fits.
+
+For speech that is tolerable: an 80 ms gap sounds like a click, not a hole. For
+files it would be bad, which is why files travel with acknowledgements and
+re-requests for the missing pieces.
+
+The practical conclusion: a repeater increases coverage, not the capacity of the
+air. Three repeaters that hear each other will not carry voice in one channel —
+such a network needs zones and a separate link between repeaters, and that is
+still on the roadmap.
 
 ### What gets forwarded
 

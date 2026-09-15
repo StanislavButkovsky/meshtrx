@@ -20,6 +20,176 @@ export interface Article {
 // сортировки, которая молча переставит статьи, если в дате опечатка.
 export const ARTICLES: Article[] = [
   {
+    slug: 'repeater-math',
+    date: '2026-09-15',
+    title: {
+      ru: 'Ретранслятор удваивает дальность и делит эфир',
+      en: 'A repeater doubles your range and divides the air',
+    },
+    summary: {
+      ru: 'Как устроена пересылка в LoRa-сети: TTL, память о переданных пакетах и арифметика канала, из которой следует, что три ретранслятора не пронесут голос. Плюс история про счётчик, из-за которого пропадала каждая вторая фраза.',
+      en: 'How forwarding works in a LoRa network: TTL, memory of forwarded packets, and the channel arithmetic showing why three repeaters cannot carry voice. Plus the story of a counter that swallowed every second phrase.',
+    },
+    body: {
+      ru: `Ретранслятор кажется простым устройством: услышал пакет — повторил. На этом описания обычно и заканчиваются, а дальше начинается то, что видно только на работающей сети. Ниже — как пересылка устроена в MeshTRX, во что она обходится и почему сеть из трёх ретрансляторов не собирается сама собой.
+
+## Две защиты от лавины
+
+Если ретранслятор просто повторяет всё услышанное, сеть умирает на втором устройстве: два ретранслятора начинают повторять друг друга, и один пакет ходит по кругу, пока кто-нибудь не выключится. Поэтому защит две, и они разные.
+
+**TTL — счётчик жизни пакета.** В заголовке едет число, ретранслятор уменьшает его на единицу, и пакет с нулём дальше не идёт. В MeshTRX начальное значение равно двум: пакет проходит через два ретранслятора и останавливается. Это ограничивает глубину сети, но не защищает от дублей: два ретранслятора, слышащие один и тот же пакет, оба его повторят, и каждый повтор будет законным.
+
+**Память о переданном.** От дублей спасает второе: ретранслятор помнит, что он уже пересылал, и повтор того же самого отбрасывает. Ключ памяти — отправитель, номер пакета и тип. Кольцевой кеш на 128 записей, срок жизни записи — тридцать секунд для текста и файлов и три секунды для голоса.
+
+Почему для голоса срок другой, лучше всего объясняет ошибка, которую мы на этом допустили.
+
+## Как счётчик съедал каждую вторую фразу
+
+Номер голосового пакета — один байт, и он сбрасывался в ноль на каждом нажатии кнопки. Казалось, что так удобнее: приёмник видит нулевой номер и понимает, что началась новая фраза.
+
+Для ретранслятора это выглядело иначе. Он помнил переданные пакеты полминуты. Вы сказали фразу — в его памяти осели номера 0, 1, 2 и дальше. Через десять секунд сказали вторую — и её пакеты пришли с теми же номерами, от того же отправителя, того же типа. Совпадение по всем полям ключа. Вторая фраза отбрасывалась целиком, как дубль.
+
+На стенде, где голос идёт редкими пакетами и потери исключены, это выглядит недвусмысленно:
+
+| | переслано | отброшено |
+|---|---|---|
+| первая фраза | 10 из 10 | 0 |
+| вторая через 5 секунд | **0 из 10** | 10 |
+| четвёртая через 40 секунд | 10 из 10 | 0 |
+
+В живой сети эффект прятался за обычными потерями, и жалоба звучала как «через ретранслятор голос доходит через раз» — формулировка, по которой ничего не найдёшь.
+
+Лечится это двумя правками. Номер стал сквозным: начало фразы приёмник узнаёт по отдельному флагу, а не по нулю. И память о голосе сократилась до трёх секунд — пакет живёт в сети доли секунды, трёх достаточно, чтобы отсечь эхо, и мало, чтобы забыть живую речь. Тридцать секунд для голоса опасны ещё и потому, что восьмибитный номер при двенадцати пакетах в секунду обходит круг за двадцать: в длинном разговоре свежий пакет совпал бы со старой записью.
+
+## Арифметика, которую стоит посчитать заранее
+
+Теперь главное — во что пересылка обходится эфиру.
+
+Голосовой пакет MeshTRX — 39 байт. На рабочих параметрах (SF7, полоса 250 кГц, избыточность 4/7) он занимает эфир около 53 миллисекунд. Отправляется такой пакет каждые 80 миллисекунд — этого требует кодек.
+
+Отсюда всё и следует:
+
+| Кто в эфире | Занято канала |
+|---|---|
+| одна говорящая станция | 67% |
+| она же + один ретранслятор | 133% |
+| + два ретранслятора | 200% |
+| + три ретранслятора | 267% |
+
+Одна станция забирает две трети канала. Один повтор — и передача уже не помещается: на стенде через ретранслятор проходит около половины голосовых пакетов, и это не дефект прошивки, а деление ста тридцати трёх процентов на доступные сто.
+
+Для речи потеря терпима: пропуск в 80 мс слышен как щелчок, а не как дыра в слове. Для файла это было бы катастрофой, поэтому файлы идут с подтверждением и дозапросом потерянных кусков — время растёт, зато доходит всё.
+
+## Почему три ретранслятора не собираются в сеть
+
+В сообществе обсуждают треугольник: три ретранслятора на высотках, ребро четыре километра, между ними прямая видимость. Идея правильная — покрытие получается на порядок больше. Но если поставить три ретранслятора в один канал и включить, произойдёт не сеть, а взаимное глушение: 267 процентов в таблице выше.
+
+Память о переданном здесь не поможет. Она убирает дубли, но не создаёт ёмкость: каждый ретранслятор всё равно обязан повторить чужой пакет хотя бы раз, а канал один на всех.
+
+Значит нужно другое, и оно из двух частей.
+
+**Зоны.** Станция принадлежит своему ретранслятору, и ретранслятор повторяет только своих. Тогда соседний ретранслятор не подхватывает чужой трафик, и лавина исчезает по построению, а не по счастливому стечению обстоятельств. Технически это идентификатор группы в пакете — то же поле, которое понадобится для «свой–чужой» при шифровании.
+
+**Магистраль вне общего канала.** Зоны без связи между собой — это три независимые сети. Соединить их можно тремя способами, и они сильно разной цены:
+
+- **по интернету.** Ретранслятор на высотке почти наверняка окажется в сети — и тогда туннель между ретрансляторами не занимает эфир вообще и не имеет ограничений по ёмкости. Самый дешёвый вариант и самый неспортивный: сеть, которая задумывалась как независимая от инфраструктуры, в этом месте на неё опирается;
+- **вторым радиомодулем.** Отдельный приёмопередатчик на другом канале, направленная антенна на соседа. Честный off-grid, но это доработка железа, а не прошивки;
+- **разделением по времени на одном радио.** Ретранслятор часть времени слушает магистральный канал. Для текста, позиций и маяков сгодится; для голоса нет — поток непрерывный, и пропуски в нём складываются в шум.
+
+Первый вариант проверяется за вечер, третий — тоже, второй требует железа. Начинать имеет смысл с того, что можно измерить.
+
+## Что из этого следует для практики
+
+Три вывода, которые стоит держать в голове, ставя ретранслятор.
+
+Он увеличивает охват, но не ёмкость. Если в вашей сети и так тесно — голос идёт, файлы ходят, — ретранслятор сделает хуже, а не лучше.
+
+Он полезнее всего там, где иначе связи нет вовсе: на краю слышимости, за домом, в низине. Ровно поэтому его и поднимают на высокую точку — не чтобы усилить, а чтобы увидеть тех, кто друг друга не видит.
+
+И он не бесплатен для тех, кто и так слышит друг друга напрямую: их пакеты он тоже повторит, отняв у канала те самые проценты. Зоны нужны в том числе поэтому.
+
+Как включить ретранслятор и что показывает его страница — в [документации](/docs/). Числа выше получены на стенде из двух плат; замеры в поле, споры о треугольнике и всё остальное — в [группе](https://t.me/MeshTRX).`,
+      en: `A repeater looks like a simple device: hear a packet, repeat it. Descriptions usually stop there, and everything interesting starts afterwards — visible only on a working network. Below is how forwarding works in MeshTRX, what it costs, and why a network of three repeaters does not assemble itself.
+
+## Two defences against an avalanche
+
+If a repeater simply repeats everything it hears, the network dies at the second device: two repeaters start repeating each other, and one packet circles until someone switches off. So there are two defences, and they are different.
+
+**TTL — the packet's life counter.** A number rides in the header, each repeater decrements it, and a packet at zero goes no further. In MeshTRX it starts at two: a packet crosses two repeaters and stops. That limits network depth but does nothing about duplicates: two repeaters hearing the same packet will both repeat it, and both repeats are legitimate.
+
+**Memory of what was forwarded.** Duplicates are handled by the second defence: the repeater remembers what it already forwarded and drops a repeat of the same thing. The key is sender, packet number and type. A ring cache of 128 entries, with a lifetime of thirty seconds for text and files and three seconds for voice.
+
+Why voice gets a different lifetime is best explained by the bug we made there.
+
+## How a counter swallowed every second phrase
+
+The voice packet number is one byte, and it was reset to zero on every press of the button. It seemed convenient: the receiver sees a zero and knows a new phrase has started.
+
+To the repeater it looked different. It remembered forwarded packets for half a minute. You said a phrase — numbers 0, 1, 2 and onwards settled in its memory. Ten seconds later you said a second one — and its packets arrived with the same numbers, from the same sender, of the same type. A match on every field of the key. The second phrase was dropped entirely, as a duplicate.
+
+On the bench, where voice is sent as sparse packets and losses are ruled out, it looks unambiguous:
+
+| | forwarded | dropped |
+|---|---|---|
+| first phrase | 10 of 10 | 0 |
+| second, 5 seconds later | **0 of 10** | 10 |
+| fourth, 40 seconds later | 10 of 10 | 0 |
+
+In a live network the effect hid behind ordinary losses, and the complaint sounded like "voice gets through the repeater every other time" — a description you cannot search for.
+
+The cure is two changes. The number became continuous: the receiver recognises the start of a phrase by a separate flag, not by a zero. And voice memory shrank to three seconds — a packet lives in the network for fractions of a second, three seconds are enough to cut off the echo and too few to forget live speech. Thirty seconds are dangerous for voice for another reason: an eight-bit number at twelve packets per second wraps around in twenty, so in a long conversation a fresh packet would collide with an old entry.
+
+## The arithmetic worth doing in advance
+
+Now the main thing — what forwarding costs the air.
+
+A MeshTRX voice packet is 39 bytes. At the working parameters (SF7, 250 kHz bandwidth, 4/7 coding rate) it occupies the air for about 53 milliseconds. Such a packet is sent every 80 milliseconds — the codec demands it.
+
+Everything follows from that:
+
+| On air | Channel used |
+|---|---|
+| one talking station | 67% |
+| the same plus one repeater | 133% |
+| plus two repeaters | 200% |
+| plus three repeaters | 267% |
+
+One station takes two thirds of the channel. One repeat and the transmission no longer fits: on the bench about half the voice packets make it through a repeater, and that is not a firmware defect but a hundred and thirty-three per cent divided into the available hundred.
+
+For speech the loss is tolerable: an 80 ms gap sounds like a click, not a hole in a word. For a file it would be a disaster, which is why files travel with acknowledgements and re-requests for missing pieces — it takes longer, but everything arrives.
+
+## Why three repeaters do not form a network
+
+The community is discussing a triangle: three repeaters on tower blocks, four kilometres a side, line of sight between them. The idea is right — coverage grows by an order of magnitude. But put three repeaters in one channel and switch them on, and what happens is not a network but mutual jamming: the 267 per cent in the table above.
+
+Memory of forwarded packets does not help here. It removes duplicates but creates no capacity: each repeater still has to repeat someone else's packet at least once, and the channel is shared.
+
+So something else is needed, in two parts.
+
+**Zones.** A station belongs to its own repeater, and a repeater repeats only its own. Then the neighbouring repeater does not pick up foreign traffic, and the avalanche disappears by construction rather than by luck. Technically that is a group identifier in the packet — the same field that will be needed for "friend or foe" once encryption arrives.
+
+**A trunk outside the shared channel.** Zones with no link between them are three independent networks. There are three ways to connect them, at very different prices:
+
+- **over the internet.** A repeater on a tower block will almost certainly be on a network — and then a tunnel between repeaters occupies no air at all and has no capacity limit. The cheapest option and the least sporting: a network designed to be independent of infrastructure leans on it at exactly this point;
+- **with a second radio module.** A separate transceiver on another channel, a directional antenna pointed at the neighbour. Honest off-grid, but that is hardware work, not firmware;
+- **by time-sharing one radio.** The repeater spends part of its time listening to the trunk channel. Fine for text, positions and beacons; not for voice — the stream is continuous, and gaps in it add up to noise.
+
+The first option can be tested in an evening, the third too, the second needs hardware. It makes sense to start with what can be measured.
+
+## What this means in practice
+
+Three conclusions worth keeping in mind when putting up a repeater.
+
+It increases coverage, not capacity. If your network is already crowded — voice flowing, files moving — a repeater will make things worse, not better.
+
+It is most useful where there would otherwise be no link at all: at the edge of coverage, behind a building, down in a hollow. That is exactly why it goes up high — not to amplify, but to see those who cannot see each other.
+
+And it is not free for those who already hear each other directly: it repeats their packets too, taking those same percentages out of the channel. Zones are needed for that reason as well.
+
+How to enable a repeater and what its page shows is in the [documentation](/docs/). The numbers above come from a two-board bench; field measurements, the triangle argument and everything else live in the [Telegram group](https://t.me/MeshTRX).`,
+    },
+  },
+  {
     slug: 'bugs-found-in-the-field',
     date: '2026-09-11',
     title: {

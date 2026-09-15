@@ -10,17 +10,18 @@
 2. [Hardware](#hardware)
 3. [First connection](#first-connection)
 3.1. [Desktop client](#desktop-client-windows-linux-macos)
-4. [Voice (PTT)](#voice-ptt)
-5. [Listening modes](#listening-modes)
-6. [Calls](#calls)
-7. [Text messages](#text-messages)
-8. [File transfer](#file-transfer)
-9. [Map and radar](#map-and-radar)
-10. [Settings](#settings)
-11. [Repeater mode](#repeater-mode)
-12. [The button on the device](#the-button-on-the-device)
-13. [Indicators](#indicators)
-14. [Specifications](#specifications)
+4. [The main screen](#the-main-screen)
+5. [Voice (PTT)](#voice-ptt)
+6. [Listening modes](#listening-modes)
+7. [Calls](#calls)
+8. [Text messages](#text-messages)
+9. [File transfer](#file-transfer)
+10. [Map and radar](#map-and-radar)
+11. [Settings](#settings)
+12. [Repeater mode](#repeater-mode)
+13. [The button on the device](#the-button-on-the-device)
+14. [Indicators](#indicators)
+15. [Specifications](#specifications)
 
 ---
 
@@ -161,6 +162,42 @@ python3 -m venv .venv
 The client needs the system Codec2 library (`libcodec2` on Linux and macOS, `codec2.dll` next to the program on Windows). If it is missing, the client says so at startup instead of silently staying mute.
 
 To transmit, hold the button with the mouse or press the space bar — with the same ten-second limit and the same countdown as on the phone. Details and a walk-through of the program are in [desktop/README.md](../desktop/README.md).
+
+---
+
+## The main screen
+
+The screen is laid out around how a radio is actually used: you look at the top
+and press at the bottom. So from top to bottom it goes network summary, listening
+modes, recent calls, who you are talking to, status line — and only then the
+**Talk** button, right at the bottom, under your thumb. Real radios put the
+button on the side where it is pressed without looking; a phone has nothing like
+that, and the one thing that can be done is not making you reach for the middle
+of the screen.
+
+### Network summary
+
+Two lines above everything else answer the question "who am I actually in touch
+with right now":
+
+```
+3 stations heard · repeater TX-C4C8 (-71 dBm)
+last: ANDREY, 2 min ago · -88 dBm, SNR 7
+```
+
+- **stations heard** — those whose beacons or transmissions arrived within the
+  peer lifetime from the settings (an hour by default). A station that went
+  quiet long ago is not counted: it is no longer part of the network;
+- **repeater** — on its own, with the signal level to it. That is the main thing
+  worth knowing before you speak: if the repeater is audible, your voice will
+  reach beyond your own coverage. A radio in repeater mode marks itself in its
+  beacon, so nothing needs configuring in the app;
+- **last movement on air** — who came on, how long ago, and at what level. The
+  level tells you not just "heard" but "will the answer make it back":
+  -60 dBm is margin, -110 dBm is the edge.
+
+Call sign and channel are deliberately absent here — they sit one line above, in
+the app's header.
 
 ---
 
@@ -417,6 +454,27 @@ The button sends the radio settings to the device and stores them in NVS.
 ## Repeater mode
 
 A device can work as a standalone repeater — it receives LoRa packets and forwards them, decrementing the TTL.
+
+A running repeater marks itself in its beacon, so nearby stations see it on its
+own line in the main screen summary: "repeater TX-C4C8 (-71 dBm)". Nothing needs
+configuring, but the radios need firmware 4.4.18 or newer and app 4.4.11 or newer.
+
+### How much voice gets through a repeater
+
+About half the voice packets make it through a repeater, and that is not a
+defect. It works in the same channel and the same half-duplex as everyone else:
+while it repeats one packet, it cannot hear the next. A voice packet occupies
+the air for about 53 ms and is sent every 80 ms — one talking station takes two
+thirds of the channel, repeating doubles the load, and it no longer fits.
+
+For speech that is tolerable: an 80 ms gap sounds like a click, not a hole. For
+files it would be bad, which is why files travel with acknowledgements and
+re-requests for the missing pieces.
+
+The practical conclusion: a repeater increases coverage, not the capacity of the
+air. Three repeaters that hear each other will not carry voice in one channel —
+such a network needs zones and a separate link between repeaters, and that is
+still on the roadmap.
 
 ### What gets forwarded
 

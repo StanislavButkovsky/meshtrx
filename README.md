@@ -21,8 +21,12 @@ MeshTRX is an open-source communication system that provides PTT voice, text mes
 - **Map & Radar** — OpenStreetMap + tactical radar with zoom and contrast, peer positions via GPS
 - **Splash screen** — Animated launch screen with version info
 - **Calls** — All-call, private, group (up to 8 members)
-- **23 Channels** — EU868 band (863–870 MHz), 300 kHz spacing
-- **Repeater** — Store & forward mode with WiFi web monitoring
+- **23 Channels** — EU868 band (863–870 MHz), 300 kHz spacing, with a noise
+  scan that shows where the band is quietest and a broadcast command that moves
+  the whole group to a new channel at once, repeater included
+- **Repeater** — Store & forward mode with WiFi web monitoring; it marks itself
+  in its beacon, so radios nearby see it in the network summary on their main
+  screen
 - **Localization** — English and Russian
 
 ## Hardware
@@ -32,7 +36,10 @@ MeshTRX is an open-source communication system that provides PTT voice, text mes
   (KCT8103L). They need different firmware builds — see the table in the
   [User Guide](docs/USER_GUIDE.md#аппаратура)
 - **Client**: Android 5.0+ with BLE, or a desktop running the Python client
-- **Range**: 5+ km line of sight, extendable with repeaters
+- **Range**: measured in the field, not on paper. Solid voice up to ~2 km, text
+  further out; in dense city blocks voice starts dropping at around 1 km. The
+  5+ km figure holds for true line of sight. Voice gives up before text does:
+  speech needs a dozen packets in a row, a message needs one lucky gap
 
 ## Quick Start
 
