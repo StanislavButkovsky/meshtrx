@@ -23,6 +23,7 @@ class VoiceFragment : Fragment() {
     /** Кнопку удерживают после того, как время речи вышло: ждём отпускания. */
     private var pttBlockedUntilRelease = false
     private var updateTargetUiFn: (() -> Unit)? = null
+    private var summaryTicker: Runnable? = null
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onCreateView(inflater: LayoutInflater, c: ViewGroup?, s: Bundle?): View {
@@ -381,6 +382,52 @@ class VoiceFragment : Fragment() {
         ServiceState.recentCalls.observe(viewLifecycleOwner) { refreshRecentList() }
         ServiceState.peers.observe(viewLifecycleOwner) { refreshRecentList() }
 
+        // === Сводка о сети вверху экрана ===
+        val tvSummaryNetwork = v.findViewById<TextView>(R.id.tvSummaryNetwork)
+        val tvSummaryLast = v.findViewById<TextView>(R.id.tvSummaryLast)
+
+        fun refreshSummary() {
+            // Слышимые станции считаем по тому же сроку, что и список абонентов:
+            // станция, замолчавшая час назад, в сети уже не участвует.
+            val timeoutMs = (ServiceState.peerTimeoutMin.value ?: 60) * 60_000L
+            val now = System.currentTimeMillis()
+            val live = ServiceState.peers.value.orEmpty().filter { now - it.lastSeenMs < timeoutMs }
+            val repeater = live.find { it.isRepeater }
+            tvSummaryNetwork.text = buildString {
+                append(resources.getQuantityString(R.plurals.stations_heard, live.size, live.size))
+                append(" · ")
+                append(if (repeater != null)
+                    getString(R.string.repeater_in_net, repeater.callSign, repeater.rssi)
+                else getString(R.string.no_repeater))
+            }
+
+            // Последнее движение в эфире: кто, когда и с каким уровнем. Уровень
+            // здесь важнее имени — по нему видно, дотянется ли ответ.
+            val last = live.maxByOrNull { it.lastSeenMs }
+            tvSummaryLast.text = if (last == null) getString(R.string.air_quiet)
+            else {
+                val agoSec = ((now - last.lastSeenMs) / 1000).toInt()
+                val ago = when {
+                    agoSec < 60 -> getString(R.string.ago_sec, agoSec)
+                    agoSec < 3600 -> getString(R.string.ago_min, agoSec / 60)
+                    else -> getString(R.string.ago_hour, agoSec / 3600)
+                }
+                getString(R.string.last_activity, last.callSign, ago, last.rssi, last.snr)
+            }
+        }
+
+        refreshSummary()
+        ServiceState.peers.observe(viewLifecycleOwner) { refreshSummary() }
+        // «Минуту назад» стареет само по себе, без новых событий, поэтому строку
+        // пересчитываем по тому же таймеру, что и список последних вызовов.
+        summaryTicker = object : Runnable {
+            override fun run() {
+                refreshSummary()
+                view?.postDelayed(this, 15_000)
+            }
+        }
+        v.postDelayed(summaryTicker!!, 15_000)
+
         // Обновлять target info и позывной при изменении peers
         ServiceState.peers.observe(viewLifecycleOwner) { peers ->
             if (targetId != null) {
@@ -395,6 +442,14 @@ class VoiceFragment : Fragment() {
         }
 
         return v
+    }
+
+    override fun onDestroyView() {
+        // Таймер держит ссылку на view: не снять его — и он будет дёргать
+        // разметку уже уничтоженного экрана.
+        summaryTicker?.let { view?.removeCallbacks(it) }
+        summaryTicker = null
+        super.onDestroyView()
     }
 
     private fun sendBufferedVoice(tvStatusLine: TextView, tvDeliveryStatus: TextView, pttButton: PttButtonView) {

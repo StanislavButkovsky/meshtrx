@@ -42,6 +42,9 @@ class BleManager(private val context: Context) {
         const val CMD_LOCATION_UPD = 0x15
         const val CMD_BEACON_SENT = 0x16
         const val CMD_PEER_SEEN = 0x17
+        // Флаги из маяка (байт 27 в CMD_PEER_SEEN), совпадают с прошивкой
+        const val BEACON_FLAG_GPS_VALID = 0x01
+        const val BEACON_FLAG_REPEATER = 0x08
         const val CMD_CALL_ALL = 0x18
         const val CMD_CALL_PRIVATE = 0x19
         const val CMD_CALL_GROUP = 0x1A

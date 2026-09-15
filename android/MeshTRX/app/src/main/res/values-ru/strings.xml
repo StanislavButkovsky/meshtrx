@@ -184,4 +184,11 @@ MeshTRX v%2$s</string>
     <string name="channel_all">Сменить канал у всех</string>
     <string name="channel_all_confirm">Все рации, которые сейчас слышат эфир, перейдут на CH %1$d через 10 секунд. Те, кто не услышит команду, останутся на прежнем канале.</string>
     <string name="channel_all_sent">Команда отправлена, переход через 10 с</string>
+    <string name="repeater_in_net">ретранслятор %1$s (%2$d dBm)</string>
+    <string name="no_repeater">ретранслятора не слышно</string>
+    <string name="air_quiet">в эфире тихо</string>
+    <string name="last_activity">последний: %1$s, %2$s · %3$d dBm, SNR %4$d</string>
+    <string name="ago_sec">%1$d с назад</string>
+    <string name="ago_min">%1$d мин назад</string>
+    <string name="ago_hour">%1$d ч назад</string>
 </resources>

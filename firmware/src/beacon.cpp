@@ -1,4 +1,5 @@
 #include "beacon.h"
+#include "repeater.h"
 #include "lora_radio.h"
 #include <esp_mac.h>
 #include "ble_service.h"
@@ -113,6 +114,10 @@ bool beaconSendNow(bool request) {
   pkt.battery = batteryReadPercent();
   pkt.flags = 0;
   if (currentGpsValid) pkt.flags |= BEACON_FLAG_GPS_VALID;
+  // Ретранслятор отмечает себя в маяке: иначе для телефона он неотличим от
+  // обычной рации, и человек не знает, есть ли в сети тот, кто дотянет его
+  // голос дальше собственной слышимости.
+  if (repeaterIsEnabled()) pkt.flags |= BEACON_FLAG_REPEATER;
   if (request) pkt.flags |= BEACON_FLAG_REQUEST;
   pkt.uptime_sec = (uint32_t)(esp_timer_get_time() / 1000000ULL);
   pkt.beacon_seq = beaconSeqCounter++;
@@ -139,6 +144,9 @@ void beaconProcessIncoming(const LoRaBeaconPacket* pkt, int16_t rssi, int8_t snr
     return;
   }
 
+  // Флаги в лог: по ним стенд проверяет, что ретранслятор отмечает себя
+  Serial.printf("EVT BEACON_RX cs=%s rssi=%d snr=%d flags=%02X\n",
+                pkt->call_sign, rssi, snr, pkt->flags);
   Serial.printf("[Beacon] SEEN: %s RSSI:%d SNR:%d\n",
     pkt->call_sign, rssi, snr);
 

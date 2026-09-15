@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="stations_heard">
+        <item quantity="one">слышно %d станцию</item>
+        <item quantity="few">слышно %d станции</item>
+        <item quantity="many">слышно %d станций</item>
+        <item quantity="other">слышно %d станций</item>
+    </plurals>
+</resources>

@@ -6,6 +6,31 @@
     android:orientation="vertical"
     android:background="#141414">
 
+    <!-- СВОДКА О СЕТИ. Место вверху экрана человек всё равно не достаёт пальцем,
+         и держать там главную кнопку незачем: наверх смотрят, а нажимают внизу.
+         Позывной и канал сюда не дублируем — они строкой выше, в шапке; здесь
+         то, чего там нет: кого слышно, есть ли ретранслятор и когда в эфире
+         в последний раз было движение. -->
+    <LinearLayout
+        android:id="@+id/layoutNodeSummary"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="#1a1a1a"
+        android:paddingStart="16dp" android:paddingEnd="16dp"
+        android:paddingTop="8dp" android:paddingBottom="8dp">
+
+        <TextView android:id="@+id/tvSummaryNetwork"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:textSize="12sp" android:textColor="#aaaaaa"
+            android:maxLines="1" android:ellipsize="end" />
+
+        <TextView android:id="@+id/tvSummaryLast"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:textSize="12sp" android:textColor="#888888"
+            android:layout_marginTop="2dp"
+            android:maxLines="1" android:ellipsize="end" />
+    </LinearLayout>
+
     <!-- КОНТРОЛЬНАЯ ПОЛОСА: Listen mode + PTT/VOX -->
     <LinearLayout
         android:layout_width="match_parent" android:layout_height="wrap_content"
@@ -57,65 +82,20 @@
         </LinearLayout>
     </LinearLayout>
 
-    <!-- PTT КНОПКА + ИНФО АБОНЕНТА -->
-    <FrameLayout
+    <!-- ПОСЛЕДНИЕ ВЫЗОВЫ (скроллируемый список) -->
+    <TextView
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="@string/recent" android:textSize="11sp" android:textColor="#555555"
+        android:letterSpacing="0.06"
+        android:paddingStart="16dp" android:layout_marginBottom="4dp" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvRecentCalls"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:layout_marginBottom="4dp">
-
-        <!-- Инфо входящего broadcast вызова — пузырёк слева вверху -->
-        <LinearLayout
-            android:id="@+id/layoutRxInfo"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:layout_gravity="start|top"
-            android:layout_marginStart="8dp"
-            android:background="@drawable/bubble_incoming"
-            android:padding="8dp"
-            android:visibility="gone">
-            <TextView android:id="@+id/tvRxCallSign"
-                android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:textSize="13sp" android:textColor="#4ade80" />
-            <TextView android:id="@+id/tvRxSignal"
-                android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:textSize="10sp" android:textColor="#888888"
-                android:layout_marginTop="2dp" />
-        </LinearLayout>
-
-        <com.meshtrx.app.ui.PttButtonView
-            android:id="@+id/pttButton"
-            android:layout_width="200dp"
-            android:layout_height="200dp"
-            android:layout_gravity="center_horizontal" />
-
-        <ImageButton android:id="@+id/btnSpeaker"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:src="@drawable/ic_speaker_off"
-            android:background="@drawable/btn_circle_gray"
-            android:scaleType="centerInside"
-            android:contentDescription="@string/speaker"
-            android:layout_gravity="end|top"
-            android:layout_marginEnd="16dp" />
-    </FrameLayout>
-
-    <!-- VOX индикатор -->
-    <TextView android:id="@+id/tvVoxState"
-        android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:layout_gravity="center_horizontal"
-        android:textSize="12sp" android:textColor="#ff6b6b"
-        android:visibility="gone" />
-
-    <!-- Строка статуса -->
-    <TextView android:id="@+id/tvStatusLine"
-        android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:layout_gravity="center_horizontal"
-        android:text="@string/status_waiting" android:textSize="12sp" android:textColor="#2d5a2d"
-        android:paddingStart="12dp" android:paddingEnd="12dp"
-        android:paddingTop="4dp" android:paddingBottom="4dp"
-        android:layout_marginBottom="4dp" />
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:paddingStart="16dp" android:paddingEnd="16dp"
+        android:clipToPadding="false" />
 
     <!-- ПАНЕЛЬ АДРЕСАТА + ВЫЗОВ -->
     <LinearLayout
@@ -166,20 +146,66 @@
             android:contentDescription="Call"
             android:enabled="false" />
     </LinearLayout>
-
-    <!-- ПОСЛЕДНИЕ ВЫЗОВЫ (скроллируемый список) -->
-    <TextView
+    <!-- VOX индикатор -->
+    <TextView android:id="@+id/tvVoxState"
         android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:text="@string/recent" android:textSize="11sp" android:textColor="#555555"
-        android:letterSpacing="0.06"
-        android:paddingStart="16dp" android:layout_marginBottom="4dp" />
+        android:layout_gravity="center_horizontal"
+        android:textSize="12sp" android:textColor="#ff6b6b"
+        android:visibility="gone" />
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rvRecentCalls"
+    <!-- Строка статуса -->
+    <TextView android:id="@+id/tvStatusLine"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:text="@string/status_waiting" android:textSize="12sp" android:textColor="#2d5a2d"
+        android:paddingStart="12dp" android:paddingEnd="12dp"
+        android:paddingTop="4dp" android:paddingBottom="4dp"
+        android:layout_marginBottom="4dp" />
+
+    <!-- PTT КНОПКА + ИНФО АБОНЕНТА -->
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:paddingStart="16dp" android:paddingEnd="16dp"
-        android:clipToPadding="false" />
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="12dp">
+
+        <!-- Инфо входящего broadcast вызова — пузырёк слева вверху -->
+        <LinearLayout
+            android:id="@+id/layoutRxInfo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_gravity="start|top"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/bubble_incoming"
+            android:padding="8dp"
+            android:visibility="gone">
+            <TextView android:id="@+id/tvRxCallSign"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="13sp" android:textColor="#4ade80" />
+            <TextView android:id="@+id/tvRxSignal"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:textSize="10sp" android:textColor="#888888"
+                android:layout_marginTop="2dp" />
+        </LinearLayout>
+
+        <com.meshtrx.app.ui.PttButtonView
+            android:id="@+id/pttButton"
+            android:layout_width="200dp"
+            android:layout_height="200dp"
+            android:layout_gravity="center_horizontal" />
+
+        <ImageButton android:id="@+id/btnSpeaker"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:src="@drawable/ic_speaker_off"
+            android:background="@drawable/btn_circle_gray"
+            android:scaleType="centerInside"
+            android:contentDescription="@string/speaker"
+            android:layout_gravity="end|top"
+            android:layout_marginEnd="16dp" />
+    </FrameLayout>
+
+
 
 </LinearLayout>
