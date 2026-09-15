@@ -35,7 +35,11 @@ data class Peer(
     val batteryPct: Int?,
     val lastSeenMs: Long,
     val lat: Double? = null,  // null если GPS недоступен
-    val lon: Double? = null
+    val lon: Double? = null,
+    // Станция работает ретранслятором — приходит флагом в маяке. Для человека
+    // это главное, что он хочет знать про сеть: дотянется ли его голос дальше
+    // собственной слышимости.
+    val isRepeater: Boolean = false
 )
 
 /** Haversine — расстояние в км между двумя координатами */

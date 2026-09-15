@@ -186,6 +186,9 @@ static void handleMap() {
     "padding:6px 14px;font-size:14px}"
     ".tabs button.on{background:#4ade80;color:#111;border-color:#4ade80}"
     "#map{height:60vh;border-radius:8px}"
+    // Флажок в подписи карты Leaflet рисует сам, к делу он отношения не имеет
+    // и на узком экране отнимает место у самой подписи об источнике тайлов.
+    ".leaflet-attribution-flag{display:none!important}"
     "#radar{background:#000;border-radius:8px;width:100%;max-width:520px;display:block}"
     "table{width:100%;border-collapse:collapse;margin-top:12px;font-size:13px}"
     "th,td{padding:5px 6px;text-align:left;border-bottom:1px solid #333}"

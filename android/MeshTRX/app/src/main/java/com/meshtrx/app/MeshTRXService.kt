@@ -815,6 +815,8 @@ class MeshTRXService : Service() {
                     val pSnr = data[24].toInt()
                     val txPwr = data[25].toInt() and 0xFF
                     val batt = data[26].toInt() and 0xFF
+                    val flags = if (data.size >= 28) data[27].toInt() and 0xFF else 0
+                    val isRepeater = (flags and BleManager.BEACON_FLAG_REPEATER) != 0
 
                     val lat = if (latE7 != 0 || lonE7 != 0) latE7 / 1e7 else null
                     val lon = if (latE7 != 0 || lonE7 != 0) lonE7 / 1e7 else null
@@ -832,7 +834,7 @@ class MeshTRXService : Service() {
                     list.removeAll { it.deviceId == id || it.deviceId.endsWith(shortId) }
                     val peer = Peer(id, finalCs, pRssi, pSnr, txPwr,
                         if (batt == 0xFF) null else batt,
-                        System.currentTimeMillis(), lat, lon)
+                        System.currentTimeMillis(), lat, lon, isRepeater)
                     list.add(peer)
                     ServiceState.peers.postValue(list)
                     savePeers(list)
