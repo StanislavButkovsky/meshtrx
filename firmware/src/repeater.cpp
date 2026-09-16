@@ -3,6 +3,7 @@
 #include "oled_display.h"
 #include "beacon.h"
 #include "packet.h"
+#include "crypto.h"
 #include "debug.h"
 #include <esp_mac.h>
 #include <Arduino.h>
@@ -302,8 +303,10 @@ void repeaterTask(void* param) {
       continue;
     }
 
-    // Проверить канал (байт 1 для большинства пакетов)
-    if (len >= 2 && rxBuf[1] != loraGetChannel()) {
+    // Проверить канал (байт 1 для большинства пакетов). Старший бит там —
+    // признак «нагрузка зашифрована»: ретранслятор пересылает такой пакет как
+    // есть, ключа у него нет и не должно быть.
+    if (len >= 2 && (rxBuf[1] & PKT_CH_MASK) != loraGetChannel()) {
       stats.drop_count++;
       loraStartReceive();
       continue;

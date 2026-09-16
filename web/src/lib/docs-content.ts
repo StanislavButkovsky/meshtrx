@@ -22,6 +22,7 @@ export const USER_GUIDE = `# MeshTRX — Руководство пользова
 9. [Передача файлов](#передача-файлов)
 10. [Карта и радар](#карта-и-радар)
 11. [Настройки](#настройки)
+11.1. [Шифрование эфира](#шифрование-эфира)
 12. [Режим ретранслятора](#режим-ретранслятора)
 13. [Кнопка на устройстве](#кнопка-на-устройстве)
 14. [Индикация](#индикация)
@@ -517,6 +518,40 @@ python3 -m venv .venv
 
 ---
 
+### Шифрование эфира
+
+По умолчанию эфир открыт: любой человек с такой же рацией на том же канале
+слышит разговор целиком. Чтобы этого не было, задайте **кодовое слово группы**
+— «Настройки» → «Шифрование эфира».
+
+Как это работает:
+
+- рация сама выводит из кодового слова полноценный ключ; фраза никуда не
+  передаётся и в телефоне не хранится;
+- то же слово нужно ввести на **всех** рациях группы, включая ретранслятор;
+- под словом появляется **отпечаток** — четыре знака. Он одинаков у всех, у кого
+  ключ совпал, поэтому сверять ключ можно вслух, не диктуя само слово;
+- вывод ключа занимает около трёх секунд — это нормально, так устроена защита от
+  перебора;
+- слово должно быть не короче восьми символов, и лучше, если это несколько слов:
+  короткую фразу подбирают за вечер.
+
+Что шифруется сейчас: **голос и текстовые сообщения**. Файлы и маяки пока идут
+открытыми — значит позывной и координаты видны постороннему. Об этом честно
+сказано здесь, чтобы вы не рассчитывали на большее, чем есть.
+
+Ретранслятору ключ не нужен: он пересылает пакеты, не заглядывая внутрь. Если
+ретранслятор чужой, он всё равно донесёт ваш разговор, но не услышит его.
+
+**Чего шифрование не даёт.** Оно не спасает от того, у кого ключ уже есть: ключ
+один на группу, и при уходе человека его меняют у всех. Оно не спасает от
+физического доступа к плате — ключ лежит в её памяти. И оно совсем не скрывает
+сам факт передачи: радиоразведка видит, что кто-то вышел в эфир и сколько
+говорил, даже не понимая слов. Подробный разбор — в статье
+[«Шифрование в 39 байтах»](https://meshtrx.ru/articles/encryption-in-39-bytes/).
+
+---
+
 ## Режим ретранслятора
 
 Устройство может работать как автономный ретранслятор — принимает пакеты LoRa и пересылает их с уменьшением TTL.
@@ -799,6 +834,7 @@ export const USER_GUIDE_EN = `# MeshTRX — User Guide
 9. [File transfer](#file-transfer)
 10. [Map and radar](#map-and-radar)
 11. [Settings](#settings)
+11.1. [Traffic encryption](#traffic-encryption)
 12. [Repeater mode](#repeater-mode)
 13. [The button on the device](#the-button-on-the-device)
 14. [Indicators](#indicators)
@@ -1229,6 +1265,42 @@ Since version 4.4.5 every setting in this section is remembered and survives an 
 
 ### Apply and save
 The button sends the radio settings to the device and stores them in NVS.
+
+---
+
+### Traffic encryption
+
+By default the air is in the clear: anyone with the same radio on the same
+channel hears the whole conversation. To change that, set a **group passphrase**
+— Settings → Traffic encryption.
+
+How it works:
+
+- the radio itself derives a full key from the passphrase; the phrase is never
+  transmitted and is not stored on the phone;
+- the same phrase must be entered on **every** radio in the group, repeater
+  included;
+- a **fingerprint** appears below — four characters, identical on every device
+  whose key matches, so the key can be verified out loud without saying it;
+- deriving the key takes about three seconds; that delay is the protection
+  against guessing;
+- the phrase must be at least eight characters, and several words are better: a
+  short one is cracked in an evening.
+
+What is encrypted today: **voice and text messages**. Files and beacons still
+travel in the clear, which means call signs and coordinates are visible to an
+outsider. That is stated plainly so you do not count on more than there is.
+
+The repeater needs no key: it forwards packets without looking inside. Even
+somebody else's repeater will carry your conversation without hearing it.
+
+**What encryption does not give you.** It does not protect against someone who
+already has the key: there is one key per group, and when a person leaves it must
+be changed everywhere. It does not protect against physical access to the board —
+the key lives in its memory. And it does not hide the fact of transmission at
+all: direction finding sees that someone came on air and for how long, without
+understanding a word. The full reasoning is in
+[Encryption in 39 bytes](https://meshtrx.com/articles/encryption-in-39-bytes/).
 
 ---
 

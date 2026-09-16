@@ -56,6 +56,8 @@
 #define BLE_CMD_SCAN_CHANNELS      0x34  // телефон→ESP: прослушать все каналы
 #define BLE_CMD_SCAN_RESULT        0x35  // ESP→телефон: [best, уровень канала 0..22]
 #define BLE_CMD_SET_CHANNEL_ALL    0x36  // телефон→ESP: [канал] — сменить у всей группы
+#define BLE_CMD_SET_KEY            0x37  // телефон→ESP: [32 байта ключа] или пусто — снять
+#define BLE_CMD_KEY_STATE          0x38  // ESP→телефон: [есть ли ключ, 4 байта отпечатка]
 // UPLOAD_STATUS values: 0=ACCEPTED, 1=BUSY, 2=SENDING, 3=DELIVERED, 4=FAILED, 5=NO_MEMORY
 
 extern bool bleConnected;

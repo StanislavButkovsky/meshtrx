@@ -53,6 +53,9 @@ object ServiceState {
     // Пусто, пока человек не попросил послушать эфир.
     val channelNoise = MutableLiveData<List<Int>>(emptyList())
     val channelBest = MutableLiveData(-1)
+    // Отпечаток ключа — четыре знака, по которым сверяют, что у всех он один.
+    // Пустая строка означает, что эфир открыт.
+    val keyFingerprint = MutableLiveData("")
 
     // Events (one-shot) — UI подписывается
     val showPinDialog = MutableLiveData(false)
