@@ -11,6 +11,8 @@ const FEATURES: { titleKey: TranslationKey; descKey: TranslationKey; icon: strin
   { titleKey: 'feature.map.title', descKey: 'feature.map.desc', icon: 'map' },
   { titleKey: 'feature.call.title', descKey: 'feature.call.desc', icon: 'call' },
   { titleKey: 'feature.relay.title', descKey: 'feature.relay.desc', icon: 'relay' },
+  { titleKey: 'feature.crypto.title', descKey: 'feature.crypto.desc', icon: 'lock' },
+  { titleKey: 'feature.channels.title', descKey: 'feature.channels.desc', icon: 'tune' },
 ];
 
 export default function FeatureGrid() {
