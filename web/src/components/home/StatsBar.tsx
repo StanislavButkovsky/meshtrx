@@ -3,8 +3,11 @@
 import { useLanguage } from '@/components/LanguageProvider';
 import type { TranslationKey } from '@/lib/i18n';
 
+// Дальность здесь — из замеров в поле, а не из расчёта. Раньше стояло «5+ км»
+// без оговорок; живые замеры дали два километра устойчивого голоса, и цифру
+// поменяли, а не спрятали.
 const STATS: { value: string; unitKey: TranslationKey; labelKey: TranslationKey; hintKey?: TranslationKey }[] = [
-  { value: '5+', unitKey: 'stats.range.unit', labelKey: 'stats.range', hintKey: 'stats.range.hint' },
+  { value: '2', unitKey: 'stats.range.unit', labelKey: 'stats.range', hintKey: 'stats.range.hint' },
   { value: '23', unitKey: 'stats.channels.unit', labelKey: 'stats.channels' },
   { value: '10', unitKey: 'stats.ptt.unit', labelKey: 'stats.ptt' },
   { value: '3200', unitKey: 'stats.bitrate' as TranslationKey, labelKey: 'stats.bitrate' },

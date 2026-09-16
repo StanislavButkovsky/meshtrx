@@ -56,6 +56,29 @@ export function RelayIcon({ className }: IconProps) {
   );
 }
 
+export function LockIcon({ className }: IconProps) {
+  return (
+    <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="11" width="18" height="11" rx="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+      <circle cx="12" cy="16.5" r="1.5" />
+    </svg>
+  );
+}
+
+export function TuneIcon({ className }: IconProps) {
+  return (
+    <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="4" y1="6" x2="20" y2="6" />
+      <line x1="4" y1="12" x2="20" y2="12" />
+      <line x1="4" y1="18" x2="20" y2="18" />
+      <circle cx="9" cy="6" r="2" fill="currentColor" />
+      <circle cx="15" cy="12" r="2" fill="currentColor" />
+      <circle cx="7" cy="18" r="2" fill="currentColor" />
+    </svg>
+  );
+}
+
 const iconMap = {
   mic: MicIcon,
   message: MessageIcon,
@@ -63,6 +86,8 @@ const iconMap = {
   map: MapIcon,
   call: CallIcon,
   relay: RelayIcon,
+  lock: LockIcon,
+  tune: TuneIcon,
 };
 
 export function getFeatureIcon(name: string) {
