@@ -24,6 +24,7 @@
 
 Разборы того, как проект устроен внутри. Числа в них взяты из исходников.
 
+- [Шифрование в 39 байтах](https://meshtrx.ru/articles/encryption-in-39-bytes/), 2026-09-16
 - [Ретранслятор удваивает дальность и делит эфир](https://meshtrx.ru/articles/repeater-math/), 2026-09-15
 - [Одна нога микросхемы и пятьдесят восемь децибел](https://meshtrx.ru/articles/bugs-found-in-the-field/), 2026-09-11
 - [Тесный эфир: помехи, каналы и как перевести всю группу разом](https://meshtrx.ru/articles/channels-and-interference/), 2026-09-11

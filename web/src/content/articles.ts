@@ -20,6 +20,200 @@ export interface Article {
 // сортировки, которая молча переставит статьи, если в дате опечатка.
 export const ARTICLES: Article[] = [
   {
+    slug: 'encryption-in-39-bytes',
+    date: '2026-09-16',
+    title: {
+      ru: 'Шифрование в 39 байтах',
+      en: 'Encryption in 39 bytes',
+    },
+    summary: {
+      ru: 'Сейчас эфир MeshTRX открыт, и мы говорим об этом прямо. Разбираем, почему «просто включить AES» не работает в пакете на 39 байт, сколько стоит подпись пакета в миллисекундах эфира и что реально даёт общий ключ на канал.',
+      en: 'MeshTRX traffic is unencrypted today, and we say so plainly. Here is why "just turn on AES" does not work in a 39-byte packet, what an authentication tag costs in milliseconds of air time, and what a shared channel key actually buys you.',
+    },
+    body: {
+      ru: `Сначала прямо: **сегодня в MeshTRX ничего не шифруется**. Ни голос, ни сообщения, ни файлы, ни координаты в маяках. Любой человек с такой же рацией на том же канале слышит разговор целиком. Соединение телефона с рацией по Bluetooth тоже открыто — PIN там защищает от случайного чужого подключения, а не от прослушивания.
+
+Это стоит знать до того, как вы решите, для чего использовать такую связь. А дальше — почему так вышло и что мы собираемся с этим делать.
+
+## Почему шифрования нет до сих пор
+
+Это была очерёдность, а не забытая задача. Сначала требовалось понять, доходит ли живой голос через LoRa на разумное расстояние и нужно ли это кому-то, кроме автора. Шифровать несуществующую связь смысла не было.
+
+Условие выполнено: связь работает, её гоняют в поле посторонние люди, дальность померена. Значит задача вернулась в очередь. И тут выяснилось, что «включить шифрование» — это не одна задача, а три разные.
+
+**Скрыть содержимое.** Чтобы посторонний слышал шум вместо речи.
+
+**Убедиться, что пакет не подменили.** Шифр сам по себе этого не даёт: злоумышленник может изменить биты, и получатель расшифрует мусор, не заметив подмены. Для этого нужна подпись пакета — код аутентичности.
+
+**Понять, кто свой.** Это уже про ключи: откуда они берутся, как попадают на устройства и что делать, когда одна рация потерялась.
+
+Первая задача решается почти бесплатно. Вторая стоит эфирного времени. Третья — самая сложная, и именно её просят в сообществе: «шифрование на основе обмена ключами, чтобы создавать приватные каналы».
+
+## Бюджет: 39 байт и ни байтом больше
+
+Голосовой пакет MeshTRX — 39 байт: 7 байт заголовка и 32 байта сжатой речи. Отправляется он каждые 80 миллисекунд, и это не наш выбор, а требование кодека.
+
+Вот что происходит с эфиром, если добавлять к пакету криптографические поля:
+
+| Пакет | Время в эфире | Занято канала |
+|---|---|---|
+| сейчас, 39 байт | 53,4 мс | 67% |
+| + подпись 4 байта | 57,0 мс | 71% |
+| + подпись 8 байт | 60,5 мс | 76% |
+| + подпись 16 байт (полная) | 71,3 мс | 89% |
+| + публичный ключ 32 байта | 85,6 мс | 107% |
+
+Последняя строка — не опечатка. Публичный ключ современного алгоритма обмена (X25519) занимает 32 байта, и пакет с ним в канал попросту не помещается: сто семь процентов означают, что передача не успевает закончиться до начала следующей.
+
+Отсюда первые выводы.
+
+**Само шифрование бесплатно.** Поточный шифр не меняет длину: 32 байта речи остаются 32 байтами. Ни одного лишнего байта в эфир.
+
+**Случайное число к каждому пакету передавать нельзя.** Обычно шифру нужен уникальный nonce, и его кладут рядом с данными — это плюс 8–12 байт. Но у нас уже есть номер пакета в заголовке, а он и так уникален в пределах передачи: из номера, адреса отправителя и номера канала счётчик собирается на обеих сторонах одинаково, ничего не передавая.
+
+**Полная подпись слишком дорога.** Шестнадцать байт — это 89% канала под одного говорящего: ретранслятору не остаётся места вовсе, а он и так работает на пределе. Усечённая подпись в 4–8 байт даёт защиту слабее, но реалистичную по цене. Для текста, файлов и команд, где пакеты редкие, можно позволить полную.
+
+## Потери меняют правила
+
+Есть ещё одно ограничение, о котором в обычных системах не думают: у нас теряются пакеты. Половина голоса через ретранслятор не доходит, и это нормальный режим работы.
+
+Значит режимы шифрования, где каждый блок зависит от предыдущего, отпадают: потеряв один пакет, приёмник не расшифрует всё остальное. Нужен режим, где каждый пакет самодостаточен — потеря одного не мешает разобрать следующий.
+
+К счастью, это совпадает с тем, как устроен сам голос: каждый пакет уже самостоятелен, потому что иначе речь разваливалась бы от первой же потери. Номер пакета в заголовке, который сейчас служит для склейки и дедупликации, оказывается готовым счётчиком для шифра.
+
+## Что даст общий ключ на канал — и чего не даст
+
+Минимальный рабочий вариант, с которого мы начнём: один ключ на канал, задаётся в настройках, хранится в памяти устройства.
+
+Что это закрывает:
+
+- сосед с такой же рацией на том же канале больше не слушает ваш разговор;
+- случайный человек, купивший модуль и залив прошивку, не попадает в чужую группу по совпадению канала;
+- записанный эфир не расшифровывается задним числом без ключа.
+
+Чего это **не** закрывает, и об этом надо говорить прямо:
+
+- **любого, у кого есть ключ.** Ключ один на группу; ушёл человек — ключ надо менять у всех;
+- **утечку через устройство.** Физический доступ к плате — это доступ к ключу в памяти;
+- **сам факт передачи.** Радиоразведка видит, что кто-то вышел в эфир, на какой частоте и как долго говорил, даже не понимая слов. Против пеленгации шифрование не помогает вообще;
+- **подмену, если подписи нет.** Без кода аутентичности чужой может вбросить мусор, который у вас превратится в треск.
+
+Это честный уровень «не подслушает сосед», а не «не прочитает тот, кому очень надо». Путать эти вещи опасно: человек, который поверил в защиту, которой нет, рискует сильнее того, кто знает, что эфир открыт.
+
+## Приватные каналы: почему это отдельная задача
+
+Запрос из сообщества звучал шире общего ключа: обмен ключами и приватные каналы, куда попадают только свои.
+
+Здесь упираемся в ту самую строку таблицы. Классический обмен ключами требует передать 32 байта публичного ключа, а это больше одного пакета. Разбить на два-три — можно, но обмен придётся делать надёжным: с подтверждением, повторами и защитой от вклинивания посредника. В эфире, где половина пакетов теряется, это заметная работа.
+
+Поэтому разумнее развести способы по ситуациям:
+
+- **ключ вводится руками или считывается с экрана.** Скучно, зато надёжно: обмен происходит вне эфира, подслушать нечего. Для группы, которая собирается вместе перед выходом, этого достаточно;
+- **обмен при первой встрече по Bluetooth.** Рации рядом, телефон видит обе — ключ передаётся коротким путём, минуя радиоканал;
+- **обмен по эфиру** — самый удобный и самый дорогой. Он нужен, когда людей нельзя собрать вместе, и делать его стоит последним, когда простые способы уже работают.
+
+И отдельная деталь, которая связывает шифрование с совсем другой задачей. Чтобы ретрансляторы не повторяли чужой трафик, сети нужны зоны — понимание, какая станция своя. Идентификатор группы, который для этого нужен, и ключ группы — это одно и то же поле, если делать их вместе. Поэтому зоны и шифрование лучше не разводить по разным углам: одна задача даёт второй почти всё, что ей нужно.
+
+## Что дальше
+
+Порядок, который мы считаем правильным: сначала общий ключ на канал с усечённой подписью для голоса и полной для текста и файлов. Потом ввод ключа руками и через экран. Потом группы и зоны на том же идентификаторе. Обмен ключами по эфиру — последним.
+
+Сроков не называем: проект делается по вечерам, и обещать даты было бы враньём. Но пока шифрования нет, мы будем писать об этом прямо — в документации, на странице проекта и здесь.
+
+Как устроена сеть, где всё это будет жить, — в [статье про ретранслятор](/articles/repeater-math/). Что уже умеет продукт — в [документации](/docs/). Спорить о том, каким должен быть обмен ключами, лучше всего в [группе](https://t.me/MeshTRX): эта статья написана во многом по её вопросам.`,
+      en: `First, plainly: **nothing in MeshTRX is encrypted today**. Not voice, not messages, not files, not the coordinates in beacons. Anyone with the same radio on the same channel hears the whole conversation. The Bluetooth link between phone and radio is open too — the PIN there protects against someone connecting by accident, not against eavesdropping.
+
+That is worth knowing before you decide what to use this kind of link for. Now, why it turned out this way and what we intend to do about it.
+
+## Why there is still no encryption
+
+This was a matter of order, not a forgotten task. First we had to learn whether live voice actually travels over LoRa at a sensible distance, and whether anyone besides the author needed it. Encrypting a link that does not exist yet makes no sense.
+
+That condition is met: the link works, strangers run it in the field, the range has been measured. So the task came back into the queue. And that is when it turned out that "turn on encryption" is not one task but three.
+
+**Hide the contents.** So an outsider hears noise instead of speech.
+
+**Make sure the packet was not tampered with.** A cipher alone does not do this: an attacker can flip bits, and the receiver will decrypt garbage without noticing. That needs an authentication tag.
+
+**Know who is one of us.** That is about keys: where they come from, how they get onto devices, and what to do when one radio goes missing.
+
+The first is nearly free. The second costs air time. The third is the hardest — and it is exactly what the community asked for: "encryption based on key exchange, so private channels can be created".
+
+## The budget: 39 bytes, not one more
+
+A MeshTRX voice packet is 39 bytes: 7 of header and 32 of compressed speech. It goes out every 80 milliseconds, and that is not our choice but the codec's requirement.
+
+Here is what happens to the air if cryptographic fields are added:
+
+| Packet | Time on air | Channel used |
+|---|---|---|
+| today, 39 bytes | 53.4 ms | 67% |
+| + 4-byte tag | 57.0 ms | 71% |
+| + 8-byte tag | 60.5 ms | 76% |
+| + 16-byte tag (full) | 71.3 ms | 89% |
+| + 32-byte public key | 85.6 ms | 107% |
+
+The last line is not a typo. A modern key-exchange public key (X25519) is 32 bytes, and a packet carrying it simply does not fit the channel: a hundred and seven per cent means the transmission cannot finish before the next one is due.
+
+From which the first conclusions follow.
+
+**The encryption itself is free.** A stream cipher does not change the length: 32 bytes of speech stay 32 bytes. Not a single extra byte on air.
+
+**A random nonce cannot be sent with every packet.** Normally a cipher needs a unique nonce, carried alongside the data — that is 8 to 12 bytes more. But we already have a packet number in the header, and it is unique within a transmission: from that number, the sender address and the channel, both sides derive the same counter without transmitting anything.
+
+**A full tag is too expensive.** Sixteen bytes is 89% of the channel for a single speaker: nothing is left for the repeater, which already runs at its limit. A truncated 4–8 byte tag is weaker but realistic in price. For text, files and commands, where packets are rare, the full tag is affordable.
+
+## Losses change the rules
+
+There is another constraint that ordinary systems never face: our packets get lost. Half the voice through a repeater does not arrive, and that is normal operation.
+
+So modes where each block depends on the previous one are out: lose one packet and the receiver cannot decrypt anything after it. We need a mode where each packet stands alone — losing one does not prevent reading the next.
+
+Fortunately that matches how voice already works: every packet is self-contained, because otherwise speech would fall apart at the first loss. The packet number in the header, which today serves for reassembly and duplicate rejection, turns out to be a ready-made counter for the cipher.
+
+## What a shared channel key buys — and what it does not
+
+The minimum workable option, and where we will start: one key per channel, set in the settings, stored in the device's memory.
+
+What it closes off:
+
+- the neighbour with the same radio on the same channel no longer hears your conversation;
+- a random person who bought a module and flashed the firmware does not land in someone else's group by sharing a channel number;
+- recorded traffic cannot be decrypted after the fact without the key.
+
+What it does **not** close off, and this must be said plainly:
+
+- **anyone who has the key.** There is one key for the group; when someone leaves, everyone has to change it;
+- **a leak through the device.** Physical access to the board is access to the key in its memory;
+- **the fact of transmission.** Radio direction finding sees that someone came on air, on what frequency and for how long, without understanding a word. Against triangulation, encryption does not help at all;
+- **tampering, if there is no tag.** Without an authentication code an outsider can inject garbage that turns into a crackle at your end.
+
+This is an honest "the neighbour will not overhear" level, not "someone determined will not read it". Confusing the two is dangerous: a person who believes in protection that is not there takes more risk than one who knows the air is open.
+
+## Private channels: a separate problem
+
+The request from the community went beyond a shared key: key exchange and private channels that only your own people join.
+
+Here we hit that table row again. Classic key exchange means transmitting 32 bytes of public key, which is more than one packet. Splitting it across two or three is possible, but the exchange then has to be made reliable: confirmations, retries, and protection against a man in the middle. On air, where half the packets are lost, that is real work.
+
+So it makes sense to separate the methods by situation:
+
+- **the key is typed in or read off a screen.** Boring, but reliable: the exchange happens off air, so there is nothing to overhear. For a group that gathers before heading out, that is enough;
+- **exchange on first meeting over Bluetooth.** The radios are side by side and the phone sees both — the key travels the short way, bypassing the radio channel;
+- **exchange over the air** — the most convenient and the most expensive. It is needed when people cannot be gathered in one place, and it should be built last, once the simple methods already work.
+
+And one detail that ties encryption to an entirely different task. To stop repeaters forwarding foreign traffic, the network needs zones — a notion of which station is one of ours. The group identifier that requires, and the group key, are the same field if they are built together. So zones and encryption are better not kept in separate corners: one task gives the other almost everything it needs.
+
+## What comes next
+
+The order we consider right: first a shared channel key with a truncated tag for voice and a full one for text and files. Then key entry by hand and from a screen. Then groups and zones on the same identifier. Key exchange over the air, last.
+
+We name no dates: the project is built in the evenings, and promising deadlines would be a lie. But as long as there is no encryption, we will keep saying so plainly — in the documentation, on the project page, and here.
+
+How the network this will live in is built is in [the repeater article](/articles/repeater-math/). What the product can already do is in the [documentation](/docs/). The best place to argue about what key exchange should look like is the [Telegram group](https://t.me/MeshTRX): this article was largely written from its questions.`,
+    },
+  },
+  {
     slug: 'repeater-math',
     date: '2026-09-15',
     title: {
