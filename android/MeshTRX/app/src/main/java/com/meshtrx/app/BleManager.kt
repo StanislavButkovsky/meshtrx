@@ -67,6 +67,8 @@ class BleManager(private val context: Context) {
         const val CMD_SCAN_CHANNELS = 0x34
         const val CMD_SCAN_RESULT = 0x35
         const val CMD_SET_CHANNEL_ALL = 0x36
+        const val CMD_SET_KEY = 0x37
+        const val CMD_KEY_STATE = 0x38
     }
 
     private val bluetoothAdapter: BluetoothAdapter? =
@@ -174,6 +176,20 @@ class BleManager(private val context: Context) {
      *  и все, кто её услышит, перейдут одновременно. */
     fun setChannelForAll(ch: Int) =
         send(byteArrayOf(CMD_SET_CHANNEL_ALL.toByte(), ch.toByte()))
+
+    /** Кодовое слово группы: ключ из него выводит сама рация, телефон фразу не
+     *  хранит и не превращает в ключ. */
+    fun setPassphrase(phrase: String) {
+        val bytes = phrase.toByteArray(Charsets.UTF_8)
+        val pkt = ByteArray(2 + bytes.size)
+        pkt[0] = CMD_SET_KEY.toByte()
+        pkt[1] = 0x01
+        bytes.copyInto(pkt, 2)
+        send(pkt)
+    }
+
+    /** Снять ключ: эфир снова открыт. */
+    fun clearKey() = send(byteArrayOf(CMD_SET_KEY.toByte()))
 
     /** Попросить рацию прослушать все каналы и вернуть уровень шума по каждому. */
     fun scanChannels() {

@@ -95,6 +95,54 @@ class SettingsFragment : Fragment() {
             if (best in levels.indices) spinnerChannel.setSelection(best)
         }
 
+        // === Шифрование эфира ===
+        val tvKeyState = v.findViewById<TextView>(R.id.tvKeyState)
+        val etPassphrase = v.findViewById<EditText>(R.id.etPassphrase)
+
+        fun showKeyState() {
+            val fp = ServiceState.keyFingerprint.value.orEmpty()
+            tvKeyState.text = if (fp.isEmpty()) getString(R.string.key_none)
+                              else getString(R.string.key_set, fp)
+            tvKeyState.setTextColor(if (fp.isEmpty()) 0xFFff9d5c.toInt() else 0xFF4ade80.toInt())
+        }
+        showKeyState()
+        ServiceState.keyFingerprint.observe(viewLifecycleOwner) { showKeyState() }
+
+        v.findViewById<Button>(R.id.btnKeyApply).setOnClickListener {
+            if (ServiceState.connectionState.value != BleState.CONNECTED) {
+                Toast.makeText(requireContext(), getString(R.string.disconnected),
+                    Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            val phrase = etPassphrase.text.toString().trim()
+            // Считаем символы, а не байты: в кириллице длина в байтах вдвое
+            // больше, и короткое слово прошло бы проверку.
+            if (phrase.codePointCount(0, phrase.length) < 8) {
+                Toast.makeText(requireContext(), getString(R.string.key_short),
+                    Toast.LENGTH_LONG).show()
+                return@setOnClickListener
+            }
+            service?.bleManager?.setPassphrase(phrase)
+            etPassphrase.setText("")
+            Toast.makeText(requireContext(), getString(R.string.key_applying),
+                Toast.LENGTH_LONG).show()
+        }
+
+        v.findViewById<Button>(R.id.btnKeyClear).setOnClickListener {
+            if (ServiceState.connectionState.value != BleState.CONNECTED) {
+                Toast.makeText(requireContext(), getString(R.string.disconnected),
+                    Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setMessage(getString(R.string.key_none))
+                .setPositiveButton(getString(R.string.key_clear)) { _, _ ->
+                    service?.bleManager?.clearKey()
+                }
+                .setNegativeButton(getString(R.string.cancel), null)
+                .show()
+        }
+
         // Очистка списка абонентов
         v.findViewById<Button>(R.id.btnClearPeers).setOnClickListener {
             androidx.appcompat.app.AlertDialog.Builder(requireContext())

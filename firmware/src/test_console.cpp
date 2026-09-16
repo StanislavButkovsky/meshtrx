@@ -10,6 +10,7 @@
 #include "ble_service.h"
 #include "beacon.h"
 #include "repeater.h"
+#include "crypto.h"
 #include "battery.h"
 #include "utils.h"
 #include <esp_random.h>
@@ -299,6 +300,37 @@ static void handleLine(char* line) {
     char* d = nextTok(&p);
     repeaterBroadcastChannel(ch, d ? (uint8_t)atoi(d) : 10);
     evt("EVT REPCHALL ch=%u\n", ch);
+    return;
+  }
+
+  // Ключ шифрования канала
+  if (strcmp(cmd, "KEY") == 0) {
+    char* arg = nextTok(&p);
+    if (!arg) {
+      evt("EVT KEY has=%d fp=%s\n", cryptoHasKey() ? 1 : 0, cryptoKeyFingerprint());
+      return;
+    }
+    if (strcasecmp(arg, "OFF") == 0) {
+      cryptoClearKey();
+      evt("EVT KEY has=0 fp=----\n");
+      return;
+    }
+    if (strcasecmp(arg, "PASS") == 0) {
+      char* phrase = p;                      // остаток строки — это фраза целиком
+      while (phrase && *phrase == ' ') phrase++;
+      bool ok = phrase && *phrase && cryptoSetPassphrase(phrase);
+      evt("EVT KEY has=%d fp=%s ok=%d\n", cryptoHasKey() ? 1 : 0,
+          cryptoKeyFingerprint(), ok ? 1 : 0);
+      return;
+    }
+    if (strcasecmp(arg, "SET") == 0) {
+      char* hex = nextTok(&p);
+      bool ok = hex && cryptoSetKeyHex(hex);
+      evt("EVT KEY has=%d fp=%s ok=%d\n", cryptoHasKey() ? 1 : 0,
+          cryptoKeyFingerprint(), ok ? 1 : 0);
+      return;
+    }
+    evt("EVT ERR cmd=KEY reason=usage\n");
     return;
   }
 

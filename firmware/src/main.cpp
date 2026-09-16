@@ -18,6 +18,7 @@
 #include "oled_display.h"
 #include "audio_codec.h"
 #include "beacon.h"
+#include "crypto.h"
 #include "repeater.h"
 #include "call_manager.h"
 #include "battery.h"
@@ -334,6 +335,7 @@ void setup() {
 
     loraInit();
     loadSettings();
+  cryptoInit();
     beaconInit();
 
     // BLE — чтобы можно было выключить ретранслятор через приложение
@@ -671,8 +673,14 @@ static void loraTaskFunc(void* param) {
       // он уже в постоянном приёме, и будить его каждым кадром незачем.
       bool wake = (millis() - lastLoraActivityMs) > LORA_IDLE_TIMEOUT_MS;
       lastLoraActivityMs = millis();
-      if (wake) loraSendWake((uint8_t*)&txAudioPkt, sizeof(txAudioPkt));
-      else      loraSend((uint8_t*)&txAudioPkt, sizeof(txAudioPkt));
+      // Место под хвост шифра берём с запасом: сам пакет уходит из отдельного
+      // буфера, потому что структура фиксированной длины дописать его некуда.
+      uint8_t out[sizeof(txAudioPkt) + CRYPTO_OVERHEAD];
+      memcpy(out, &txAudioPkt, sizeof(txAudioPkt));
+      int outLen = cryptoSeal(txAudioPkt.type, txAudioPkt.channel, txAudioPkt.sender,
+                              txAudioPkt.seq, out, sizeof(txAudioPkt), 7);
+      if (wake) loraSendWake(out, outLen);
+      else      loraSend(out, outLen);
       loraStartReceive();
     }
     // Текст — когда аудио-очередь пуста и не идёт файловая сессия.
@@ -686,7 +694,11 @@ static void loraTaskFunc(void* param) {
       // Текст — всегда будящий пакет: одиночное сообщение приходит в тишине,
       // когда приёмник почти наверняка в duty cycle. Лишние 24 символа
       // преамбулы дешевле потерянного сообщения.
-      loraSendWake((uint8_t*)&txTextPkt, pktLen);
+      uint8_t outText[sizeof(txTextPkt) + CRYPTO_OVERHEAD];
+      memcpy(outText, &txTextPkt, pktLen);
+      int outTextLen = cryptoSeal(txTextPkt.type, txTextPkt.channel, txTextPkt.sender,
+                                  txTextPkt.seq, outText, pktLen, 8);
+      loraSendWake(outText, outTextLen);
       loraStartReceive();
     }
 
@@ -742,8 +754,41 @@ static void notifyChannel() {
   bleSendNotify(msg, sizeof(msg));
 }
 
+// Сколько байт заголовка у пакета остаётся открытым. По ним работают
+// ретранслятор и отбор «моё или не моё», поэтому шифровать их нельзя.
+// Файлы сюда пока не входят: у пакета с куском файла нет адреса отправителя,
+// а без него счётчик шифра у двух говорящих может совпасть. Это отдельная
+// задача — менять формат пакета, а не оборачивать существующий.
+static int cryptoHeaderLen(uint8_t type) {
+  switch (type) {
+    case PKT_TYPE_AUDIO: return 7;   // type,ch,seq,flags,ttl,sender[2]
+    case PKT_TYPE_TEXT:  return 8;   // type,ch,seq,ttl,sender[2],dest[2]
+    default:             return -1;  // остальное идёт открытым
+  }
+}
+
 static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr) {
   if (len < 1) return;
+
+  // Снять шифрование до разбора: дальше код работает с обычным пакетом и
+  // ничего не знает про ключи.
+  if (len >= 2 && (data[1] & PKT_CH_ENCRYPTED)) {
+    int hdr = cryptoHeaderLen(data[0]);
+    if (hdr < 0 || len < hdr) {
+      LOG_D("[Crypto] зашифрованный пакет неизвестного вида — пропуск");
+      return;
+    }
+    const uint8_t* sender = (data[0] == PKT_TYPE_AUDIO) ? data + 5 : data + 4;
+    int plain = cryptoOpen(data[0], data[1], sender, data[2], data, len, hdr);
+    if (plain < 0) {
+      // Либо ключа нет, либо он чужой. Для человека это «рядом говорят, но не
+      // с нами» — важно не тишина, а понятная причина в журнале.
+      LOG_F("[Crypto] пакет не расшифрован (type=0x%02X): %s\n", data[0],
+            cryptoHasKey() ? "чужой ключ" : "ключ не задан");
+      return;
+    }
+    if (plain > 0) len = plain;
+  }
 #ifdef TEST_CONSOLE
   if (testConsoleShouldDrop(data[0])) return;   // LOSS: эмуляция потери в канале
   testConsoleOnLoRaRx(data, len, rssi, snr);
@@ -1717,6 +1762,41 @@ static void handleBleData(uint8_t* data, size_t len) {
                      loraIsDutyCycleEnabled(), pttActive, false,
                      getCachedBattery());
       }
+      break;
+    }
+
+    case BLE_CMD_SET_KEY: {
+      // Ключ приходит сырыми байтами, а не строкой: 32 байта вместо 64 символов
+      // и никакого разбора шестнадцатеричного текста в прошивке.
+      if (len == 1) {
+        cryptoClearKey();
+      } else if (data[1] == 0x01) {
+        // Кодовое слово: телефон шлёт строку, вывод ключа делает рация — так
+        // фраза не превращается в ключ на стороне, где её могли бы сохранить.
+        char phrase[65];
+        size_t n = len - 2;
+        if (n == 0 || n > sizeof(phrase) - 1) break;
+        memcpy(phrase, data + 2, n);
+        phrase[n] = 0;
+        cryptoSetPassphrase(phrase);
+      } else if (len == 1 + CRYPTO_KEY_LEN) {
+        char hex[CRYPTO_KEY_LEN * 2 + 1];
+        static const char* d = "0123456789abcdef";
+        for (int i = 0; i < CRYPTO_KEY_LEN; i++) {
+          hex[i * 2]     = d[data[1 + i] >> 4];
+          hex[i * 2 + 1] = d[data[1 + i] & 0xF];
+        }
+        hex[CRYPTO_KEY_LEN * 2] = 0;
+        cryptoSetKeyHex(hex);
+      } else {
+        break;
+      }
+      // отчитаться сразу: человек должен видеть отпечаток, а не гадать
+      uint8_t reply[6];
+      reply[0] = BLE_CMD_KEY_STATE;
+      reply[1] = cryptoHasKey() ? 1 : 0;
+      memcpy(reply + 2, cryptoKeyFingerprint(), 4);
+      bleSendNotify(reply, sizeof(reply));
       break;
     }
 

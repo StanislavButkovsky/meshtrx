@@ -767,6 +767,14 @@ class MeshTRXService : Service() {
                     }
                 }
             }
+            BleManager.CMD_KEY_STATE -> {
+                if (data.size >= 6) {
+                    val has = data[1].toInt() == 1
+                    val fp = String(data, 2, 4, Charsets.US_ASCII)
+                    ServiceState.keyFingerprint.postValue(if (has) fp else "")
+                    Log.d(TAG, "Ключ канала: ${if (has) "есть, отпечаток $fp" else "снят"}")
+                }
+            }
             BleManager.CMD_SCAN_RESULT -> {
                 // [cmd, лучший канал, уровень канала 0..22] — уровни знаковые
                 if (data.size >= 3) {

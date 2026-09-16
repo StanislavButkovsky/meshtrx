@@ -191,4 +191,12 @@ MeshTRX v%2$s</string>
     <string name="ago_sec">%1$d с назад</string>
     <string name="ago_min">%1$d мин назад</string>
     <string name="ago_hour">%1$d ч назад</string>
+    <string name="encryption">Шифрование эфира</string>
+    <string name="passphrase_hint">Кодовое слово группы, от 8 символов</string>
+    <string name="key_apply">Применить ключ</string>
+    <string name="key_clear">Убрать</string>
+    <string name="key_none">Эфир открыт: без ключа вас слышит любой с такой же рацией</string>
+    <string name="key_set">Ключ установлен, отпечаток %1$s. Введите то же слово на всех рациях группы — отпечаток должен совпасть</string>
+    <string name="key_short">Слишком короткое слово: нужно хотя бы 8 символов, а лучше несколько слов</string>
+    <string name="key_applying">Рация выводит ключ, это занимает несколько секунд…</string>
 </resources>
