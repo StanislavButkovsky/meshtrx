@@ -184,10 +184,10 @@ MeshTRX v%2$s</string>
     <string name="channel_all">Switch channel for everyone</string>
     <string name="channel_all_confirm">Every radio within range will move to CH %1$d in 10 seconds. Radios that miss the command stay on the current channel.</string>
     <string name="channel_all_sent">Command sent, switching in 10 s</string>
-    <string name="repeater_in_net">repeater %1$s (%2$d dBm)</string>
+    <string name="repeater_in_net">repeater %1$s (%2$s)</string>
     <string name="no_repeater">no repeater heard</string>
     <string name="air_quiet">the air is quiet</string>
-    <string name="last_activity">last: %1$s, %2$s · %3$d dBm, SNR %4$d</string>
+    <string name="last_activity">last: %1$s, %2$s · %3$s, SNR %4$d</string>
     <string name="ago_sec">%1$d s ago</string>
     <string name="ago_min">%1$d min ago</string>
     <string name="ago_hour">%1$d h ago</string>

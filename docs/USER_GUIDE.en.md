@@ -197,6 +197,12 @@ last: ANDREY, 2 min ago · -88 dBm, SNR 7
   level tells you not just "heard" but "will the answer make it back":
   -60 dBm is margin, -110 dBm is the edge.
 
+If you see **≥0 dBm** instead of a number, that is not a failure and not a
+missing signal but the opposite: the station is so close that the scale ran out.
+The receiver computes the level as minus half an unsigned number, so it cannot
+go above zero — previously a bare zero was shown here, and people read it the
+other way round.
+
 Call sign and channel are deliberately absent here — they sit one line above, in
 the app's header.
 

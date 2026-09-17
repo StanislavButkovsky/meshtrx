@@ -288,7 +288,7 @@ class MessagesFragment : Fragment() {
             }
 
             // Мета-строка: время + адресат + RSSI + статус доставки
-            val rssiStr = msg.rssi?.let { " ${it}dBm" } ?: ""
+            val rssiStr = msg.rssi?.let { " " + formatRssi(it) } ?: ""
             val destStr = if (msg.isOutgoing && msg.destName != null) " → ${msg.destName}" else ""
             val statusStr = if (msg.isOutgoing && msg.destId != null) {
                 when (msg.status) {

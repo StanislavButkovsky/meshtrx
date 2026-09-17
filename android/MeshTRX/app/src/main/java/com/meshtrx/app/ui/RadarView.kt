@@ -1,5 +1,6 @@
 package com.meshtrx.app.ui
 
+import com.meshtrx.app.model.formatRssi
 import android.content.Context
 import android.graphics.*
 import com.meshtrx.app.R
@@ -339,7 +340,7 @@ class RadarView @JvmOverloads constructor(
 
             // Расстояние + RSSI под точкой
             val distLabel = formatDist(pp.distKm)
-            val infoLabel = "$distLabel ${pp.rssi}dBm"
+            val infoLabel = "$distLabel " + formatRssi(pp.rssi)
             paintPeerDist.alpha = rssiAlpha
             canvas.drawText(infoLabel, px, py + dotRadius + 14 * dp, paintPeerDist)
         }

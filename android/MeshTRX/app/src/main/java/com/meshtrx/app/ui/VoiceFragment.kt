@@ -117,7 +117,7 @@ class VoiceFragment : Fragment() {
                         tvTargetSignal.setTextColor(Colors.redTx)
                         tvTargetName.setTextColor(Colors.textDim)
                     } else {
-                        tvTargetSignal.text = "${peer.rssi}dBm / ${peer.snr}dB · $agoStr"
+                        tvTargetSignal.text = "${formatRssi(peer.rssi)} / ${peer.snr}dB · $agoStr"
                         tvTargetSignal.setTextColor(Colors.rssiColor(peer.rssi))
                         tvTargetName.setTextColor(Colors.greenAccent)
                     }
@@ -364,7 +364,7 @@ class VoiceFragment : Fragment() {
         }
         ServiceState.lastRxRssi.observe(viewLifecycleOwner) { rssi ->
             val snr = ServiceState.lastRxSnr.value ?: 0
-            tvRxSignal.text = "${rssi}dBm / ${snr}dB"
+            tvRxSignal.text = "${formatRssi(rssi)} / ${snr}dB"
             tvRxSignal.setTextColor(Colors.rssiColor(rssi))
         }
 
@@ -397,7 +397,7 @@ class VoiceFragment : Fragment() {
                 append(resources.getQuantityString(R.plurals.stations_heard, live.size, live.size))
                 append(" · ")
                 append(if (repeater != null)
-                    getString(R.string.repeater_in_net, repeater.callSign, repeater.rssi)
+                    getString(R.string.repeater_in_net, repeater.callSign, formatRssi(repeater.rssi))
                 else getString(R.string.no_repeater))
             }
 
@@ -412,7 +412,7 @@ class VoiceFragment : Fragment() {
                     agoSec < 3600 -> getString(R.string.ago_min, agoSec / 60)
                     else -> getString(R.string.ago_hour, agoSec / 3600)
                 }
-                getString(R.string.last_activity, last.callSign, ago, last.rssi, last.snr)
+                getString(R.string.last_activity, last.callSign, ago, formatRssi(last.rssi), last.snr)
             }
         }
 
@@ -581,7 +581,7 @@ class VoiceFragment : Fragment() {
                 "ALL" -> getString(R.string.call_type_all); "PRIVATE" -> getString(R.string.call_type_private); "GROUP" -> getString(R.string.call_type_group)
                 else -> call.callType
             }
-            val rssiStr = call.rssi?.let { " · ${it}dBm" } ?: ""
+            val rssiStr = call.rssi?.let { " · ${formatRssi(it)}" } ?: ""
 
             // Проверить актуальность peer (>15 мин = связь утрачена)
             val peer = ServiceState.peers.value?.find { it.deviceId.endsWith(call.deviceId.takeLast(4)) }
