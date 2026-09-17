@@ -1,5 +1,6 @@
 package com.meshtrx.app.ui
 
+import com.meshtrx.app.model.formatRssi
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
@@ -209,7 +210,7 @@ class MapFragment : Fragment() {
                     val d = distanceKm(myLat, myLon, peer.lat, peer.lon)
                     if (d < 1) "${(d * 1000).toInt()}м" else "%.1fкм".format(d)
                 } else "?"
-                snippet = "${peer.rssi}dBm · $dist · ${formatAge(ageSec)}"
+                snippet = "${formatRssi(peer.rssi)} · $dist · ${formatAge(ageSec)}"
             }
             map.overlays.add(marker)
 

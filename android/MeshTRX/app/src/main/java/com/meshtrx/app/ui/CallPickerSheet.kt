@@ -147,7 +147,7 @@ class CallPickerSheet : BottomSheetDialogFragment() {
             holder.tvCallSign.text = peer.callSign
             val dist = peerDistance(peer)
             val distStr = dist?.let { "  %.1f km".format(it) } ?: ""
-            holder.tvDetails.text = "${peer.rssi}dBm  ${peer.txPower}dBm" +
+            holder.tvDetails.text = "${formatRssi(peer.rssi)}  ${peer.txPower}dBm" +
                     (peer.batteryPct?.let { "  $it%" } ?: "") + distStr
 
             // Время с последнего пинга

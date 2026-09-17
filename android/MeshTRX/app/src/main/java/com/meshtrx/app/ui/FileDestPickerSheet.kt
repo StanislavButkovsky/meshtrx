@@ -1,5 +1,6 @@
 package com.meshtrx.app.ui
 
+import com.meshtrx.app.model.formatRssi
 import android.os.Bundle
 import android.view.*
 import android.widget.*
@@ -90,7 +91,7 @@ class FileDestPickerSheet : BottomSheetDialogFragment() {
                     ago < 3600 -> "${ago / 60}мин"
                     else -> "${ago / 3600}ч"
                 }
-                holder.tvInfo.text = "${peer.rssi}dBm · $agoStr назад"
+                holder.tvInfo.text = "${formatRssi(peer.rssi)} · $agoStr назад"
                 holder.itemView.setOnClickListener {
                     onSelected?.invoke(peerToMac(peer), peer.callSign)
                     onSelectedFull?.invoke(peer.deviceId, peer.callSign)

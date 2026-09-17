@@ -230,6 +230,10 @@ static void handleMap() {
   html += F(
     "let map,layer,nodes=[];"
     "const R=document.getElementById('radar'),C=R.getContext('2d');"
+    // Ноль дБм — не отсутствие сигнала, а верх шкалы: приёмник считает уровень
+    // как минус половину беззнакового числа, и выше нуля подняться не может.
+    // Человек, увидев «0 dBm», думает ровно наоборот, поэтому пишем словами.
+    "function sig(r){return r>=0?'≥ 0 dBm (рядом)':r+' dBm'}"
     "function age(s){return s<60?s+' с назад':(s<3600?Math.round(s/60)+' мин назад':Math.round(s/3600)+' ч назад')}"
     // расстояние по прямой между двумя точками, метры
     "function dist(a,b,c,d){const R2=6371000,p=Math.PI/180;"
@@ -273,7 +277,7 @@ static void handleMap() {
     "fitAll()}"
     "if(layer)layer.remove();layer=L.layerGroup().addTo(map);"
     "gps.forEach(n=>L.marker([n.lat,n.lon]).addTo(layer)"
-    ".bindPopup(n.cs+'<br>'+n.rssi+' dBm, '+age(n.age)))}"
+    ".bindPopup(n.cs+'<br>'+sig(n.rssi)+', '+age(n.age)))}"
     "function fitAll(){const gps=nodes.filter(n=>n.gps);if(!map||!gps.length)return;"
     "userMoved=false;"
     "map.fitBounds(gps.map(n=>[n.lat,n.lon]),{maxZoom:15,padding:[30,30]})}"
@@ -281,7 +285,7 @@ static void handleMap() {
     "const tb=document.querySelector('#t tbody');tb.innerHTML='';"
     "nodes.forEach(n=>{const tr=document.createElement('tr');if(n.age>600)tr.className='old';"
     "const bat=n.bat===255?'USB':(n.bat+'%');"
-    "tr.innerHTML='<td>'+n.cs+'</td><td>'+n.rssi+' dBm / '+n.snr+'</td><td>'+bat+"
+    "tr.innerHTML='<td>'+n.cs+'</td><td>'+sig(n.rssi)+' / '+n.snr+'</td><td>'+bat+"
     "'</td><td>'+age(n.age)+'</td>';tb.appendChild(tr)})}"
     "async function tick(){try{const r=await fetch('/api/nodes');nodes=(await r.json()).nodes;"
     "fill();drawRadar();if(map)drawMap()}catch(e){}}"
