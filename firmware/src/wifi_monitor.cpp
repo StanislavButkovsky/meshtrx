@@ -188,7 +188,11 @@ static void handleMap() {
     "#map{height:60vh;border-radius:8px}"
     // Флажок в подписи карты Leaflet рисует сам, к делу он отношения не имеет
     // и на узком экране отнимает место у самой подписи об источнике тайлов.
-    ".leaflet-attribution-flag{display:none!important}"
+    // У Leaflet на этот флаг стоит display:inline!important, и его стили
+    // грузятся позже наших — при равной силе выигрывает поздний. Поэтому
+    // селектор длиннее: специфичность выше, и порядок загрузки уже не важен.
+    ".leaflet-control-attribution .leaflet-attribution-flag,"
+    "svg.leaflet-attribution-flag{display:none!important}"
     "#radar{background:#000;border-radius:8px;width:100%;max-width:520px;display:block}"
     "table{width:100%;border-collapse:collapse;margin-top:12px;font-size:13px}"
     "th,td{padding:5px 6px;text-align:left;border-bottom:1px solid #333}"
@@ -258,7 +262,11 @@ static void handleMap() {
     "let userMoved=false;"
     "function drawMap(){"
     "const gps=nodes.filter(n=>n.gps);if(!gps.length)return;"
-    "if(!map){map=L.map('map').setView([gps[0].lat,gps[0].lon],13);"
+    "if(!map){map=L.map('map',{attributionControl:false})"
+    ".setView([gps[0].lat,gps[0].lon],13);"
+    // Свой блок подписи вместо готового: у готового в префиксе ссылка на
+    // Leaflet вместе с флагом, а нам нужен только источник карты.
+    "L.control.attribution({prefix:false}).addTo(map);"
     "L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',"
     "{maxZoom:19,attribution:'OpenStreetMap'}).addTo(map);"
     "map.on('movestart zoomstart',e=>{if(e.hard!==true)userMoved=true});"
