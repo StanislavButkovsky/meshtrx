@@ -502,6 +502,13 @@ What is encrypted today: **voice and text messages**. Files and beacons still
 travel in the clear, which means call signs and coordinates are visible to an
 outsider. That is stated plainly so you do not count on more than there is.
 
+**A radio with a key does not listen to unencrypted traffic.** Once a passphrase
+is set, unencrypted voice and messages are dropped — including from your own
+people whose key is missing or whose firmware is older. Otherwise a single such
+radio is enough for the conversation to bypass encryption while everyone
+believes it is closed. So set the key on all radios at once and compare the
+fingerprint: it matches only where the phrase matches.
+
 The repeater needs no key: it forwards packets without looking inside. Even
 somebody else's repeater will carry your conversation without hearing it.
 

@@ -1,6 +1,6 @@
 # MeshTRX — full documentation
 
-> App 4.4.13, firmware 4.4.21, updated 2026-09-17. Source: https://meshtrx.ru/docs/
+> App 4.4.14, firmware 4.4.22, updated 2026-09-18. Source: https://meshtrx.ru/docs/
 
 ---
 
@@ -464,7 +464,28 @@ The button sends the radio settings to the device and stores them in NVS.
 
 ---
 
-### Traffic encryption
+### Updates
+
+At the bottom of Settings the app shows what has been released: **Check for
+updates**. Once a day it asks the site on its own and, if a newer version
+exists, says "App 4.4.13 is out, you have 4.4.12" and offers a **Download**
+button. It opens the file on the site; the installation itself is still
+confirmed by you in Android — that cannot be bypassed.
+
+The same place shows which firmware your radio runs and which one is out. The
+radio reports its own version on connect, starting with 4.4.22; on older
+firmware that line is simply absent — those versions did not know their own
+number.
+
+Firmware is not updated by a button: it is still flashed from a computer. The
+app only warns that a newer one exists.
+
+With no internet the check quietly does nothing: a radio is needed exactly where
+there is no network, and complaining about it on every launch is pointless.
+
+---
+
+
 
 By default the air is in the clear: anyone with the same radio on the same
 channel hears the whole conversation. To change that, set a **group passphrase**

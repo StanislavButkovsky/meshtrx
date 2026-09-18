@@ -772,6 +772,16 @@ static int cryptoHeaderLen(uint8_t type) {
 static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr) {
   if (len < 1) return;
 
+  // Ключ задан — значит открытым словам в эфире веры нет. Иначе достаточно
+  // одной рации без ключа или со старой прошивкой, чтобы разговор шёл мимо
+  // шифрования, а человек считал, что он закрыт. Защита, которая работает
+  // через раз, опаснее её отсутствия: на неё рассчитывают.
+  if (cryptoHasKey() && len >= 2 && !(data[1] & PKT_CH_ENCRYPTED) &&
+      cryptoHeaderLen(data[0]) >= 0) {
+    LOG_F("[Crypto] открытый пакет (type=0x%02X) отброшен: у нас ключ\n", data[0]);
+    return;
+  }
+
   // Снять шифрование до разбора: дальше код работает с обычным пакетом и
   // ничего не знает про ключи.
   if (len >= 2 && (data[1] & PKT_CH_ENCRYPTED)) {
