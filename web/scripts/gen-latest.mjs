@@ -25,6 +25,18 @@ if (!codeMatch) throw new Error('не нашёл versionCode в build.gradle');
 const app = pick('app');
 const firmware = pick('firmware');
 
+// Версия прошивки записана в двух местах: в самой прошивке (её рация сообщает
+// телефону) и здесь, для страницы загрузки. Разъехаться им нельзя — человек
+// увидит на устройстве одно, а на сайте другое, — поэтому сверяем на сборке.
+const versionH = readFileSync(join(root, '../firmware/src/version.h'), 'utf8');
+const fwMatch = versionH.match(/FW_VERSION\s+"([^"]+)"/);
+if (!fwMatch) throw new Error('не нашёл FW_VERSION в firmware/src/version.h');
+if (fwMatch[1] !== firmware) {
+  throw new Error(
+    `версия прошивки разъехалась: version.h говорит ${fwMatch[1]}, ` +
+    `constants.ts говорит ${firmware}`);
+}
+
 const latest = {
   app: {
     version: app,

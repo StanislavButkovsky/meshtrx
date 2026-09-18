@@ -206,4 +206,5 @@ MeshTRX v%2$s</string>
     <string name="update_app">App %1$s is out, you have %2$s</string>
     <string name="update_fw">Firmware %1$s is available, you have %2$s — flashed from a computer over cable</string>
     <string name="update_offline">Site unreachable — check your internet connection</string>
+    <string name="device_firmware">, firmware %1$s</string>
 </resources>

@@ -5,10 +5,10 @@
     "url": "https://meshtrx.ru/downloads/meshtrx-4.4.13.apk"
   },
   "firmware": {
-    "version": "4.4.21",
-    "v3": "https://meshtrx.ru/downloads/firmware-v3-4.4.21.bin",
-    "v4": "https://meshtrx.ru/downloads/firmware-v4-4.4.21.bin",
-    "v43": "https://meshtrx.ru/downloads/firmware-v4.3-4.4.21.bin"
+    "version": "4.4.22",
+    "v3": "https://meshtrx.ru/downloads/firmware-v3-4.4.22.bin",
+    "v4": "https://meshtrx.ru/downloads/firmware-v4-4.4.22.bin",
+    "v43": "https://meshtrx.ru/downloads/firmware-v4.3-4.4.22.bin"
   },
   "date": "2026-09-17",
   "changelog": "https://meshtrx.ru/download/"

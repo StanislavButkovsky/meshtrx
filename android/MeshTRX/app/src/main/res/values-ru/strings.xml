@@ -206,4 +206,5 @@ MeshTRX v%2$s</string>
     <string name="update_app">Вышло приложение %1$s, у вас %2$s</string>
     <string name="update_fw">Для рации есть прошивка %1$s, у вас %2$s — обновляется с компьютера по кабелю</string>
     <string name="update_offline">Сайт недоступен — проверьте, есть ли интернет</string>
+    <string name="device_firmware">, прошивка %1$s</string>
 </resources>

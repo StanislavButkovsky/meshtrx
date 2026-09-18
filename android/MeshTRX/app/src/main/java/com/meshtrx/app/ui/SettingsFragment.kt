@@ -407,17 +407,31 @@ class SettingsFragment : Fragment() {
                     return@launch
                 }
                 val myCode = BuildConfig.VERSION_CODE
-                if (latest.appCode > myCode) {
-                    tvUpdate.text = getString(R.string.update_app,
-                        latest.appVersion, BuildConfig.VERSION_NAME)
-                    tvUpdate.setTextColor(0xFF4ade80.toInt())
-                    latestUrl = latest.appUrl
-                    btnUpdateGet.visibility = View.VISIBLE
-                } else {
-                    tvUpdate.text = getString(R.string.update_none,
-                        BuildConfig.VERSION_NAME, latest.firmwareVersion)
-                    tvUpdate.setTextColor(0xFF888888.toInt())
-                    btnUpdateGet.visibility = View.GONE
+                val myFirmware = ServiceState.firmwareVersion.value
+                val fwOld = UpdateChecker.firmwareOlder(myFirmware, latest.firmwareVersion)
+                when {
+                    latest.appCode > myCode -> {
+                        tvUpdate.text = getString(R.string.update_app,
+                            latest.appVersion, BuildConfig.VERSION_NAME)
+                        tvUpdate.setTextColor(0xFF4ade80.toInt())
+                        latestUrl = latest.appUrl
+                        btnUpdateGet.visibility = View.VISIBLE
+                    }
+                    // Прошивка отдельно: её не скачаешь кнопкой, она шьётся с
+                    // компьютера, поэтому здесь только предупреждение.
+                    fwOld -> {
+                        tvUpdate.text = getString(R.string.update_fw,
+                            latest.firmwareVersion, myFirmware)
+                        tvUpdate.setTextColor(0xFF4ade80.toInt())
+                        btnUpdateGet.visibility = View.GONE
+                    }
+                    else -> {
+                        tvUpdate.text = getString(R.string.update_none,
+                            BuildConfig.VERSION_NAME,
+                            myFirmware?.takeIf { it.isNotBlank() } ?: latest.firmwareVersion)
+                        tvUpdate.setTextColor(0xFF888888.toInt())
+                        btnUpdateGet.visibility = View.GONE
+                    }
                 }
                 requireContext()
                     .getSharedPreferences("updates", android.content.Context.MODE_PRIVATE)
@@ -440,12 +454,19 @@ class SettingsFragment : Fragment() {
         val since = System.currentTimeMillis() - prefs.getLong("lastCheck", 0)
         if (since > UpdateChecker.CHECK_INTERVAL_MS) checkUpdates(false)
 
-        ServiceState.deviceName.observe(viewLifecycleOwner) { name ->
-            // Версию берём из сборки, а не из строки ресурсов: зашитый номер
-            // отстал от релизов, и люди по нему решали, что обновление не встало.
-            tvInfo.text = getString(R.string.device_label, name,
-                com.meshtrx.app.BuildConfig.VERSION_NAME)
+        fun showDeviceLine() {
+            // Версию приложения берём из сборки, а не из строки ресурсов:
+            // зашитый номер отстал от релизов, и люди по нему решали, что
+            // обновление не встало. Версию прошивки называет сама рация; до
+            // 4.4.22 она этого не умела, и тогда строки про неё просто нет.
+            val base = getString(R.string.device_label,
+                ServiceState.deviceName.value.orEmpty(), BuildConfig.VERSION_NAME)
+            val fw = ServiceState.firmwareVersion.value
+            tvInfo.text = if (fw.isNullOrBlank()) base
+                          else base + getString(R.string.device_firmware, fw)
         }
+        ServiceState.deviceName.observe(viewLifecycleOwner) { showDeviceLine() }
+        ServiceState.firmwareVersion.observe(viewLifecycleOwner) { showDeviceLine() }
 
         return v
     }
