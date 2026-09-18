@@ -142,8 +142,13 @@ bool cryptoSetPassphrase(const char* phrase) {
 
   Preferences prefs;
   prefs.begin("crypto", false);
-  prefs.putBytes("key", key, sizeof(key));
+  size_t wrote = prefs.putBytes("key", key, sizeof(key));
   prefs.end();
+  if (wrote != CRYPTO_KEY_LEN) {
+    LOG_F("[Crypto] ключ записан не полностью: %u байт из %u\n",
+          (unsigned)wrote, (unsigned)CRYPTO_KEY_LEN);
+    return false;
+  }
   deriveKeys(key);
   haveKey = true;
   LOG_F("[Crypto] ключ из кодового слова за %lu мс, отпечаток %s\n",
