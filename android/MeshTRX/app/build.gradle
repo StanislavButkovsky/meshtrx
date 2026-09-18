@@ -12,8 +12,8 @@ android {
         applicationId "com.meshtrx.app"
         minSdk 26
         targetSdk 34
-        versionCode 58
-        versionName "4.4.13"
+        versionCode 59
+        versionName "4.4.14"
 
         ndk {
             abiFilters 'armeabi-v7a', 'arm64-v8a'
