@@ -328,6 +328,12 @@ void setup() {
   // OLED
   oledInit();
 
+  // Ключ шифрования поднимаем до выбора режима: он нужен и рации, и
+  // ретранслятору. Раньше вызов стоял внутри ветки ретранслятора, и в обычном
+  // режиме ключ из памяти не читался вовсе — после перезагрузки рация считала,
+  // что шифрования нет, хотя человек его задал.
+  cryptoInit();
+
   // Проверить режим ретранслятора
   repeaterInit();
 
@@ -337,7 +343,6 @@ void setup() {
 
     loraInit();
     loadSettings();
-  cryptoInit();
     beaconInit();
 
     // BLE — чтобы можно было выключить ретранслятор через приложение
@@ -1515,6 +1520,14 @@ static void bleTaskFunc(void* param) {
       versionSent = false;
     } else if (!versionSent) {
       sendFirmwareVersion();
+      // И состояние ключа: телефон о нём не спрашивает, а человек, открыв
+      // настройки после переподключения, видел пустое место и решал, что ключ
+      // не сохранился. Ключ живёт в рации, показать его состояние — её дело.
+      uint8_t st[6];
+      st[0] = BLE_CMD_KEY_STATE;
+      st[1] = cryptoHasKey() ? 1 : 0;
+      memcpy(st + 2, cryptoKeyFingerprint(), 4);
+      bleSendNotify(st, sizeof(st));
       versionSent = true;
     }
 
