@@ -199,4 +199,11 @@ MeshTRX v%2$s</string>
     <string name="key_set">Ключ установлен, отпечаток %1$s. Введите то же слово на всех рациях группы — отпечаток должен совпасть</string>
     <string name="key_short">Слишком короткое слово: нужно хотя бы 8 символов, а лучше несколько слов</string>
     <string name="key_applying">Рация выводит ключ, это занимает несколько секунд…</string>
+    <string name="update_check">Проверить обновления</string>
+    <string name="update_get">Скачать</string>
+    <string name="update_checking">Смотрю, что вышло…</string>
+    <string name="update_none">Установлена последняя версия: приложение %1$s, прошивка %2$s</string>
+    <string name="update_app">Вышло приложение %1$s, у вас %2$s</string>
+    <string name="update_fw">Для рации есть прошивка %1$s, у вас %2$s — обновляется с компьютера по кабелю</string>
+    <string name="update_offline">Сайт недоступен — проверьте, есть ли интернет</string>
 </resources>

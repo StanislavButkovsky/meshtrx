@@ -199,4 +199,11 @@ MeshTRX v%2$s</string>
     <string name="key_set">Key set, fingerprint %1$s. Enter the same phrase on every radio in the group — the fingerprint must match</string>
     <string name="key_short">Too short: 8 characters minimum, several words are better</string>
     <string name="key_applying">The radio is deriving the key, this takes a few seconds…</string>
+    <string name="update_check">Check for updates</string>
+    <string name="update_get">Download</string>
+    <string name="update_checking">Looking for updates…</string>
+    <string name="update_none">You are up to date: app %1$s, firmware %2$s</string>
+    <string name="update_app">App %1$s is out, you have %2$s</string>
+    <string name="update_fw">Firmware %1$s is available, you have %2$s — flashed from a computer over cable</string>
+    <string name="update_offline">Site unreachable — check your internet connection</string>
 </resources>

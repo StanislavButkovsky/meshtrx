@@ -17,7 +17,7 @@ export const VERSION = {
   // значит гнать людей перепрошивать рации впустую, и наоборот.
   firmware: '4.4.21',
   firmwareDate: '2026-09-17',
-  date: '2026-09-16',
+  date: '2026-09-17',
 };
 
 export const FEATURES = [

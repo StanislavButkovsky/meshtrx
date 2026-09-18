@@ -231,6 +231,11 @@ python3 -m venv .venv
   уровнем. По уровню видно не только «слышал», но и «дотянется ли ответ»:
   −60 дБм это запас, −110 это предел.
 
+Если вместо числа стоит **≥0 дБм**, это не сбой и не отсутствие сигнала, а
+наоборот: станция так близко, что шкала кончилась. Приёмник считает уровень как
+минус половину беззнакового числа, поэтому выше нуля подняться не может —
+раньше в этом месте показывался голый ноль, и его читали ровно наоборот.
+
 Позывного и канала здесь нет намеренно — они строкой выше, в шапке приложения.
 
 ---
@@ -1012,6 +1017,12 @@ last: ANDREY, 2 min ago · -88 dBm, SNR 7
 - **last movement on air** — who came on, how long ago, and at what level. The
   level tells you not just "heard" but "will the answer make it back":
   -60 dBm is margin, -110 dBm is the edge.
+
+If you see **≥0 dBm** instead of a number, that is not a failure and not a
+missing signal but the opposite: the station is so close that the scale ran out.
+The receiver computes the level as minus half an unsigned number, so it cannot
+go above zero — previously a bare zero was shown here, and people read it the
+other way round.
 
 Call sign and channel are deliberately absent here — they sit one line above, in
 the app's header.

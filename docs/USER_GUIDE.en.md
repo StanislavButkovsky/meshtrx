@@ -458,7 +458,25 @@ The button sends the radio settings to the device and stores them in NVS.
 
 ---
 
-### Traffic encryption
+### Updates
+
+At the bottom of Settings the app shows what has been released: **Check for
+updates**. Once a day it asks the site on its own and, if a newer version
+exists, says "App 4.4.13 is out, you have 4.4.12" and offers a **Download**
+button. It opens the file on the site; the installation itself is still
+confirmed by you in Android — that cannot be bypassed.
+
+The same line shows the latest firmware version. The app does not know what is
+running on your radio: the firmware does not report its version over Bluetooth.
+So the firmware line is informational, and the radio is still flashed from a
+computer.
+
+With no internet the check quietly does nothing: a radio is needed exactly where
+there is no network, and complaining about it on every launch is pointless.
+
+---
+
+
 
 By default the air is in the clear: anyone with the same radio on the same
 channel hears the whole conversation. To change that, set a **group passphrase**
