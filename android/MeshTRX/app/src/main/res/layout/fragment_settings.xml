@@ -264,6 +264,29 @@
             android:layout_marginBottom="16dp" />
 
         <!-- Info -->
+        <!-- ОБНОВЛЕНИЕ. Из группы: «чтобы не бегать каждый раз на сайт».
+             Приложение само спрашивает у сайта, что вышло, и открывает ссылку;
+             саму установку Android всё равно подтверждает у человека. -->
+        <TextView android:id="@+id/tvUpdate"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:textSize="12sp" android:textColor="#888888"
+            android:layout_marginTop="12dp" />
+        <LinearLayout
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:layout_marginBottom="8dp">
+            <Button android:id="@+id/btnUpdateCheck"
+                style="?android:attr/borderlessButtonStyle"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="@string/update_check" android:textSize="13sp"
+                android:textColor="#4ade80" android:paddingStart="0dp" />
+            <Button android:id="@+id/btnUpdateGet"
+                style="?android:attr/borderlessButtonStyle"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="@string/update_get" android:textSize="13sp"
+                android:textColor="#4ade80" android:visibility="gone"
+                android:layout_marginStart="16dp" />
+        </LinearLayout>
+
         <TextView android:id="@+id/tvDeviceInfo"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:textSize="12sp" android:textColor="#999" android:fontFamily="monospace" />

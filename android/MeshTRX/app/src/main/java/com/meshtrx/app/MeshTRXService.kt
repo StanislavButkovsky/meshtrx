@@ -767,6 +767,13 @@ class MeshTRXService : Service() {
                     }
                 }
             }
+            BleManager.CMD_FW_VERSION -> {
+                if (data.size >= 2) {
+                    val v = String(data, 1, data.size - 1, Charsets.US_ASCII).trim()
+                    ServiceState.firmwareVersion.postValue(v)
+                    Log.d(TAG, "Прошивка рации: $v")
+                }
+            }
             BleManager.CMD_KEY_STATE -> {
                 if (data.size >= 6) {
                     val has = data[1].toInt() == 1

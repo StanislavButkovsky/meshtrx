@@ -56,6 +56,9 @@ object ServiceState {
     // Отпечаток ключа — четыре знака, по которым сверяют, что у всех он один.
     // Пустая строка означает, что эфир открыт.
     val keyFingerprint = MutableLiveData("")
+    // Версия прошивки рации. Пустая строка означает «рация не сказала»: так
+    // отвечают устройства до 4.4.22, где версии в прошивке не было вовсе.
+    val firmwareVersion = MutableLiveData("")
 
     // Events (one-shot) — UI подписывается
     val showPinDialog = MutableLiveData(false)

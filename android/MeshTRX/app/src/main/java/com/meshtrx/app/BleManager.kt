@@ -69,6 +69,8 @@ class BleManager(private val context: Context) {
         const val CMD_SET_CHANNEL_ALL = 0x36
         const val CMD_SET_KEY = 0x37
         const val CMD_KEY_STATE = 0x38
+        const val CMD_GET_FW_VERSION = 0x39
+        const val CMD_FW_VERSION = 0x3A
     }
 
     private val bluetoothAdapter: BluetoothAdapter? =
@@ -187,6 +189,10 @@ class BleManager(private val context: Context) {
         bytes.copyInto(pkt, 2)
         send(pkt)
     }
+
+    /** Спросить версию прошивки. Рация называет её и сама при подключении,
+     *  но старая прошивка этого не умеет — тогда спрашиваем явно. */
+    fun requestFirmwareVersion() = send(byteArrayOf(CMD_GET_FW_VERSION.toByte()))
 
     /** Снять ключ: эфир снова открыт. */
     fun clearKey() = send(byteArrayOf(CMD_SET_KEY.toByte()))

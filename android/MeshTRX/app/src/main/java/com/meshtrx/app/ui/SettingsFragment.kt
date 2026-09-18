@@ -3,6 +3,10 @@ package com.meshtrx.app.ui
 import android.os.Bundle
 import android.view.*
 import android.widget.*
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import com.meshtrx.app.UpdateChecker
+import com.meshtrx.app.BuildConfig
 import androidx.fragment.app.Fragment
 import com.google.android.material.switchmaterial.SwitchMaterial
 import com.meshtrx.app.*
@@ -386,12 +390,83 @@ class SettingsFragment : Fragment() {
             btnRepeaterOff.isEnabled = connected
         }
 
-        ServiceState.deviceName.observe(viewLifecycleOwner) { name ->
-            // Версию берём из сборки, а не из строки ресурсов: зашитый номер
-            // отстал от релизов, и люди по нему решали, что обновление не встало.
-            tvInfo.text = getString(R.string.device_label, name,
-                com.meshtrx.app.BuildConfig.VERSION_NAME)
+        // === Обновления ===
+        val tvUpdate = v.findViewById<TextView>(R.id.tvUpdate)
+        val btnUpdateGet = v.findViewById<Button>(R.id.btnUpdateGet)
+        var latestUrl: String? = null
+
+        fun checkUpdates(byHand: Boolean) {
+            if (byHand) tvUpdate.text = getString(R.string.update_checking)
+            viewLifecycleOwner.lifecycleScope.launch {
+                val latest = UpdateChecker.fetch()
+                if (!isAdded) return@launch
+                if (latest == null) {
+                    // Молчим при автопроверке: рация нужна там, где сети нет, и
+                    // ругаться на её отсутствие в каждом запуске незачем.
+                    if (byHand) tvUpdate.text = getString(R.string.update_offline)
+                    return@launch
+                }
+                val myCode = BuildConfig.VERSION_CODE
+                val myFirmware = ServiceState.firmwareVersion.value
+                val fwOld = UpdateChecker.firmwareOlder(myFirmware, latest.firmwareVersion)
+                when {
+                    latest.appCode > myCode -> {
+                        tvUpdate.text = getString(R.string.update_app,
+                            latest.appVersion, BuildConfig.VERSION_NAME)
+                        tvUpdate.setTextColor(0xFF4ade80.toInt())
+                        latestUrl = latest.appUrl
+                        btnUpdateGet.visibility = View.VISIBLE
+                    }
+                    // Прошивка отдельно: её не скачаешь кнопкой, она шьётся с
+                    // компьютера, поэтому здесь только предупреждение.
+                    fwOld -> {
+                        tvUpdate.text = getString(R.string.update_fw,
+                            latest.firmwareVersion, myFirmware)
+                        tvUpdate.setTextColor(0xFF4ade80.toInt())
+                        btnUpdateGet.visibility = View.GONE
+                    }
+                    else -> {
+                        tvUpdate.text = getString(R.string.update_none,
+                            BuildConfig.VERSION_NAME,
+                            myFirmware?.takeIf { it.isNotBlank() } ?: latest.firmwareVersion)
+                        tvUpdate.setTextColor(0xFF888888.toInt())
+                        btnUpdateGet.visibility = View.GONE
+                    }
+                }
+                requireContext()
+                    .getSharedPreferences("updates", android.content.Context.MODE_PRIVATE)
+                    .edit().putLong("lastCheck", System.currentTimeMillis()).apply()
+            }
         }
+
+        v.findViewById<Button>(R.id.btnUpdateCheck).setOnClickListener { checkUpdates(true) }
+        btnUpdateGet.setOnClickListener {
+            latestUrl?.let {
+                startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,
+                    android.net.Uri.parse(it)))
+            }
+        }
+
+        // Сама, но не чаще раза в сутки: выпуски выходят несколько раз в неделю,
+        // и человек узнавал о них, только если заходил на сайт.
+        val prefs = requireContext()
+            .getSharedPreferences("updates", android.content.Context.MODE_PRIVATE)
+        val since = System.currentTimeMillis() - prefs.getLong("lastCheck", 0)
+        if (since > UpdateChecker.CHECK_INTERVAL_MS) checkUpdates(false)
+
+        fun showDeviceLine() {
+            // Версию приложения берём из сборки, а не из строки ресурсов:
+            // зашитый номер отстал от релизов, и люди по нему решали, что
+            // обновление не встало. Версию прошивки называет сама рация; до
+            // 4.4.22 она этого не умела, и тогда строки про неё просто нет.
+            val base = getString(R.string.device_label,
+                ServiceState.deviceName.value.orEmpty(), BuildConfig.VERSION_NAME)
+            val fw = ServiceState.firmwareVersion.value
+            tvInfo.text = if (fw.isNullOrBlank()) base
+                          else base + getString(R.string.device_firmware, fw)
+        }
+        ServiceState.deviceName.observe(viewLifecycleOwner) { showDeviceLine() }
+        ServiceState.firmwareVersion.observe(viewLifecycleOwner) { showDeviceLine() }
 
         return v
     }

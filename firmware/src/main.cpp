@@ -19,6 +19,7 @@
 #include "audio_codec.h"
 #include "beacon.h"
 #include "crypto.h"
+#include "version.h"
 #include "repeater.h"
 #include "call_manager.h"
 #include "battery.h"
@@ -208,6 +209,7 @@ static void fileSendTask(void* param);
 static void handleBleData(uint8_t* data, size_t len);
 static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr);
 static void sendStatusUpdate();
+static void sendFirmwareVersion();
 static void pttStop(bool byTimeout);
 static void pttStart();
 static void loadSettings();
@@ -1496,6 +1498,16 @@ static void bleTaskFunc(void* param) {
       lastStatusMs = nowMs;
     }
 
+    // Версию называем один раз на соединение, сразу после подключения: телефон
+    // за ней не ходит, и без этого он о ней узнаёт, только если спросит сам.
+    static bool versionSent = false;
+    if (!bleIsConnected()) {
+      versionSent = false;
+    } else if (!versionSent) {
+      sendFirmwareVersion();
+      versionSent = true;
+    }
+
     // Idle → 1 сек, active → 500мс (light sleep экономит между пробуждениями)
     bool isActive = pttActive || fileTxActive || (fileState == FILE_STATE_RECEIVING) || oledIsAwake();
     vTaskDelay(pdMS_TO_TICKS(isActive ? 500 : 1000));
@@ -1505,6 +1517,19 @@ static void bleTaskFunc(void* param) {
 // ================================================================
 // Отправка STATUS_UPDATE (0x06)
 // ================================================================
+// Версию рация называет сама при подключении: телефон, который её не ждёт,
+// просто не поймёт код и пропустит — старые версии приложения от этого не
+// ломаются.
+static void sendFirmwareVersion() {
+  const char* v = FW_VERSION;
+  size_t n = strlen(v);
+  if (n > 16) n = 16;
+  uint8_t msg[1 + 16];
+  msg[0] = BLE_CMD_FW_VERSION;
+  memcpy(msg + 1, v, n);
+  bleSendNotify(msg, 1 + n);
+}
+
 static void sendStatusUpdate() {
   uint8_t data[6];
   data[0] = BLE_CMD_STATUS_UPDATE;
@@ -1762,6 +1787,11 @@ static void handleBleData(uint8_t* data, size_t len) {
                      loraIsDutyCycleEnabled(), pttActive, false,
                      getCachedBattery());
       }
+      break;
+    }
+
+    case BLE_CMD_GET_FW_VERSION: {
+      sendFirmwareVersion();
       break;
     }
 
