@@ -120,6 +120,12 @@ class SettingsFragment : Fragment() {
             })
         }
         showKeyState()
+        // Спрашиваем сами: состояние ключа могло не дойти, если рация сказала
+        // о нём раньше, чем телефон успел подписаться на уведомления.
+        if (ServiceState.connectionState.value == BleState.CONNECTED) {
+            service?.bleManager?.requestKeyState()
+            service?.bleManager?.requestFirmwareVersion()
+        }
         ServiceState.keyFingerprint.observe(viewLifecycleOwner) { showKeyState() }
         ServiceState.alienPackets.observe(viewLifecycleOwner) { showKeyState() }
 

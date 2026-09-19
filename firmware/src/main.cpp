@@ -210,6 +210,7 @@ static void handleBleData(uint8_t* data, size_t len);
 static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr);
 static void sendStatusUpdate();
 static void sendFirmwareVersion();
+static void sendKeyState();
 static void pttStop(bool byTimeout);
 static void pttStart();
 static void loadSettings();
@@ -1535,20 +1536,22 @@ static void bleTaskFunc(void* param) {
 
     // Версию называем один раз на соединение, сразу после подключения: телефон
     // за ней не ходит, и без этого он о ней узнаёт, только если спросит сам.
+    // Версию и состояние ключа рация называет сама — но не в первую секунду
+    // соединения: телефон подписывается на уведомления не мгновенно, и всё
+    // сказанное раньше уходит в пустоту. Человек при этом видел пустое место и
+    // решал, что ключ не сохранился.
     static bool versionSent = false;
+    static uint32_t connectedAt = 0;
     if (!bleIsConnected()) {
       versionSent = false;
-    } else if (!versionSent) {
-      sendFirmwareVersion();
-      // И состояние ключа: телефон о нём не спрашивает, а человек, открыв
-      // настройки после переподключения, видел пустое место и решал, что ключ
-      // не сохранился. Ключ живёт в рации, показать его состояние — её дело.
-      uint8_t st[6];
-      st[0] = BLE_CMD_KEY_STATE;
-      st[1] = cryptoHasKey() ? 1 : 0;
-      memcpy(st + 2, cryptoKeyFingerprint(), 4);
-      bleSendNotify(st, sizeof(st));
-      versionSent = true;
+      connectedAt = 0;
+    } else {
+      if (!connectedAt) connectedAt = millis();
+      if (!versionSent && millis() - connectedAt > 1500) {
+        sendFirmwareVersion();
+        sendKeyState();
+        versionSent = true;
+      }
     }
 
     // Idle → 1 сек, active → 500мс (light sleep экономит между пробуждениями)
@@ -1563,6 +1566,14 @@ static void bleTaskFunc(void* param) {
 // Версию рация называет сама при подключении: телефон, который её не ждёт,
 // просто не поймёт код и пропустит — старые версии приложения от этого не
 // ломаются.
+static void sendKeyState() {
+  uint8_t msg[6];
+  msg[0] = BLE_CMD_KEY_STATE;
+  msg[1] = cryptoHasKey() ? 1 : 0;
+  memcpy(msg + 2, cryptoKeyFingerprint(), 4);
+  bleSendNotify(msg, sizeof(msg));
+}
+
 static void sendFirmwareVersion() {
   const char* v = FW_VERSION;
   size_t n = strlen(v);
@@ -1800,7 +1811,13 @@ static void handleBleData(uint8_t* data, size_t len) {
         wakePkt.flags = PKT_FLAG_PTT_START;
         wakePkt.ttl = TTL_DEFAULT;
         memcpy(wakePkt.sender, senderMac, 2);
-        loraSendWake((uint8_t*)&wakePkt, sizeof(wakePkt));
+        // Будящий пакет тоже шифруем: иначе приёмник с ключом отбросит первый
+        // кадр фразы, а с ним и метку её начала.
+        uint8_t wakeOut[sizeof(wakePkt) + CRYPTO_OVERHEAD];
+        memcpy(wakeOut, &wakePkt, sizeof(wakePkt));
+        int wakeLen = cryptoSeal(wakePkt.type, wakePkt.channel, wakePkt.sender,
+                                 wakePkt.seq, wakeOut, sizeof(wakePkt), 7);
+        loraSendWake(wakeOut, wakeLen);
         loraStartReceive();
       }
       break;
@@ -1835,6 +1852,11 @@ static void handleBleData(uint8_t* data, size_t len) {
 
     case BLE_CMD_GET_FW_VERSION: {
       sendFirmwareVersion();
+      break;
+    }
+
+    case BLE_CMD_GET_KEY_STATE: {
+      sendKeyState();
       break;
     }
 
@@ -1922,16 +1944,24 @@ static void handleBleData(uint8_t* data, size_t len) {
       uint16_t destId = pkt.dest[0] | (pkt.dest[1] << 8);
       size_t pktLen = 8 + textLen + 1; // header(8) + text + null
 
+      // Сообщения с телефона уходят отсюда, минуя общую очередь, — и этот
+      // путь я в своё время забыл зашифровать. Рации с ключом отбрасывали их
+      // как открытые, и со стороны выглядело, будто шифрование ломает связь.
+      uint8_t out[sizeof(pkt) + CRYPTO_OVERHEAD];
+      memcpy(out, &pkt, pktLen);
+      int outLen = cryptoSeal(pkt.type, pkt.channel, pkt.sender, pkt.seq,
+                              out, pktLen, 8);
+
       if (destId == 0x0000) {
         // Broadcast: отправить дважды с рандомной задержкой
-        loraSend((uint8_t*)&pkt, pktLen);
+        loraSend(out, outLen);
         loraStartReceive();
         vTaskDelay(pdMS_TO_TICKS(100 + (esp_random() % 200))); // 100-300мс
-        loraSend((uint8_t*)&pkt, pktLen);
+        loraSend(out, outLen);
         loraStartReceive();
       } else {
         // Адресный: отправить один раз (retry на стороне Android)
-        loraSend((uint8_t*)&pkt, pktLen);
+        loraSend(out, outLen);
         loraStartReceive();
       }
       break;

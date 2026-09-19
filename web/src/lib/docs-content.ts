@@ -569,6 +569,11 @@ python3 -m venv .venv
 открытыми — значит позывной и координаты видны постороннему. Об этом честно
 сказано здесь, чтобы вы не рассчитывали на большее, чем есть.
 
+**Если рядом говорят чужим ключом**, приложение об этом скажет: под отпечатком
+появится строка «рядом говорят, но другим ключом». Это главный признак того,
+что фразы разошлись — например, клавиатура добавила пробел в конце. Сверьте
+отпечаток на всех рациях: он совпадает только там, где совпало слово.
+
 **Рация с ключом не слушает открытый эфир.** Если кодовое слово задано, голос и
 сообщения без шифра отбрасываются — в том числе от своих, у кого ключ не
 поставлен или стоит старая прошивка. Иначе достаточно одной такой рации, чтобы
@@ -1357,6 +1362,12 @@ How it works:
 What is encrypted today: **voice and text messages**. Files and beacons still
 travel in the clear, which means call signs and coordinates are visible to an
 outsider. That is stated plainly so you do not count on more than there is.
+
+**If someone nearby uses a different key**, the app says so: a line appears
+under the fingerprint — "someone nearby uses a different key". That is the main
+sign the phrases diverged, for instance because a keyboard added a trailing
+space. Compare the fingerprint on every radio: it matches only where the phrase
+matches.
 
 **A radio with a key does not listen to unencrypted traffic.** Once a passphrase
 is set, unencrypted voice and messages are dropped — including from your own
