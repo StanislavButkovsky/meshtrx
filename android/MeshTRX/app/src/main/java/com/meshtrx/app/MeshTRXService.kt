@@ -767,6 +767,13 @@ class MeshTRXService : Service() {
                     }
                 }
             }
+            BleManager.CMD_CRYPTO_ALIEN -> {
+                if (data.size >= 3) {
+                    val n = ((data[1].toInt() and 0xFF) shl 8) or (data[2].toInt() and 0xFF)
+                    ServiceState.alienPackets.postValue(n)
+                    Log.d(TAG, "Рядом говорят чужим ключом: $n пакетов")
+                }
+            }
             BleManager.CMD_FW_VERSION -> {
                 if (data.size >= 2) {
                     val v = String(data, 1, data.size - 1, Charsets.US_ASCII).trim()

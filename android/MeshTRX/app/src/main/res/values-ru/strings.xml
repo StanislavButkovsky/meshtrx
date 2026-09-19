@@ -214,4 +214,5 @@ MeshTRX v%2$s</string>
     <string name="ver_fw_unknown">Прошивка рации: не сообщает версию (старее 4.4.22)</string>
     <string name="ver_fw_offline">Прошивка рации: рация не подключена</string>
     <string name="ver_unchecked">Последняя версия на сайте пока не проверена</string>
+    <string name="key_alien">Рядом говорят, но другим ключом: %1$d пакетов не разобрано. Сверьте отпечаток на всех рациях</string>
 </resources>

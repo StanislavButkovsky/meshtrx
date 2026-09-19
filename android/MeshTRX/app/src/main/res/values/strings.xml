@@ -214,4 +214,5 @@ MeshTRX v%2$s</string>
     <string name="ver_fw_unknown">Radio firmware: not reported (older than 4.4.22)</string>
     <string name="ver_fw_offline">Radio firmware: radio not connected</string>
     <string name="ver_unchecked">Latest version not checked yet</string>
+    <string name="key_alien">Someone nearby uses a different key: %1$d packets could not be read. Compare the fingerprint on every radio</string>
 </resources>
