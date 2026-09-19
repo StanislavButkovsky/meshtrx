@@ -466,7 +466,11 @@ exists, says "App 4.4.13 is out, you have 4.4.12" and offers a **Download**
 button. It opens the file on the site; the installation itself is still
 confirmed by you in Android — that cannot be bypassed.
 
-The same place shows which firmware your radio runs and which one is out. The
+The firmware version is visible in three places: on the radio's screen at power
+on, in the app's Settings (the "Device" line), and on the repeater page if the
+radio runs as a repeater.
+
+The same place in Settings shows which firmware your radio runs and which one is out. The
 radio reports its own version on connect, starting with 4.4.22; on older
 firmware that line is simply absent — those versions did not know their own
 number.

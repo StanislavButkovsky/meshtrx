@@ -2374,10 +2374,10 @@ void testHookInfo() {
   // id печатаем ровно в том виде, в каком его принимает parseDest: как
   // 16-битное значение little-endian. Раньше печатались байты по порядку,
   // и адрес из INFO, подставленный в TX, попадал в другое устройство.
-  Serial.printf("EVT INFO name=%s cs=%s id=%04X ch=%d freq=%.3f pwr=%d duty=%d "
+  Serial.printf("EVT INFO fw=%s name=%s cs=%s id=%04X ch=%d freq=%.3f pwr=%d duty=%d "
                 "lora_mode=%d ble=%d file_state=%d uptime=%lu boot=%lu heap=%lu "
                 "min_heap=%lu bat=%.2f pm=%d test=%d ptt=%d qaudio=%u\n",
-    bleGetDeviceName().c_str(), beaconGetCallSign(),
+    FW_VERSION, bleGetDeviceName().c_str(), beaconGetCallSign(),
     (unsigned)(senderMac[0] | (senderMac[1] << 8)),
     currentChannel, loraGetFrequency(currentChannel), loraGetTxPower(),
     loraIsDutyCycleEnabled() ? 1 : 0, (int)loraGetPowerMode(),

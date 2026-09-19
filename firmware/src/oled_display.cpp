@@ -1,4 +1,5 @@
 #include "oled_display.h"
+#include "version.h"
 #include <Wire.h>
 
 static U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, OLED_RST, OLED_SCL, OLED_SDA);
@@ -21,8 +22,11 @@ void oledInit() {
   u8g2.begin();
   u8g2.setFont(u8g2_font_6x10_tf);
   u8g2.clearBuffer();
-  u8g2.drawStr(20, 30, "MeshTRX");
-  u8g2.drawStr(20, 45, "Starting...");
+  u8g2.drawStr(20, 26, "MeshTRX");
+  // Версию показываем при включении: спрашивают «где посмотреть прошивку», и
+  // самый очевидный ответ — на самом устройстве, а не только в приложении.
+  u8g2.drawStr(20, 40, FW_VERSION);
+  u8g2.drawStr(20, 54, "Starting...");
   u8g2.sendBuffer();
   oledSleepAt = millis() + OLED_TIMEOUT_MS;
   oledAwake = true;

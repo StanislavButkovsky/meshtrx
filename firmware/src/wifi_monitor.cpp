@@ -1,4 +1,5 @@
 #include "wifi_monitor.h"
+#include "version.h"
 #include "repeater.h"
 #include "lora_radio.h"
 #include <Arduino.h>
@@ -108,6 +109,7 @@ static void handleRoot() {
   }
 
   html += "<table>";
+  html += "<tr><td>Прошивка</td><td class='val'>" + String(FW_VERSION) + "</td></tr>";
   html += "<tr><td>Uptime</td><td class='val'>" + String(hours) + "h " + String(mins) + "m " + String(secs) + "s</td></tr>";
   html += "<tr><td>Channel</td><td class='val'>CH " + String(ch) + " &mdash; " + String(freq, 2) + " MHz</td></tr>";
   html += "<tr><td>TX Power</td><td class='val'>" + String(txPower) + " dBm</td></tr>";
