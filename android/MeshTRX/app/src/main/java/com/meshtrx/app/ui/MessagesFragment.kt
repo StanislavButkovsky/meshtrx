@@ -289,6 +289,10 @@ class MessagesFragment : Fragment() {
 
             // Мета-строка: время + адресат + RSSI + статус доставки
             val rssiStr = msg.rssi?.let { " " + formatRssi(it) } ?: ""
+            // Когда рация слушает и открытый эфир, человек должен видеть, что
+            // именно пришло без шифра — иначе защищённое и нет выглядят одинаково.
+            val openMark = if (msg.encrypted == false &&
+                    !ServiceState.keyFingerprint.value.isNullOrEmpty()) " 🔓" else ""
             val destStr = if (msg.isOutgoing && msg.destName != null) " → ${msg.destName}" else ""
             val statusStr = if (msg.isOutgoing && msg.destId != null) {
                 when (msg.status) {
@@ -301,7 +305,7 @@ class MessagesFragment : Fragment() {
                     else -> ""
                 }
             } else ""
-            holder.tvMeta.text = "${msg.time}$destStr$rssiStr$statusStr"
+            holder.tvMeta.text = "${msg.time}$destStr$rssiStr$openMark$statusStr"
 
             // Цвет статуса
             if (msg.isOutgoing && msg.status == MessageStatus.FAILED) {

@@ -73,6 +73,7 @@ class BleManager(private val context: Context) {
         const val CMD_FW_VERSION = 0x3A
         const val CMD_CRYPTO_ALIEN = 0x3B
         const val CMD_GET_KEY_STATE = 0x3C
+        const val CMD_HEAR_PLAINTEXT = 0x3D
     }
 
     private val bluetoothAdapter: BluetoothAdapter? =
@@ -200,6 +201,10 @@ class BleManager(private val context: Context) {
      *  сама после подключения, но запрос надёжнее: уведомление, посланное до
      *  того, как телефон подписался, теряется. */
     fun requestKeyState() = send(byteArrayOf(CMD_GET_KEY_STATE.toByte()))
+
+    /** Слушать ли открытый эфир, когда ключ задан. */
+    fun setHearPlaintext(on: Boolean) =
+        send(byteArrayOf(CMD_HEAR_PLAINTEXT.toByte(), if (on) 1 else 0))
 
     /** Снять ключ: эфир снова открыт. */
     fun clearKey() = send(byteArrayOf(CMD_SET_KEY.toByte()))

@@ -62,6 +62,8 @@ object ServiceState {
     // Сколько пакетов рядом рация не смогла разобрать своим ключом. Ноль —
     // либо все свои, либо рядом тихо; растёт — значит ключи разошлись.
     val alienPackets = MutableLiveData(0)
+    // Слушает ли рация открытый эфир при заданном ключе
+    val hearPlaintext = MutableLiveData(false)
 
     // Events (one-shot) — UI подписывается
     val showPinDialog = MutableLiveData(false)

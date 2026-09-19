@@ -7,4 +7,4 @@
 // При выпуске поднимается вместе с VERSION.firmware в web/src/lib/constants.ts.
 // Расхождение ловит сборка сайта: gen-latest.mjs сверяет эти два числа и
 // падает, если они разъехались.
-#define FW_VERSION "4.4.27"
+#define FW_VERSION "4.4.28"
