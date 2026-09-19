@@ -784,6 +784,15 @@ static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr) 
   if (cryptoHasKey() && len >= 2 && !(data[1] & PKT_CH_ENCRYPTED) &&
       cryptoHeaderLen(data[0]) >= 0) {
     LOG_F("[Crypto] открытый пакет (type=0x%02X) отброшен: у нас ключ\n", data[0]);
+    static uint16_t plainCount = 0;
+    static uint32_t lastPlainMs = 0;
+    plainCount++;
+    if (millis() - lastPlainMs > 3000) {
+      lastPlainMs = millis();
+      uint8_t msg[3] = { BLE_CMD_CRYPTO_ALIEN,
+                         (uint8_t)(plainCount >> 8), (uint8_t)(plainCount & 0xFF) };
+      bleSendNotify(msg, sizeof(msg));
+    }
     return;
   }
 
@@ -798,6 +807,17 @@ static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr) 
     const uint8_t* sender = (data[0] == PKT_TYPE_AUDIO) ? data + 5 : data + 4;
     int plain = cryptoOpen(data[0], data[1], sender, data[2], data, len, hdr);
     if (plain < 0) {
+      // Сказать телефону: рядом кто-то говорит, но не нашим ключом. Иначе
+      // человек видит тишину и решает, что связь сломалась, хотя она есть.
+      static uint16_t alienCount = 0;
+      static uint32_t lastAlienMs = 0;
+      alienCount++;
+      if (millis() - lastAlienMs > 3000) {
+        lastAlienMs = millis();
+        uint8_t msg[3] = { BLE_CMD_CRYPTO_ALIEN,
+                           (uint8_t)(alienCount >> 8), (uint8_t)(alienCount & 0xFF) };
+        bleSendNotify(msg, sizeof(msg));
+      }
       // Либо ключа нет, либо он чужой. Для человека это «рядом говорят, но не
       // с нами» — важно не тишина, а понятная причина в журнале.
       LOG_F("[Crypto] пакет не расшифрован (type=0x%02X): %s\n", data[0],

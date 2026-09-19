@@ -506,6 +506,12 @@ What is encrypted today: **voice and text messages**. Files and beacons still
 travel in the clear, which means call signs and coordinates are visible to an
 outsider. That is stated plainly so you do not count on more than there is.
 
+**If someone nearby uses a different key**, the app says so: a line appears
+under the fingerprint — "someone nearby uses a different key". That is the main
+sign the phrases diverged, for instance because a keyboard added a trailing
+space. Compare the fingerprint on every radio: it matches only where the phrase
+matches.
+
 **A radio with a key does not listen to unencrypted traffic.** Once a passphrase
 is set, unencrypted voice and messages are dropped — including from your own
 people whose key is missing or whose firmware is older. Otherwise a single such

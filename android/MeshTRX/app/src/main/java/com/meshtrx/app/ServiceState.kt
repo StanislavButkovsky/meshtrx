@@ -59,6 +59,9 @@ object ServiceState {
     // Версия прошивки рации. Пустая строка означает «рация не сказала»: так
     // отвечают устройства до 4.4.22, где версии в прошивке не было вовсе.
     val firmwareVersion = MutableLiveData("")
+    // Сколько пакетов рядом рация не смогла разобрать своим ключом. Ноль —
+    // либо все свои, либо рядом тихо; растёт — значит ключи разошлись.
+    val alienPackets = MutableLiveData(0)
 
     // Events (one-shot) — UI подписывается
     val showPinDialog = MutableLiveData(false)

@@ -106,12 +106,22 @@ class SettingsFragment : Fragment() {
 
         fun showKeyState() {
             val fp = ServiceState.keyFingerprint.value.orEmpty()
-            tvKeyState.text = if (fp.isEmpty()) getString(R.string.key_none)
-                              else getString(R.string.key_set, fp)
-            tvKeyState.setTextColor(if (fp.isEmpty()) 0xFFff9d5c.toInt() else 0xFF4ade80.toInt())
+            val alien = ServiceState.alienPackets.value ?: 0
+            val base = if (fp.isEmpty()) getString(R.string.key_none)
+                       else getString(R.string.key_set, fp)
+            // Отдельная строка про чужой ключ: тишина в эфире и «говорят, но не
+            // нашим ключом» выглядят одинаково, а причина у них разная.
+            tvKeyState.text = if (fp.isNotEmpty() && alien > 0)
+                base + "\n" + getString(R.string.key_alien, alien) else base
+            tvKeyState.setTextColor(when {
+                fp.isEmpty() -> 0xFFff9d5c.toInt()
+                alien > 0 -> 0xFFff9d5c.toInt()
+                else -> 0xFF4ade80.toInt()
+            })
         }
         showKeyState()
         ServiceState.keyFingerprint.observe(viewLifecycleOwner) { showKeyState() }
+        ServiceState.alienPackets.observe(viewLifecycleOwner) { showKeyState() }
 
         v.findViewById<Button>(R.id.btnKeyApply).setOnClickListener {
             if (ServiceState.connectionState.value != BleState.CONNECTED) {

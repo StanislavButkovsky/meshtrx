@@ -71,6 +71,7 @@ class BleManager(private val context: Context) {
         const val CMD_KEY_STATE = 0x38
         const val CMD_GET_FW_VERSION = 0x39
         const val CMD_FW_VERSION = 0x3A
+        const val CMD_CRYPTO_ALIEN = 0x3B
     }
 
     private val bluetoothAdapter: BluetoothAdapter? =
