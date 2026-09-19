@@ -379,6 +379,14 @@ python3 -m venv .venv
 3. Над полем ввода появится **Кому: [имя]**
 4. Сообщение получит только адресат
 
+### Очистка истории
+
+Кнопка с корзиной в строке фильтра удаляет всю переписку с этого телефона.
+Приложение спросит подтверждение и скажет, сколько сообщений будет удалено.
+
+Сообщения хранятся только на вашем телефоне: у собеседников останутся свои
+копии, и вернуть удалённое нельзя.
+
 ### Фильтрация
 
 Используйте выпадающий список фильтра для просмотра сообщений от конкретного абонента или всех.
@@ -573,6 +581,12 @@ python3 -m venv .venv
 появится строка «рядом говорят, но другим ключом». Это главный признак того,
 что фразы разошлись — например, клавиатура добавила пробел в конце. Сверьте
 отпечаток на всех рациях: он совпадает только там, где совпало слово.
+
+**Слышать и открытый эфир.** Если вам нужен и общий незашифрованный чат, и
+разговор со своими под ключом, включите этот переключатель рядом с кодовым
+словом. Открытые сообщения снова станут видны и будут помечены замком — чтобы
+защищённое и незащищённое не выглядели одинаково. По умолчанию переключатель
+выключен, и вот почему:
 
 **Рация с ключом не слушает открытый эфир.** Если кодовое слово задано, голос и
 сообщения без шифра отбрасываются — в том числе от своих, у кого ключ не
@@ -1196,6 +1210,14 @@ At the bottom of the PTT screen there is a scrollable list of recent calls:
 3. **To: [name]** appears above the input field
 4. Only the addressee receives the message
 
+### Clearing the history
+
+The bin button in the filter row deletes the whole conversation from this phone.
+The app asks for confirmation and tells you how many messages will go.
+
+Messages are stored on your phone only: your correspondents keep their copies,
+and deleted ones cannot be recovered.
+
 ### Filtering
 
 Use the filter drop-down to show messages from one particular station or from everyone.
@@ -1368,6 +1390,12 @@ under the fingerprint — "someone nearby uses a different key". That is the mai
 sign the phrases diverged, for instance because a keyboard added a trailing
 space. Compare the fingerprint on every radio: it matches only where the phrase
 matches.
+
+**Also hear unencrypted traffic.** If you need both the open shared chat and
+encrypted conversations with your own group, switch this on next to the
+passphrase. Unencrypted messages become visible again and are marked with a lock
+so that protected and unprotected do not look alike. It is off by default, and
+here is why:
 
 **A radio with a key does not listen to unencrypted traffic.** Once a passphrase
 is set, unencrypted voice and messages are dropped — including from your own

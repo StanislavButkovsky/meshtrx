@@ -218,4 +218,8 @@ MeshTRX v%2$s</string>
     <string name="hear_plain">Also hear unencrypted traffic</string>
     <string name="hear_plain_on">Unencrypted messages are visible again and marked with a lock. Remember: anyone can hear them</string>
     <string name="hear_plain_off">Unencrypted traffic is ignored — only your own, under the key</string>
+    <string name="clear_chat">Clear chat history</string>
+    <string name="clear_chat_confirm">Delete the whole conversation from this phone? Messages are stored here only; your correspondents keep theirs. %1$d will be deleted.</string>
+    <string name="clear_chat_done">History cleared</string>
+    <string name="clear_chat_empty">History is already empty</string>
 </resources>

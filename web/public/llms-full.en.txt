@@ -1,6 +1,6 @@
 # MeshTRX — full documentation
 
-> App 4.4.17, firmware 4.4.27, updated 2026-09-19. Source: https://meshtrx.ru/docs/
+> App 4.4.19, firmware 4.4.28, updated 2026-09-20. Source: https://meshtrx.ru/docs/
 
 ---
 
@@ -345,6 +345,14 @@ At the bottom of the PTT screen there is a scrollable list of recent calls:
 3. **To: [name]** appears above the input field
 4. Only the addressee receives the message
 
+### Clearing the history
+
+The bin button in the filter row deletes the whole conversation from this phone.
+The app asks for confirmation and tells you how many messages will go.
+
+Messages are stored on your phone only: your correspondents keep their copies,
+and deleted ones cannot be recovered.
+
 ### Filtering
 
 Use the filter drop-down to show messages from one particular station or from everyone.
@@ -517,6 +525,12 @@ under the fingerprint — "someone nearby uses a different key". That is the mai
 sign the phrases diverged, for instance because a keyboard added a trailing
 space. Compare the fingerprint on every radio: it matches only where the phrase
 matches.
+
+**Also hear unencrypted traffic.** If you need both the open shared chat and
+encrypted conversations with your own group, switch this on next to the
+passphrase. Unencrypted messages become visible again and are marked with a lock
+so that protected and unprotected do not look alike. It is off by default, and
+here is why:
 
 **A radio with a key does not listen to unencrypted traffic.** Once a passphrase
 is set, unencrypted voice and messages are dropped — including from your own
