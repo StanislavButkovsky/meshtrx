@@ -207,4 +207,11 @@ MeshTRX v%2$s</string>
     <string name="update_fw">Для рации есть прошивка %1$s, у вас %2$s — обновляется с компьютера по кабелю</string>
     <string name="update_offline">Сайт недоступен — проверьте, есть ли интернет</string>
     <string name="device_firmware">, прошивка %1$s</string>
+    <string name="ver_app_ok">Приложение %1$s · последняя версия</string>
+    <string name="ver_app_old">Приложение %1$s · вышло %2$s</string>
+    <string name="ver_fw_ok">Прошивка рации %1$s · последняя версия</string>
+    <string name="ver_fw_old">Прошивка рации %1$s · вышла %2$s, шьётся с компьютера</string>
+    <string name="ver_fw_unknown">Прошивка рации: не сообщает версию (старее 4.4.22)</string>
+    <string name="ver_fw_offline">Прошивка рации: рация не подключена</string>
+    <string name="ver_unchecked">Последняя версия на сайте пока не проверена</string>
 </resources>

@@ -5,6 +5,7 @@ import android.view.*
 import android.widget.*
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
+import com.meshtrx.app.LatestVersions
 import com.meshtrx.app.UpdateChecker
 import com.meshtrx.app.BuildConfig
 import androidx.fragment.app.Fragment
@@ -392,52 +393,78 @@ class SettingsFragment : Fragment() {
 
         // === Обновления ===
         val tvUpdate = v.findViewById<TextView>(R.id.tvUpdate)
+        val tvUpdateApp = v.findViewById<TextView>(R.id.tvUpdateApp)
+        val tvUpdateFw = v.findViewById<TextView>(R.id.tvUpdateFw)
         val btnUpdateGet = v.findViewById<Button>(R.id.btnUpdateGet)
         var latestUrl: String? = null
+        var lastLatest: LatestVersions? = null
+        val colorOk = 0xFF888888.toInt()
+        val colorNew = 0xFF4ade80.toInt()
+
+        // Две отдельные строки: приложение и прошивка обновляются по-разному —
+        // приложение кнопкой, прошивка кабелем, — и человеку нужно видеть
+        // состояние каждой, а не одну строку про «версию».
+        fun showVersions(latest: LatestVersions?) {
+            val myFw = ServiceState.firmwareVersion.value
+            if (latest == null) {
+                tvUpdateApp.text = getString(R.string.ver_app_ok, BuildConfig.VERSION_NAME)
+                tvUpdateApp.setTextColor(colorOk)
+                tvUpdateFw.text = when {
+                    !myFw.isNullOrBlank() -> getString(R.string.ver_fw_ok, myFw)
+                    ServiceState.connectionState.value == BleState.CONNECTED ->
+                        getString(R.string.ver_fw_unknown)
+                    else -> getString(R.string.ver_fw_offline)
+                }
+                tvUpdateFw.setTextColor(colorOk)
+                return
+            }
+
+            val appOld = latest.appCode > BuildConfig.VERSION_CODE
+            tvUpdateApp.text = if (appOld)
+                getString(R.string.ver_app_old, BuildConfig.VERSION_NAME, latest.appVersion)
+            else getString(R.string.ver_app_ok, BuildConfig.VERSION_NAME)
+            tvUpdateApp.setTextColor(if (appOld) colorNew else colorOk)
+
+            val fwOld = UpdateChecker.firmwareOlder(myFw, latest.firmwareVersion)
+            tvUpdateFw.text = when {
+                myFw.isNullOrBlank() && ServiceState.connectionState.value != BleState.CONNECTED ->
+                    getString(R.string.ver_fw_offline)
+                myFw.isNullOrBlank() -> getString(R.string.ver_fw_unknown)
+                fwOld -> getString(R.string.ver_fw_old, myFw, latest.firmwareVersion)
+                else -> getString(R.string.ver_fw_ok, myFw)
+            }
+            tvUpdateFw.setTextColor(if (fwOld) colorNew else colorOk)
+
+            latestUrl = if (appOld) latest.appUrl else null
+            btnUpdateGet.visibility = if (appOld) View.VISIBLE else View.GONE
+        }
 
         fun checkUpdates(byHand: Boolean) {
-            if (byHand) tvUpdate.text = getString(R.string.update_checking)
+            if (byHand) tvUpdateApp.text = getString(R.string.update_checking)
             viewLifecycleOwner.lifecycleScope.launch {
                 val latest = UpdateChecker.fetch()
                 if (!isAdded) return@launch
                 if (latest == null) {
                     // Молчим при автопроверке: рация нужна там, где сети нет, и
                     // ругаться на её отсутствие в каждом запуске незачем.
-                    if (byHand) tvUpdate.text = getString(R.string.update_offline)
+                    showVersions(null)
+                    if (byHand) tvUpdate.apply {
+                        visibility = View.VISIBLE
+                        text = getString(R.string.update_offline)
+                    }
                     return@launch
                 }
-                val myCode = BuildConfig.VERSION_CODE
-                val myFirmware = ServiceState.firmwareVersion.value
-                val fwOld = UpdateChecker.firmwareOlder(myFirmware, latest.firmwareVersion)
-                when {
-                    latest.appCode > myCode -> {
-                        tvUpdate.text = getString(R.string.update_app,
-                            latest.appVersion, BuildConfig.VERSION_NAME)
-                        tvUpdate.setTextColor(0xFF4ade80.toInt())
-                        latestUrl = latest.appUrl
-                        btnUpdateGet.visibility = View.VISIBLE
-                    }
-                    // Прошивка отдельно: её не скачаешь кнопкой, она шьётся с
-                    // компьютера, поэтому здесь только предупреждение.
-                    fwOld -> {
-                        tvUpdate.text = getString(R.string.update_fw,
-                            latest.firmwareVersion, myFirmware)
-                        tvUpdate.setTextColor(0xFF4ade80.toInt())
-                        btnUpdateGet.visibility = View.GONE
-                    }
-                    else -> {
-                        tvUpdate.text = getString(R.string.update_none,
-                            BuildConfig.VERSION_NAME,
-                            myFirmware?.takeIf { it.isNotBlank() } ?: latest.firmwareVersion)
-                        tvUpdate.setTextColor(0xFF888888.toInt())
-                        btnUpdateGet.visibility = View.GONE
-                    }
-                }
+                showVersions(latest)
+                lastLatest = latest
                 requireContext()
                     .getSharedPreferences("updates", android.content.Context.MODE_PRIVATE)
                     .edit().putLong("lastCheck", System.currentTimeMillis()).apply()
             }
         }
+
+        showVersions(null)
+        ServiceState.firmwareVersion.observe(viewLifecycleOwner) { showVersions(lastLatest) }
+        ServiceState.connectionState.observe(viewLifecycleOwner) { showVersions(lastLatest) }
 
         v.findViewById<Button>(R.id.btnUpdateCheck).setOnClickListener { checkUpdates(true) }
         btnUpdateGet.setOnClickListener {

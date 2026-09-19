@@ -207,4 +207,11 @@ MeshTRX v%2$s</string>
     <string name="update_fw">Firmware %1$s is available, you have %2$s — flashed from a computer over cable</string>
     <string name="update_offline">Site unreachable — check your internet connection</string>
     <string name="device_firmware">, firmware %1$s</string>
+    <string name="ver_app_ok">App %1$s · up to date</string>
+    <string name="ver_app_old">App %1$s · %2$s released</string>
+    <string name="ver_fw_ok">Radio firmware %1$s · up to date</string>
+    <string name="ver_fw_old">Radio firmware %1$s · %2$s released, flashed from a computer</string>
+    <string name="ver_fw_unknown">Radio firmware: not reported (older than 4.4.22)</string>
+    <string name="ver_fw_offline">Radio firmware: radio not connected</string>
+    <string name="ver_unchecked">Latest version not checked yet</string>
 </resources>
