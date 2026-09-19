@@ -744,6 +744,12 @@ class MeshTRXService : Service() {
                     if (textEnd + 2 < data.size) {
                         senderId = String.format("%02X%02X", data[textEnd + 1].toInt() and 0xFF, data[textEnd + 2].toInt() and 0xFF)
                     }
+                    // Последний байт (если он есть) говорит, было ли сообщение
+                    // зашифровано. Старые прошивки его не шлют — тогда пометки
+                    // просто нет, и это честнее, чем угадывать.
+                    val encrypted = if (textEnd + 3 < data.size)
+                        data[textEnd + 3].toInt() == 1 else null
+
                     // Найти позывной отправителя из peers
                     val senderName = ServiceState.peers.value
                         ?.find { it.deviceId.endsWith(senderId) }?.callSign ?: "TX-$senderId"
@@ -755,7 +761,8 @@ class MeshTRXService : Service() {
                         rssi = rssiVal, status = MessageStatus.DELIVERED,
                         time = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
                             .format(java.util.Date()),
-                        timeMs = now
+                        timeMs = now,
+                        encrypted = encrypted
                     )
                     val list = ServiceState.messages.value?.toMutableList() ?: mutableListOf()
                     list.add(msg)
@@ -786,6 +793,9 @@ class MeshTRXService : Service() {
                     val has = data[1].toInt() == 1
                     val fp = String(data, 2, 4, Charsets.US_ASCII)
                     ServiceState.keyFingerprint.postValue(if (has) fp else "")
+                    if (data.size >= 7) {
+                        ServiceState.hearPlaintext.postValue(data[6].toInt() == 1)
+                    }
                     Log.d(TAG, "Ключ канала: ${if (has) "есть, отпечаток $fp" else "снят"}")
                 }
             }

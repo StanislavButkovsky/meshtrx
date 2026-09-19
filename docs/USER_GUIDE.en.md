@@ -512,6 +512,12 @@ sign the phrases diverged, for instance because a keyboard added a trailing
 space. Compare the fingerprint on every radio: it matches only where the phrase
 matches.
 
+**Also hear unencrypted traffic.** If you need both the open shared chat and
+encrypted conversations with your own group, switch this on next to the
+passphrase. Unencrypted messages become visible again and are marked with a lock
+so that protected and unprotected do not look alike. It is off by default, and
+here is why:
+
 **A radio with a key does not listen to unencrypted traffic.** Once a passphrase
 is set, unencrypted voice and messages are dropped — including from your own
 people whose key is missing or whose firmware is older. Otherwise a single such

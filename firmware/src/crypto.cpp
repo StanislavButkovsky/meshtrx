@@ -18,6 +18,7 @@ static char     fingerprint[5] = "----";
 // восьмибитный и обходит круг за двадцать секунд речи; если бы номер пакета
 // был единственным, что меняется, поток шифровался бы одной и той же гаммой
 // по кругу — а это раскрывает содержимое без всякого ключа.
+static bool hearPlain = false;
 static uint16_t epoch = 0;
 static uint8_t  lastSeq = 0;
 static uint16_t epochReserve = 0;   // сколько оборотов счётчика ещё покрыто
@@ -65,6 +66,7 @@ void cryptoInit() {
   uint8_t key[CRYPTO_KEY_LEN];
   size_t got = prefs.getBytes("key", key, sizeof(key));
   uint16_t stored = prefs.getUShort("epoch", 0);
+  hearPlain = prefs.getBool("hearplain", false);
   prefs.end();
 
   epoch = stored + 1;
@@ -81,6 +83,16 @@ void cryptoInit() {
 }
 
 bool cryptoHasKey() { return haveKey; }
+bool cryptoHearsPlaintext() { return hearPlain; }
+
+void cryptoSetHearPlaintext(bool on) {
+  hearPlain = on;
+  Preferences prefs;
+  prefs.begin("crypto", false);
+  prefs.putBool("hearplain", on);
+  prefs.end();
+  LOG_F("[Crypto] открытый эфир: %s\n", on ? "слушаем" : "не слушаем");
+}
 const char* cryptoKeyFingerprint() { return haveKey ? fingerprint : "----"; }
 
 static int hexVal(char c) {

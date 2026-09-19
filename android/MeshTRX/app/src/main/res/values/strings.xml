@@ -215,4 +215,7 @@ MeshTRX v%2$s</string>
     <string name="ver_fw_offline">Radio firmware: radio not connected</string>
     <string name="ver_unchecked">Latest version not checked yet</string>
     <string name="key_alien">Someone nearby uses a different key: %1$d packets could not be read. Compare the fingerprint on every radio</string>
+    <string name="hear_plain">Also hear unencrypted traffic</string>
+    <string name="hear_plain_on">Unencrypted messages are visible again and marked with a lock. Remember: anyone can hear them</string>
+    <string name="hear_plain_off">Unencrypted traffic is ignored — only your own, under the key</string>
 </resources>

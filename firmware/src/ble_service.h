@@ -64,6 +64,7 @@
 // тишину и не может отличить «никого нет» от «ключи разошлись».
 #define BLE_CMD_CRYPTO_ALIEN       0x3B  // [сколько таких пакетов подряд]
 #define BLE_CMD_GET_KEY_STATE      0x3C  // телефон→ESP: есть ли ключ и какой отпечаток
+#define BLE_CMD_HEAR_PLAINTEXT     0x3D  // телефон→ESP: [0/1] слушать ли открытый эфир
 // UPLOAD_STATUS values: 0=ACCEPTED, 1=BUSY, 2=SENDING, 3=DELIVERED, 4=FAILED, 5=NO_MEMORY
 
 extern bool bleConnected;

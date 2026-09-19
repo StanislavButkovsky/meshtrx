@@ -307,12 +307,21 @@ static void handleLine(char* line) {
   if (strcmp(cmd, "KEY") == 0) {
     char* arg = nextTok(&p);
     if (!arg) {
-      evt("EVT KEY has=%d fp=%s\n", cryptoHasKey() ? 1 : 0, cryptoKeyFingerprint());
+      evt("EVT KEY has=%d fp=%s plain=%d\n", cryptoHasKey() ? 1 : 0,
+          cryptoKeyFingerprint(), cryptoHearsPlaintext() ? 1 : 0);
       return;
     }
     if (strcasecmp(arg, "OFF") == 0) {
       cryptoClearKey();
       evt("EVT KEY has=0 fp=----\n");
+      return;
+    }
+    if (strcasecmp(arg, "PLAIN") == 0) {
+      char* v = nextTok(&p);
+      bool on = v && (strcasecmp(v, "ON") == 0 || strcmp(v, "1") == 0);
+      cryptoSetHearPlaintext(on);
+      evt("EVT KEY has=%d fp=%s plain=%d\n", cryptoHasKey() ? 1 : 0,
+          cryptoKeyFingerprint(), cryptoHearsPlaintext() ? 1 : 0);
       return;
     }
     if (strcasecmp(arg, "PASS") == 0) {

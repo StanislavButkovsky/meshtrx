@@ -777,13 +777,14 @@ static int cryptoHeaderLen(uint8_t type) {
 
 static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr) {
   if (len < 1) return;
+  bool wasEncrypted = (len >= 2) && (data[1] & PKT_CH_ENCRYPTED);
 
   // Ключ задан — значит открытым словам в эфире веры нет. Иначе достаточно
   // одной рации без ключа или со старой прошивкой, чтобы разговор шёл мимо
   // шифрования, а человек считал, что он закрыт. Защита, которая работает
   // через раз, опаснее её отсутствия: на неё рассчитывают.
-  if (cryptoHasKey() && len >= 2 && !(data[1] & PKT_CH_ENCRYPTED) &&
-      cryptoHeaderLen(data[0]) >= 0) {
+  if (cryptoHasKey() && !cryptoHearsPlaintext() && len >= 2 &&
+      !(data[1] & PKT_CH_ENCRYPTED) && cryptoHeaderLen(data[0]) >= 0) {
     LOG_F("[Crypto] открытый пакет (type=0x%02X) отброшен: у нас ключ\n", data[0]);
     static uint16_t plainCount = 0;
     static uint32_t lastPlainMs = 0;
@@ -923,7 +924,11 @@ static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr) 
       memcpy(bleData + 2, pkt->text, textLen);
       bleData[2 + textLen] = 0;
       memcpy(bleData + 2 + textLen + 1, pkt->sender, 2);
-      bleSendNotify(bleData, 2 + textLen + 1 + 2);
+      // Последним байтом — было ли сообщение зашифровано. Когда рация слушает
+      // и открытый эфир, человек должен видеть разницу: иначе незащищённое
+      // сообщение ничем не отличается от защищённого.
+      bleData[2 + textLen + 3] = wasEncrypted ? 1 : 0;
+      bleSendNotify(bleData, 2 + textLen + 1 + 2 + 1);
 
       // OLED: показать первые 16 символов
       char msgPreview[22];
@@ -1567,10 +1572,11 @@ static void bleTaskFunc(void* param) {
 // просто не поймёт код и пропустит — старые версии приложения от этого не
 // ломаются.
 static void sendKeyState() {
-  uint8_t msg[6];
+  uint8_t msg[7];
   msg[0] = BLE_CMD_KEY_STATE;
   msg[1] = cryptoHasKey() ? 1 : 0;
   memcpy(msg + 2, cryptoKeyFingerprint(), 4);
+  msg[6] = cryptoHearsPlaintext() ? 1 : 0;
   bleSendNotify(msg, sizeof(msg));
 }
 
@@ -1852,6 +1858,13 @@ static void handleBleData(uint8_t* data, size_t len) {
 
     case BLE_CMD_GET_FW_VERSION: {
       sendFirmwareVersion();
+      break;
+    }
+
+    case BLE_CMD_HEAR_PLAINTEXT: {
+      if (len < 2) break;
+      cryptoSetHearPlaintext(data[1] != 0);
+      sendKeyState();
       break;
     }
 

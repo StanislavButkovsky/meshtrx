@@ -129,6 +129,28 @@ class SettingsFragment : Fragment() {
         ServiceState.keyFingerprint.observe(viewLifecycleOwner) { showKeyState() }
         ServiceState.alienPackets.observe(viewLifecycleOwner) { showKeyState() }
 
+        // Выбор человека, а не наше решение за него: кому-то нужен и общий
+        // открытый чат, и свои под ключом. Но открытые сообщения помечаются,
+        // чтобы защищённое и незащищённое не выглядели одинаково.
+        val switchHearPlain = v.findViewById<SwitchMaterial>(R.id.switchHearPlain)
+        var hearPlainInit = false
+        ServiceState.hearPlaintext.observe(viewLifecycleOwner) { on ->
+            hearPlainInit = true
+            if (switchHearPlain.isChecked != on) switchHearPlain.isChecked = on
+        }
+        switchHearPlain.setOnCheckedChangeListener { _, on ->
+            if (!hearPlainInit) return@setOnCheckedChangeListener
+            if (ServiceState.connectionState.value != BleState.CONNECTED) {
+                Toast.makeText(requireContext(), getString(R.string.disconnected),
+                    Toast.LENGTH_SHORT).show()
+                return@setOnCheckedChangeListener
+            }
+            service?.bleManager?.setHearPlaintext(on)
+            Toast.makeText(requireContext(),
+                getString(if (on) R.string.hear_plain_on else R.string.hear_plain_off),
+                Toast.LENGTH_LONG).show()
+        }
+
         v.findViewById<Button>(R.id.btnKeyApply).setOnClickListener {
             if (ServiceState.connectionState.value != BleState.CONNECTED) {
                 Toast.makeText(requireContext(), getString(R.string.disconnected),
