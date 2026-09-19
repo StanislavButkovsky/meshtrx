@@ -339,6 +339,14 @@ At the bottom of the PTT screen there is a scrollable list of recent calls:
 3. **To: [name]** appears above the input field
 4. Only the addressee receives the message
 
+### Clearing the history
+
+The bin button in the filter row deletes the whole conversation from this phone.
+The app asks for confirmation and tells you how many messages will go.
+
+Messages are stored on your phone only: your correspondents keep their copies,
+and deleted ones cannot be recovered.
+
 ### Filtering
 
 Use the filter drop-down to show messages from one particular station or from everyone.

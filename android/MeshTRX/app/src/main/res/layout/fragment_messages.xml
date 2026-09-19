@@ -29,6 +29,16 @@
             android:layout_marginStart="8dp"
             android:background="#1a1a1a"
             android:popupBackground="#1a1a1a" />
+
+        <!-- Очистка истории стоит здесь, а не в настройках: её ищут там, где
+             читают переписку. -->
+        <ImageButton android:id="@+id/btnClearChat"
+            android:layout_width="40dp"
+            android:layout_height="36dp"
+            android:src="@android:drawable/ic_menu_delete"
+            android:background="?android:attr/selectableItemBackground"
+            android:scaleType="centerInside"
+            android:contentDescription="@string/clear_chat" />
     </LinearLayout>
 
     <!-- Список сообщений -->

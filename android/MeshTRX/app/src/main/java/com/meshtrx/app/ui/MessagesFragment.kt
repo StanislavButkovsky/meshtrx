@@ -117,6 +117,27 @@ class MessagesFragment : Fragment() {
         }
 
         // Фильтр
+        v.findViewById<ImageButton>(R.id.btnClearChat).setOnClickListener {
+            val count = ServiceState.messages.value?.size ?: 0
+            if (count == 0) {
+                Toast.makeText(requireContext(), getString(R.string.clear_chat_empty),
+                    Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            // Спрашиваем обязательно: переписку не вернуть, а хранится она
+            // только на этом телефоне — у собеседников своя копия останется.
+            androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setMessage(getString(R.string.clear_chat_confirm, count))
+                .setPositiveButton(getString(R.string.clear_chat)) { _, _ ->
+                    ServiceState.messages.value = emptyList()
+                    service?.saveMessages()
+                    Toast.makeText(requireContext(), getString(R.string.clear_chat_done),
+                        Toast.LENGTH_SHORT).show()
+                }
+                .setNegativeButton(getString(R.string.cancel), null)
+                .show()
+        }
+
         setupFilter(spinnerFilter)
 
         // Observers
