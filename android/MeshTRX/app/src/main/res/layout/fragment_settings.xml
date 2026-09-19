@@ -267,10 +267,21 @@
         <!-- ОБНОВЛЕНИЕ. Из группы: «чтобы не бегать каждый раз на сайт».
              Приложение само спрашивает у сайта, что вышло, и открывает ссылку;
              саму установку Android всё равно подтверждает у человека. -->
-        <TextView android:id="@+id/tvUpdate"
+        <!-- Две строки, а не одна: человеку нужно понимать отдельно, актуально
+             ли приложение и актуальна ли прошивка на самой рации. Раньше они
+             стояли вместе и читались как одна версия. -->
+        <TextView android:id="@+id/tvUpdateApp"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:textSize="12sp" android:textColor="#888888"
             android:layout_marginTop="12dp" />
+        <TextView android:id="@+id/tvUpdateFw"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:textSize="12sp" android:textColor="#888888"
+            android:layout_marginTop="2dp" />
+        <TextView android:id="@+id/tvUpdate"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:textSize="12sp" android:textColor="#888888"
+            android:layout_marginTop="2dp" android:visibility="gone" />
         <LinearLayout
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:orientation="horizontal" android:layout_marginBottom="8dp">
