@@ -72,6 +72,7 @@ class BleManager(private val context: Context) {
         const val CMD_GET_FW_VERSION = 0x39
         const val CMD_FW_VERSION = 0x3A
         const val CMD_CRYPTO_ALIEN = 0x3B
+        const val CMD_GET_KEY_STATE = 0x3C
     }
 
     private val bluetoothAdapter: BluetoothAdapter? =
@@ -194,6 +195,11 @@ class BleManager(private val context: Context) {
     /** Спросить версию прошивки. Рация называет её и сама при подключении,
      *  но старая прошивка этого не умеет — тогда спрашиваем явно. */
     fun requestFirmwareVersion() = send(byteArrayOf(CMD_GET_FW_VERSION.toByte()))
+
+    /** Спросить, задан ли ключ и какой у него отпечаток. Рация говорит это и
+     *  сама после подключения, но запрос надёжнее: уведомление, посланное до
+     *  того, как телефон подписался, теряется. */
+    fun requestKeyState() = send(byteArrayOf(CMD_GET_KEY_STATE.toByte()))
 
     /** Снять ключ: эфир снова открыт. */
     fun clearKey() = send(byteArrayOf(CMD_SET_KEY.toByte()))
