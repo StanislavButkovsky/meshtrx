@@ -69,13 +69,27 @@ class SettingsFragment : Fragment() {
                     Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            val ch = spinnerChannel.selectedItemPosition
+            // Канал спрашиваем отдельным списком, а не берём из выбора выше.
+            // Выбор в том списке переключает нашу рацию сразу же — она уходит
+            // с общего канала, и команда «всем перейти» улетает туда, где
+            // никого нет. Со стороны это выглядело как «кнопка не работает».
+            val current = ServiceState.currentChannel.value ?: 0
+            val items = (0..22).map { i ->
+                "CH %d — %.2f MHz%s".format(i, 863.150 + i * 0.300,
+                    if (i == current) " " + getString(R.string.channel_now) else "")
+            }.toTypedArray()
             androidx.appcompat.app.AlertDialog.Builder(requireContext())
-                .setMessage(getString(R.string.channel_all_confirm, ch))
-                .setPositiveButton("OK") { _, _ ->
-                    service?.bleManager?.setChannelForAll(ch)
-                    Toast.makeText(requireContext(), getString(R.string.channel_all_sent),
-                        Toast.LENGTH_LONG).show()
+                .setTitle(getString(R.string.channel_all))
+                .setItems(items) { _, ch ->
+                    androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                        .setMessage(getString(R.string.channel_all_confirm, ch))
+                        .setPositiveButton("OK") { _, _ ->
+                            service?.bleManager?.setChannelForAll(ch)
+                            Toast.makeText(requireContext(),
+                                getString(R.string.channel_all_sent), Toast.LENGTH_LONG).show()
+                        }
+                        .setNegativeButton(getString(R.string.cancel), null)
+                        .show()
                 }
                 .setNegativeButton(getString(R.string.cancel), null)
                 .show()
