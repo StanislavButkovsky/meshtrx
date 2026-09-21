@@ -20,6 +20,118 @@ export interface Article {
 // сортировки, которая молча переставит статьи, если в дате опечатка.
 export const ARTICLES: Article[] = [
   {
+    slug: 'button-that-pretended-to-work',
+    date: '2026-09-21',
+    title: {
+      ru: 'Кнопка, которая делала вид, что работает',
+      en: 'The button that pretended to work',
+    },
+    summary: {
+      ru: 'Три жалобы из группы подряд — и ни одной ошибки в радио. Разбор ошибок, которые живут на стыке прошивки и интерфейса: команда, не уходившая в эфир, значок, читавшийся наоборот, и ложная тревога, устроенная собственной проверкой.',
+      en: 'Three complaints in a row, and not one of them a radio bug. A look at the errors that live at the seam between firmware and interface: a command that never went on the air, an icon that read backwards, and a false alarm caused by the test itself.',
+    },
+    body: {
+      ru: `Три сентябрьские жалобы из группы подряд оказались об одном и том же, хотя выглядели по-разному: «не работает смена канала у всех», «замок на сообщении сбивает с толку», «рация приняла, а в приложении пусто». Ни одна из них не была ошибкой радио. Все три жили в том промежутке, где устройство и человек понимают происходящее по-разному — и все три спокойно прошли бы любой автоматический тест.
+
+## Кнопка, которая делала вид
+
+«Не смог сменить канал у всех нод. Эта функция как-то связана с шифрованием?» — а следом второе сообщение: «кстати, да, у меня это не работает».
+
+Связана она была не с шифрованием. В прошивке стояла проверка, которая выглядит образцом здравого смысла: если запрошенный канал совпадает с текущим — делать нечего, выходим. Для одиночной рации это верно. Но команда «сменить у всех» адресована не себе, а соседям, и её нужно отправить в эфир независимо от того, где стоишь сам.
+
+Добил ситуацию интерфейс. В приложении выбор канала переводит свою рацию сразу же. То есть человек сначала выбирает нужный канал — рация переходит, — а потом жмёт «сменить у всех», уже стоя на этом канале. Ровно то состояние, при котором прошивка считала, что делать нечего. Команда не уходила никогда. Не иногда, не при плохом сигнале — никогда.
+
+Поучительно здесь то, что каждая половина по отдельности разумна. Прошивка не хотела лишней работы. Приложение не хотело заставлять человека дважды подтверждать выбор. Ошибка возникла на стыке, а стык — это ровно то место, которого не видно, пока смотришь на одну сторону.
+
+Теперь совпадение канала отменяет только собственный переход, но не рассылку, а кнопка в приложении открывает отдельный список каналов с пометкой, где рация стоит сейчас.
+
+## Замок, который читался наоборот
+
+Когда на рации задан ключ, она по умолчанию не слушает открытый эфир. Это осознанный выбор: одна рация без ключа сводит шифрование на нет, а люди при этом считают разговор закрытым. Но иногда открытый эфир нужен, поэтому появился переключатель — и вместе с ним пометка у сообщений, пришедших без шифра. Пометкой был открытый замок.
+
+«Замочек на сообщениях из открытых чатов лучше сменить, кажется, что он закрыт и сообщение зашифровано».
+
+В списке сообщений значок ростом в строку — это несколько пикселей. Открытый замок от закрытого отличается дужкой, и в этом размере дужку просто не видно. Хуже того, замок рядом с сообщением вообще воспринимается как знак качества: раз есть замок — значит защищено. Значок сказал ровно противоположное тому, что имелось в виду.
+
+Заменили словами: «без шифра». Двенадцать символов вместо иконки, зато догадываться не надо.
+
+## Ложная тревога, которую устроил себе я
+
+Третья история — про проверку, а не про продукт, и поэтому она здесь.
+
+Проверяя новую пометку, я отправил с одной платы открытое сообщение на другую. Журнал приёма показал: пакет принят, разобран, текст целый. В приложении — ничего. Полчаса ушло на поиски обрыва в цепочке «рация — Bluetooth — телефон»: длина пакета, новый байт в конце, разбор на стороне приложения.
+
+Обрыва не было. В проверке я указал адрес получателя FFFF, по привычке из других протоколов, где это широковещательный адрес. В MeshTRX широковещательный адрес — нули. Рация честно посмотрела: сообщение не мне и не всем, — и выбросила его. Всё работало правильно, неправильным был тест.
+
+Вывод скучный, но его стоит повторять: прежде чем искать ошибку в системе, проверьте инструмент, которым вы её ищете.
+
+## Почему стенд этого не ловит
+
+У проекта есть стенд: две платы, телефон, около шестидесяти проверок. Он находит многое и экономит часы. Ни одну из трёх историй выше он бы не нашёл.
+
+Причина у всех трёх общая. Стенд ходит к прошивке своими путями — через команды тестовой консоли, а не через приложение. Пути похожи, но не совпадают. Однажды это обошлось особенно дорого: текст с телефона несколько дней уходил в эфир без шифрования, потому что у отправки текста два пути — через очередь и напрямую, — стенд ходил очередью, шифрование было включено только там, а телефон слал напрямую. Люди писали, что с ключом связь не работает, а на стенде всё было зелёным.
+
+Стенд отвечает на вопрос «работает ли то, что мы задумали». Он не отвечает на вопрос «то ли мы задумали» и уж точно не на вопрос «поймёт ли это человек».
+
+## Что помогает
+
+Живое устройство под рукой. С тех пор как к проверкам добавился настоящий телефон, с которого можно снять изображение экрана и прочитать, что там написано словами, ошибки этого класса стали находиться за минуты: у сообщения либо есть подпись «без шифра», либо её нет, и спорить не о чем.
+
+И группа. «Не работает» проверить нельзя, а «не смог сменить канал у всех, у меня одна нода с шифрованием, другая открытая» — можно, и это заняло двадцать минут вместе с выпуском. Половина ценности сообщения из группы не в жалобе, а в подробностях вокруг неё.
+
+Что рация умеет сегодня — в [документации](/docs/). Что в работе и что отложено — на [странице проекта](/about/). Наблюдения из эфира всегда ждём в [группе Telegram](https://t.me/MeshTRX).`,
+      en: `Three complaints from the group in a row turned out to be about the same thing, though they looked different: "changing the channel for everyone does not work", "the lock icon on messages is confusing", "the radio received it but the app shows nothing". None of them was a radio bug. All three lived in the gap where the device and the person understand the situation differently — and all three would have sailed through any automated test.
+
+## The button that pretended to work
+
+"Could not change the channel on all nodes. Is this function somehow tied to encryption?" — followed by a second message: "same here, it does not work for me either".
+
+It was not tied to encryption. The firmware had a check that looks like plain common sense: if the requested channel equals the current one, there is nothing to do, so return. For a single radio that is true. But the "change for everyone" command is addressed to the neighbours, not to yourself, and it has to go on the air regardless of where you happen to be standing.
+
+The interface finished the job. In the app, picking a channel moves your own radio immediately. So the person first picks the channel — the radio moves — and then presses "change for everyone" while already sitting on that channel. Exactly the state in which the firmware decided there was nothing to do. The command never went out. Not sometimes, not in poor signal — never.
+
+The instructive part is that each half is sensible on its own. The firmware avoided pointless work. The app avoided making the user confirm the same choice twice. The bug appeared at the seam, and a seam is precisely what you cannot see while looking at one side of it.
+
+Now a matching channel cancels only your own hop, not the broadcast, and the button in the app opens its own channel list marking where the radio currently stands.
+
+## The lock that read backwards
+
+When a key is set, the radio ignores unencrypted traffic by default. That is deliberate: a single radio without a key defeats encryption entirely while everyone still believes the conversation is private. Sometimes you do want the open air, though, so a switch appeared — and with it a marker on messages that arrived unencrypted. The marker was an open padlock.
+
+"The little lock on messages from open chats should be changed — it looks closed, as if the message were encrypted."
+
+In a message list an icon the height of a line is a few pixels. An open padlock differs from a closed one by the shackle, and at that size the shackle is simply invisible. Worse, a padlock next to a message reads as a badge of quality: there is a lock, so it must be protected. The icon said the exact opposite of what was meant.
+
+We replaced it with words: "unencrypted". Eleven characters instead of an icon, and nothing left to guess.
+
+## A false alarm I set off myself
+
+The third story is about the test, not the product, which is why it belongs here.
+
+Checking the new marker, I sent an unencrypted message from one board to another. The receive log showed the packet arrived, parsed, text intact. In the app: nothing. Half an hour went into hunting for a break in the chain from radio to Bluetooth to phone — packet length, the new trailing byte, the parsing on the app side.
+
+There was no break. In the test I had addressed the message to FFFF, out of habit from other protocols where that is the broadcast address. In MeshTRX broadcast is zeros. The radio honestly checked: not for me and not for everyone, and dropped it. Everything worked correctly; the test was wrong.
+
+The lesson is dull but worth repeating: before looking for a bug in the system, check the tool you are looking with.
+
+## Why the bench misses this
+
+The project has a bench: two boards, a phone, some sixty checks. It catches a great deal and saves hours. It would not have found a single one of the three stories above.
+
+The reason is the same in all three cases. The bench reaches the firmware by its own routes — through test console commands, not through the app. The routes are similar but not identical. Once that cost us dearly: for several days text sent from a phone went on the air unencrypted, because sending text has two paths — through a queue and directly — the bench used the queue, encryption had been added only there, and the phone sent directly. People reported that the link stopped working with a key set, while the bench was all green.
+
+The bench answers the question "does what we intended work". It does not answer "did we intend the right thing", and certainly not "will a person understand it".
+
+## What does help
+
+A real device within reach. Since a genuine phone joined the checks — one whose screen can be captured and read as words — bugs of this class take minutes to find: the message either carries the "unencrypted" caption or it does not, and there is nothing left to argue about.
+
+And the group. "It does not work" cannot be checked; "could not change the channel for everyone, one of my nodes has encryption, the other is open" can be, and that one took twenty minutes including the release. Half the value of a message from the group is not the complaint but the detail around it.
+
+What the radio can do today is in the [documentation](/docs/). What is in progress and what is deferred is on the [project page](/about/). Observations from the air are always welcome in the [Telegram group](https://t.me/MeshTRX).`,
+    },
+  },
+  {
     slug: 'encryption-in-39-bytes',
     date: '2026-09-16',
     title: {
