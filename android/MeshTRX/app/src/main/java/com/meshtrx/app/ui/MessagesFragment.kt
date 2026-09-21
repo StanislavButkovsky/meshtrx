@@ -127,7 +127,7 @@ class MessagesFragment : Fragment() {
             // Спрашиваем обязательно: переписку не вернуть, а хранится она
             // только на этом телефоне — у собеседников своя копия останется.
             androidx.appcompat.app.AlertDialog.Builder(requireContext())
-                .setMessage(getString(R.string.clear_chat_confirm, count))
+                .setMessage(getString(R.string.clear_chat_confirm))
                 .setPositiveButton(getString(R.string.clear_chat)) { _, _ ->
                     ServiceState.messages.value = emptyList()
                     service?.saveMessages()
@@ -313,7 +313,8 @@ class MessagesFragment : Fragment() {
             // Когда рация слушает и открытый эфир, человек должен видеть, что
             // именно пришло без шифра — иначе защищённое и нет выглядят одинаково.
             val openMark = if (msg.encrypted == false &&
-                    !ServiceState.keyFingerprint.value.isNullOrEmpty()) " 🔓" else ""
+                    !ServiceState.keyFingerprint.value.isNullOrEmpty())
+                " " + getString(R.string.msg_open) else ""
             val destStr = if (msg.isOutgoing && msg.destName != null) " → ${msg.destName}" else ""
             val statusStr = if (msg.isOutgoing && msg.destId != null) {
                 when (msg.status) {

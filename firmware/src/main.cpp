@@ -722,7 +722,12 @@ static void loraTaskFunc(void* param) {
 // потери здесь высокая: не услышавший останется на старом канале. Сами уходим
 // последними — пока мы на прежнем канале, команду ещё можно повторить.
 static void broadcastChannelSet(uint8_t newChannel, uint8_t delaySec = 10) {
-  if (newChannel >= NUM_CHANNELS || newChannel == currentChannel) return;
+  if (newChannel >= NUM_CHANNELS) return;
+  // Канал может совпасть с нашим — и это нормальный случай, а не ошибка:
+  // в приложении выбор канала сразу переводит свою рацию, и человек жмёт
+  // «сменить у всех» уже стоя на нужном канале. Раньше команда в этот момент
+  // просто не уходила, и выглядело это как «кнопка не работает».
+  bool alreadyHere = (newChannel == currentChannel);
   LoRaChannelSetPacket pkt;
   memset(&pkt, 0, sizeof(pkt));
   pkt.type = PKT_TYPE_CHANNEL_SET;
@@ -742,10 +747,13 @@ static void broadcastChannelSet(uint8_t newChannel, uint8_t delaySec = 10) {
   }
   loraStartReceive();
 
-  channelPrevious = currentChannel;
-  channelSwitchTo = newChannel;
-  channelSwitchAt = millis() + (uint32_t)delaySec * 1000;
-  LOG_F("[Channel] разослал: всем на %u через %u с\n", newChannel, delaySec);
+  if (!alreadyHere) {
+    channelPrevious = currentChannel;
+    channelSwitchTo = newChannel;
+    channelSwitchAt = millis() + (uint32_t)delaySec * 1000;
+  }
+  LOG_F("[Channel] разослал: всем на %u через %u с%s\n", newChannel, delaySec,
+        alreadyHere ? " (сами уже здесь)" : "");
 }
 
 static void saveChannel(uint8_t ch) {

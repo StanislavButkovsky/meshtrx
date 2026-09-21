@@ -216,11 +216,13 @@ MeshTRX v%2$s</string>
     <string name="ver_unchecked">Latest version not checked yet</string>
     <string name="key_alien">Someone nearby uses a different key: %1$d packets could not be read. Compare the fingerprint on every radio</string>
     <string name="hear_plain">Also hear unencrypted traffic</string>
-    <string name="hear_plain_on">Unencrypted messages are visible again and marked with a lock. Remember: anyone can hear them</string>
+    <string name="hear_plain_on">Unencrypted messages are visible again and marked “unencrypted”. Remember: anyone can hear them</string>
     <string name="hear_plain_off">Unencrypted traffic is ignored — only your own, under the key</string>
-    <string name="clear_chat">Clear chat history</string>
-    <string name="clear_chat_confirm">Delete the whole conversation from this phone? Messages are stored here only; your correspondents keep theirs. %1$d will be deleted.</string>
+    <string name="clear_chat">Clear chat</string>
+    <string name="clear_chat_confirm">Delete the whole conversation from this phone?</string>
     <string name="clear_chat_done">History cleared</string>
     <string name="clear_chat_empty">History is already empty</string>
     <string name="device_name_only">Device: %1$s</string>
+    <string name="channel_now">(now)</string>
+    <string name="msg_open">unencrypted</string>
 </resources>

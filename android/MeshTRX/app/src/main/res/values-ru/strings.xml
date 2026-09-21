@@ -216,11 +216,13 @@ MeshTRX v%2$s</string>
     <string name="ver_unchecked">Последняя версия на сайте пока не проверена</string>
     <string name="key_alien">Рядом говорят, но другим ключом: %1$d пакетов не разобрано. Сверьте отпечаток на всех рациях</string>
     <string name="hear_plain">Слышать и открытый эфир</string>
-    <string name="hear_plain_on">Открытые сообщения снова видны и помечаются замком. Помните: их слышит кто угодно</string>
+    <string name="hear_plain_on">Открытые сообщения снова видны и помечены «без шифра». Помните: их слышит кто угодно</string>
     <string name="hear_plain_off">Открытый эфир не слушаем — только свои, под ключом</string>
-    <string name="clear_chat">Очистить историю чата</string>
-    <string name="clear_chat_confirm">Удалить всю переписку с этого телефона? Сообщения хранятся только здесь, у собеседников они останутся. Удалено будет %1$d.</string>
+    <string name="clear_chat">Очистить чат</string>
+    <string name="clear_chat_confirm">Удалить всю переписку с этого телефона?</string>
     <string name="clear_chat_done">История очищена</string>
     <string name="clear_chat_empty">История и так пуста</string>
     <string name="device_name_only">Устройство: %1$s</string>
+    <string name="channel_now">(сейчас)</string>
+    <string name="msg_open">без шифра</string>
 </resources>

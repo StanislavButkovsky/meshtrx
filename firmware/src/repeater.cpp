@@ -153,7 +153,8 @@ bool repeaterPendingSwitch(uint8_t* to, uint32_t* secLeft) {
 }
 
 void repeaterBroadcastChannel(uint8_t newChannel, uint8_t delaySec) {
-  if (newChannel >= NUM_CHANNELS || newChannel == loraGetChannel()) return;
+  if (newChannel >= NUM_CHANNELS) return;
+  bool alreadyHere = (newChannel == loraGetChannel());
   uint8_t mac[6];
   esp_read_mac(mac, ESP_MAC_WIFI_STA);
 
@@ -177,10 +178,12 @@ void repeaterBroadcastChannel(uint8_t newChannel, uint8_t delaySec) {
   }
   loraStartReceive();
 
-  chgFrom = loraGetChannel();
-  chgTo = newChannel;
-  chgAt = millis() + (uint32_t)delaySec * 1000;
-  chgSelf = true;
+  if (!alreadyHere) {
+    chgFrom = loraGetChannel();
+    chgTo = newChannel;
+    chgAt = millis() + (uint32_t)delaySec * 1000;
+    chgSelf = true;
+  }
 }
 
 void repeaterInit() {
