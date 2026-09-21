@@ -222,4 +222,5 @@ MeshTRX v%2$s</string>
     <string name="clear_chat_confirm">Delete the whole conversation from this phone? Messages are stored here only; your correspondents keep theirs. %1$d will be deleted.</string>
     <string name="clear_chat_done">History cleared</string>
     <string name="clear_chat_empty">History is already empty</string>
+    <string name="device_name_only">Device: %1$s</string>
 </resources>
