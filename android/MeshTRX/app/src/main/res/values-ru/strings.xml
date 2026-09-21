@@ -222,4 +222,5 @@ MeshTRX v%2$s</string>
     <string name="clear_chat_confirm">Удалить всю переписку с этого телефона? Сообщения хранятся только здесь, у собеседников они останутся. Удалено будет %1$d.</string>
     <string name="clear_chat_done">История очищена</string>
     <string name="clear_chat_empty">История и так пуста</string>
+    <string name="device_name_only">Устройство: %1$s</string>
 </resources>

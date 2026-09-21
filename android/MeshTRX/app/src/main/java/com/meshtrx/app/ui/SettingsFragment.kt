@@ -520,15 +520,11 @@ class SettingsFragment : Fragment() {
         if (since > UpdateChecker.CHECK_INTERVAL_MS) checkUpdates(false)
 
         fun showDeviceLine() {
-            // Версию приложения берём из сборки, а не из строки ресурсов:
-            // зашитый номер отстал от релизов, и люди по нему решали, что
-            // обновление не встало. Версию прошивки называет сама рация; до
-            // 4.4.22 она этого не умела, и тогда строки про неё просто нет.
-            val base = getString(R.string.device_label,
-                ServiceState.deviceName.value.orEmpty(), BuildConfig.VERSION_NAME)
-            val fw = ServiceState.firmwareVersion.value
-            tvInfo.text = if (fw.isNullOrBlank()) base
-                          else base + getString(R.string.device_firmware, fw)
+            // Только имя устройства: версии живут двумя строками выше, и
+            // дублировать их здесь — значит показывать одно и то же дважды,
+            // что и получилось после появления отдельных строк.
+            tvInfo.text = getString(R.string.device_name_only,
+                ServiceState.deviceName.value.orEmpty())
         }
         ServiceState.deviceName.observe(viewLifecycleOwner) { showDeviceLine() }
         ServiceState.firmwareVersion.observe(viewLifecycleOwner) { showDeviceLine() }

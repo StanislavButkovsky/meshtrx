@@ -1545,17 +1545,22 @@ static void bleTaskFunc(void* param) {
     // соединения: телефон подписывается на уведомления не мгновенно, и всё
     // сказанное раньше уходит в пустоту. Человек при этом видел пустое место и
     // решал, что ключ не сохранился.
-    static bool versionSent = false;
+    static uint8_t versionStage = 0;
     static uint32_t connectedAt = 0;
     if (!bleIsConnected()) {
-      versionSent = false;
+      versionStage = 0;
       connectedAt = 0;
     } else {
       if (!connectedAt) connectedAt = millis();
-      if (!versionSent && millis() - connectedAt > 1500) {
+      // Два уведомления подряд стек BLE не вывозит: второе вытесняет первое,
+      // и до телефона доходило только состояние ключа, а версия прошивки нет.
+      // Поэтому по одному сообщению за проход цикла.
+      if (versionStage == 0 && millis() - connectedAt > 1500) {
         sendFirmwareVersion();
+        versionStage = 1;
+      } else if (versionStage == 1 && millis() - connectedAt > 2200) {
         sendKeyState();
-        versionSent = true;
+        versionStage = 2;
       }
     }
 
