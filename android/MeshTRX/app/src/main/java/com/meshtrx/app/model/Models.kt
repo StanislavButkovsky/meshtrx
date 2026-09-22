@@ -26,7 +26,11 @@ data class ChatMessage(
     val seq: Int? = null,
     // Было ли сообщение зашифровано. null — прошивка старая и не сказала;
     // false при заданном ключе означает, что сообщение пришло открытым.
-    val encrypted: Boolean? = null
+    val encrypted: Boolean? = null,
+    // Пришло лично нам, а не в общий чат. У исходящих не заполняется: там
+    // адресат и так есть в destId. Нужен для уведомлений — личное сообщение и
+    // общий разговор стоят разного.
+    val toMe: Boolean = false
 )
 
 data class Peer(

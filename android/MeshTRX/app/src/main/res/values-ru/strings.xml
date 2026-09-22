@@ -225,4 +225,16 @@ MeshTRX v%2$s</string>
     <string name="device_name_only">Устройство: %1$s</string>
     <string name="channel_now">(сейчас)</string>
     <string name="msg_open">без шифра</string>
+    <string name="notifications">Уведомления о сообщениях</string>
+    <string name="notify_all">Обо всех сообщениях</string>
+    <string name="notify_private">Только о личных</string>
+    <string name="notify_off">Не уведомлять</string>
+    <string name="notify_hint">Пока приложение открыто, уведомлений нет — сообщения и так видны в чате</string>
+    <string name="notif_chan_service">Фоновая связь MeshTRX</string>
+    <string name="notif_chan_private">Личные сообщения</string>
+    <string name="notif_chan_private_desc">Сообщения, адресованные вам лично: со звуком</string>
+    <string name="notif_chan_all">Общий чат</string>
+    <string name="notif_chan_all_desc">Сообщения, отправленные всем</string>
+    <string name="notif_private_from">%1$s — лично вам</string>
+    <string name="notif_all_from">%1$s — в общий чат</string>
 </resources>

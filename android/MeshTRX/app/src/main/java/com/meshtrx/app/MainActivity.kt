@@ -174,10 +174,18 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        // Пока экран перед глазами, уведомления о сообщениях не нужны: человек
+        // видит их в чате. Служба смотрит на этот признак.
+        ServiceState.appVisible.value = true
         if (bound && ServiceState.connectionState.value == BleState.DISCONNECTED) {
             service?.autoConnect()
         }
         tryStartLocation()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        ServiceState.appVisible.value = false
     }
 
     private fun tryStartLocation() {

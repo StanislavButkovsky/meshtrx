@@ -34,6 +34,10 @@ object ServiceState {
     val messageHistoryDays = MutableLiveData(30) // дней хранения истории сообщений
     val rxVolume = MutableLiveData(200) // громкость приёма 0-300 (100=норма, 200=x2, 300=x3)
     val messageFilter = MutableLiveData<String?>(null) // null=все, senderId=фильтр
+    // Смотрит ли человек в приложение прямо сейчас. По нему служба решает,
+    // показывать ли уведомление о входящем: сообщать о том, что и так на
+    // экране, — шум. Выставляется в MainActivity по onResume/onPause.
+    val appVisible = MutableLiveData(false)
     val recentCalls = MutableLiveData<List<RecentCall>>(emptyList())
 
     val fileTransfers = MutableLiveData<List<FileTransfer>>(emptyList())
