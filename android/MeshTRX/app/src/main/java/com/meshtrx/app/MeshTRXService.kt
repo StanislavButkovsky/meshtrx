@@ -17,6 +17,19 @@ class MeshTRXService : Service() {
         private const val TAG = "MeshTRXService"
         private const val NOTIF_CHANNEL = "meshtrx_service"
         private const val NOTIF_ID = 1
+        // Отдельные каналы для входящих сообщений: личное должно звучать,
+        // общий чат — приходить тихо. Один канал с этим не справляется:
+        // важность в Android задаётся каналу, а не отдельному уведомлению.
+        private const val NOTIF_CHANNEL_PRIVATE = "meshtrx_msg_private"
+        private const val NOTIF_CHANNEL_ALL = "meshtrx_msg_all"
+        // Уведомления о сообщениях нумеруются от этой границы, чтобы не
+        // столкнуться с постоянным уведомлением службы (NOTIF_ID = 1).
+        private const val NOTIF_MSG_BASE = 1000
+        // Режим уведомлений: ключ в настройках и значения
+        const val NOTIFY_PREF = "notify_mode"
+        const val NOTIFY_OFF = 0
+        const val NOTIFY_PRIVATE = 1
+        const val NOTIFY_ALL = 2
         // Как часто напоминать устройству, что приложение живо
         private const val KEEPALIVE_INTERVAL_MS = 15_000L
         // Предел одной передачи; столько же стоит в прошивке и в записи
@@ -749,6 +762,9 @@ class MeshTRXService : Service() {
                     // просто нет, и это честнее, чем угадывать.
                     val encrypted = if (textEnd + 3 < data.size)
                         data[textEnd + 3].toInt() == 1 else null
+                    // Прошивки до 4.4.31 признака не шлют. Тогда считаем
+                    // сообщение общим: разбудить зря хуже, чем промолчать.
+                    val toMe = textEnd + 4 < data.size && data[textEnd + 4].toInt() == 1
 
                     // Найти позывной отправителя из peers
                     val senderName = ServiceState.peers.value
@@ -762,12 +778,14 @@ class MeshTRXService : Service() {
                         time = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
                             .format(java.util.Date()),
                         timeMs = now,
-                        encrypted = encrypted
+                        encrypted = encrypted,
+                        toMe = toMe
                     )
                     val list = ServiceState.messages.value?.toMutableList() ?: mutableListOf()
                     list.add(msg)
                     ServiceState.messages.postValue(list)
                     saveMessages()
+                    notifyIncomingMessage(msg)
 
                     if (senderId != "??") {
                         addMinimalPeer(senderId, rssiVal)
@@ -1507,9 +1525,69 @@ class MeshTRXService : Service() {
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
             val channel = NotificationChannel(NOTIF_CHANNEL, "MeshTRX", NotificationManager.IMPORTANCE_LOW)
-            channel.description = "Фоновая связь MeshTRX"
-            (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).createNotificationChannel(channel)
+            channel.description = getString(R.string.notif_chan_service)
+            nm.createNotificationChannel(channel)
+
+            val priv = NotificationChannel(NOTIF_CHANNEL_PRIVATE,
+                getString(R.string.notif_chan_private), NotificationManager.IMPORTANCE_HIGH)
+            priv.description = getString(R.string.notif_chan_private_desc)
+            priv.enableVibration(true)
+            nm.createNotificationChannel(priv)
+
+            val all = NotificationChannel(NOTIF_CHANNEL_ALL,
+                getString(R.string.notif_chan_all), NotificationManager.IMPORTANCE_DEFAULT)
+            all.description = getString(R.string.notif_chan_all_desc)
+            nm.createNotificationChannel(all)
+        }
+    }
+
+    /**
+     * Уведомление о входящем сообщении. Молчим, когда человек и так смотрит в
+     * приложение: уведомление о том, что он видит на экране, — это шум.
+     * Каждому отправителю своё уведомление, иначе второе сообщение затирает
+     * первое и «кто написал» теряется.
+     */
+    private fun notifyIncomingMessage(msg: ChatMessage) {
+        val mode = prefs.getInt(NOTIFY_PREF, NOTIFY_ALL)
+        if (mode == NOTIFY_OFF) return
+        if (mode == NOTIFY_PRIVATE && !msg.toMe) return
+        if (ServiceState.appVisible.value == true) return
+
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
+            putExtra("open_chat", true)
+        }
+        val pi = PendingIntent.getActivity(this, msg.senderId.hashCode(), intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+
+        val who = msg.senderName.ifEmpty { "TX-${msg.senderId}" }
+        val title = if (msg.toMe) getString(R.string.notif_private_from, who)
+                    else getString(R.string.notif_all_from, who)
+        val notif = NotificationCompat.Builder(this,
+                if (msg.toMe) NOTIF_CHANNEL_PRIVATE else NOTIF_CHANNEL_ALL)
+            .setContentTitle(title)
+            .setContentText(msg.text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(msg.text))
+            .setSmallIcon(android.R.drawable.stat_notify_chat)
+            .setPriority(if (msg.toMe) NotificationCompat.PRIORITY_HIGH
+                         else NotificationCompat.PRIORITY_DEFAULT)
+            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+            .setContentIntent(pi)
+            .setAutoCancel(true)
+            .build()
+        // Номер уведомления: свой у каждого отправителя и отдельно у личного и
+        // общего. Иначе тихое сообщение в общий чат затирает личное от того же
+        // человека — а это два разных разговора, и звонкий из них один.
+        val notifId = NOTIF_MSG_BASE + ((msg.senderId.hashCode() and 0x7F) shl 1) +
+            (if (msg.toMe) 1 else 0)
+        try {
+            (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
+                .notify(notifId, notif)
+        } catch (e: SecurityException) {
+            // Разрешение на уведомления не выдано — это выбор человека, не сбой
+            Log.d(TAG, "уведомление не показано: нет разрешения")
         }
     }
 

@@ -225,4 +225,16 @@ MeshTRX v%2$s</string>
     <string name="device_name_only">Device: %1$s</string>
     <string name="channel_now">(now)</string>
     <string name="msg_open">unencrypted</string>
+    <string name="notifications">Message notifications</string>
+    <string name="notify_all">All messages</string>
+    <string name="notify_private">Direct messages only</string>
+    <string name="notify_off">Off</string>
+    <string name="notify_hint">While the app is open there are no notifications — the messages are already in the chat</string>
+    <string name="notif_chan_service">MeshTRX background link</string>
+    <string name="notif_chan_private">Direct messages</string>
+    <string name="notif_chan_private_desc">Messages addressed to you personally: with sound</string>
+    <string name="notif_chan_all">Group chat</string>
+    <string name="notif_chan_all_desc">Messages sent to everyone</string>
+    <string name="notif_private_from">%1$s — to you</string>
+    <string name="notif_all_from">%1$s — group chat</string>
 </resources>

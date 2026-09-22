@@ -343,6 +343,27 @@ class SettingsFragment : Fragment() {
             override fun onNothingSelected(p: AdapterView<*>?) {}
         }
 
+        // Уведомления о входящих сообщениях. Настройка телефонная, на рацию не
+        // уходит, поэтому сохраняется сразу — без кнопки «Применить», как язык.
+        val spinnerNotify = v.findViewById<Spinner>(R.id.spinnerNotify)
+        val notifyOptions = listOf(
+            getString(R.string.notify_all), getString(R.string.notify_private),
+            getString(R.string.notify_off))
+        val notifyValues = listOf(
+            MeshTRXService.NOTIFY_ALL, MeshTRXService.NOTIFY_PRIVATE, MeshTRXService.NOTIFY_OFF)
+        val notifyPrefs = requireContext()
+            .getSharedPreferences("meshtrx", android.content.Context.MODE_PRIVATE)
+        spinnerNotify.adapter = ArrayAdapter(requireContext(),
+            android.R.layout.simple_spinner_dropdown_item, notifyOptions)
+        val savedNotify = notifyPrefs.getInt(MeshTRXService.NOTIFY_PREF, MeshTRXService.NOTIFY_ALL)
+        spinnerNotify.setSelection(notifyValues.indexOf(savedNotify).coerceAtLeast(0))
+        spinnerNotify.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(p: AdapterView<*>?, v2: View?, pos: Int, id: Long) {
+                notifyPrefs.edit().putInt(MeshTRXService.NOTIFY_PREF, notifyValues[pos]).apply()
+            }
+            override fun onNothingSelected(p: AdapterView<*>?) {}
+        }
+
         // Язык
         val spinnerLanguage = v.findViewById<Spinner>(R.id.spinnerLanguage)
         val langNames = listOf("Русский", "English")

@@ -909,10 +909,12 @@ static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr) 
       if (pkt->channel != currentChannel) break;
 
       // Проверить адресат: broadcast (0x0000) или наш MAC
+      bool addressedToMe = false;
       {
         uint16_t d = pkt->dest[0] | (pkt->dest[1] << 8);
         uint16_t me = senderMac[0] | (senderMac[1] << 8);
         if (d != 0x0000 && d != me) break; // не нам
+        addressedToMe = (d == me);
       }
 
       // Своё же сообщение, вернувшееся от ретранслятора. Дедупликация тут не
@@ -924,19 +926,24 @@ static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr) 
       // Дедупликация (для broadcast repeat)
       if (textIsDuplicate(pkt->sender, pkt->seq)) break;
 
-      // Отправить на телефон: 0x08 + RSSI + текст + \0 + sender_id
+      // Отправить на телефон: 0x08 + RSSI + текст + \0 + sender_id + признаки
       size_t textLen = strnlen((char*)pkt->text, 85);
-      uint8_t bleData[1 + 1 + 85 + 1 + 2];
+      uint8_t bleData[1 + 1 + 85 + 1 + 2 + 2];
       bleData[0] = BLE_CMD_RECV_MESSAGE;
       bleData[1] = (uint8_t)(rssi & 0xFF);
       memcpy(bleData + 2, pkt->text, textLen);
       bleData[2 + textLen] = 0;
       memcpy(bleData + 2 + textLen + 1, pkt->sender, 2);
-      // Последним байтом — было ли сообщение зашифровано. Когда рация слушает
-      // и открытый эфир, человек должен видеть разницу: иначе незащищённое
-      // сообщение ничем не отличается от защищённого.
+      // Дальше два признака сообщения. Первый — было ли оно зашифровано: когда
+      // рация слушает и открытый эфир, человек должен видеть разницу, иначе
+      // незащищённое сообщение ничем не отличается от защищённого.
       bleData[2 + textLen + 3] = wasEncrypted ? 1 : 0;
-      bleSendNotify(bleData, 2 + textLen + 1 + 2 + 1);
+      // Второй — адресовано лично нам или ушло всем. Телефон по нему решает,
+      // будить ли человека: личное сообщение и общий разговор стоят разного.
+      // Из самого пакета телефон этого не знает — адрес получателя ему никогда
+      // не передавался, и до 4.4.31 личное от общего он отличить не мог.
+      bleData[2 + textLen + 4] = addressedToMe ? 1 : 0;
+      bleSendNotify(bleData, 2 + textLen + 1 + 2 + 2);
 
       // OLED: показать первые 16 символов
       char msgPreview[22];

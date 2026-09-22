@@ -213,6 +213,17 @@
             android:layout_width="match_parent" android:layout_height="44dp"
             android:layout_marginBottom="16dp" />
 
+        <!-- Уведомления о сообщениях -->
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="@string/notifications" android:textSize="14sp" android:textStyle="bold"
+            android:textColor="#e8e8e8" android:layout_marginBottom="4dp" />
+        <Spinner android:id="@+id/spinnerNotify"
+            android:layout_width="match_parent" android:layout_height="44dp" />
+        <TextView android:id="@+id/tvNotifyHint"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/notify_hint" android:textSize="12sp" android:textColor="#999999"
+            android:layout_marginTop="4dp" android:layout_marginBottom="16dp" />
+
         <!-- Язык -->
         <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
             android:text="@string/language" android:textSize="14sp" android:textStyle="bold"
