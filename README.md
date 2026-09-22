@@ -129,11 +129,6 @@ meshtrx/
 │       ├── audio.py      # Mic and speaker, 20 ms frames
 │       ├── client.py     # Core: network state, voice, files, calls
 │       └── ui/           # Voice, messages, files, map, settings, diagnostics
-├── tools/tgbot/          # Telegram bridge for the QA group + MCP server
-│   ├── daemon.py         # The only process talking to Telegram
-│   ├── mcp_server.py     # Tools for the agent over the same SQLite base
-│   ├── docs_index.py     # Documentation search behind /ask
-│   └── persona.md        # How to write in the group
 ├── docs/
 │   ├── USER_GUIDE.md      # Full user documentation
 │   └── ROADMAP.md         # What is next and what was deliberately dropped
