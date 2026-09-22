@@ -379,10 +379,22 @@ python3 -m venv .venv
 3. Над полем ввода появится **Кому: [имя]**
 4. Сообщение получит только адресат
 
+### Уведомления
+
+Когда приложение свёрнуто, о входящем сообщении приходит системное уведомление.
+Личные и общие разделены: адресованное лично вам приходит со звуком, сообщение
+в общий чат — тихо. В настройках, раздел «Уведомления о сообщениях», можно
+выбрать «обо всех», «только о личных» или выключить вовсе.
+
+Пока приложение открыто, уведомлений нет: сообщения и так видны в чате.
+
+Разделение работает с прошивки 4.4.31 — до неё рация не сообщала телефону,
+кому адресовано сообщение, и всё считается общим.
+
 ### Очистка истории
 
 Кнопка с корзиной в строке фильтра удаляет всю переписку с этого телефона.
-Приложение спросит подтверждение и скажет, сколько сообщений будет удалено.
+Приложение спросит подтверждение.
 
 Сообщения хранятся только на вашем телефоне: у собеседников останутся свои
 копии, и вернуть удалённое нельзя.
@@ -1210,10 +1222,24 @@ At the bottom of the PTT screen there is a scrollable list of recent calls:
 3. **To: [name]** appears above the input field
 4. Only the addressee receives the message
 
+### Notifications
+
+When the app is in the background, an incoming message raises a system
+notification. Direct and group messages are kept apart: a message addressed to
+you personally arrives with sound, one sent to everyone arrives quietly. Under
+Settings, "Message notifications", you can choose all messages, direct only, or
+switch them off.
+
+While the app is open there are no notifications: the messages are already in
+the chat.
+
+The split needs firmware 4.4.31 — before it the radio never told the phone whom
+a message was addressed to, so everything counts as a group message.
+
 ### Clearing the history
 
 The bin button in the filter row deletes the whole conversation from this phone.
-The app asks for confirmation and tells you how many messages will go.
+The app asks for confirmation.
 
 Messages are stored on your phone only: your correspondents keep their copies,
 and deleted ones cannot be recovered.
