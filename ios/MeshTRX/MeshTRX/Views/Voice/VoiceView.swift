@@ -32,11 +32,40 @@ struct VoiceView: View {
                 // MARK: - Control Bar
                 controlBar
                     .padding(.horizontal, 16)
-                    .padding(.bottom, 4)
+                    .padding(.vertical, 6)
+
+                // MARK: - Recent Calls label
+                Text("ПОСЛЕДНИЕ")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(AppColors.textMuted)
+                    .tracking(0.6)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 4)
+
+                // MARK: - Recent Calls (fills remaining space)
+                recentCallsList
+
+                // MARK: - Call Buttons
+                callButtonsRow
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+
+                // MARK: - VOX Status
+                if isVox {
+                    Text(voxText)
+                        .font(.system(size: 12))
+                        .foregroundColor(voxColor)
+                        .frame(height: 16)
+                }
+
+                // MARK: - Status Line
+                statusLine
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 4)
 
                 // MARK: - PTT Button Frame
                 ZStack {
-                    // PTT centered
                     PttButtonView(
                         state: pttState,
                         rmsLevel: Float(appState.rmsLevel) / 5000.0,
@@ -55,7 +84,7 @@ struct VoiceView: View {
                     .opacity(isConnected ? 1.0 : 0.4)
                     .allowsHitTesting(isConnected && !isVox)
 
-                    // Speaker button — top-right corner of screen
+                    // Speaker button — top-right
                     VStack {
                         HStack {
                             Spacer()
@@ -80,30 +109,8 @@ struct VoiceView: View {
                     }
                 }
                 .frame(height: 210)
-                .padding(.top, 12)
-                .padding(.bottom, 4)
-
-                // MARK: - VOX Status
-                if isVox {
-                    Text(voxText)
-                        .font(.system(size: 12))
-                        .foregroundColor(voxColor)
-                        .frame(height: 16)
-                }
-
-                // MARK: - Status Line
-                statusLine
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 4)
-
-                // MARK: - Call Buttons
-                callButtonsRow
-                    .padding(.horizontal, 16)
-                    .padding(.top, 8)
-                    .padding(.bottom, 8)
-
-                // MARK: - Recent Calls (fills remaining space)
-                recentCallsList
+                .padding(.top, 4)
+                .padding(.bottom, 12)
             }
         }
         .sheet(isPresented: $showCallPicker) {
@@ -362,13 +369,6 @@ struct VoiceView: View {
 
     private var recentCallsList: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("ПОСЛЕДНИЕ")
-                .font(.system(size: 11, weight: .medium))
-                .foregroundColor(AppColors.textDim)
-                .tracking(0.6)
-                .padding(.leading, 16)
-                .padding(.bottom, 4)
-
             if appState.recentCalls.isEmpty {
                 Spacer()
             } else {
