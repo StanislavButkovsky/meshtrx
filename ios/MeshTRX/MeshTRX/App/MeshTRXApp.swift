@@ -16,6 +16,7 @@ struct MeshTRXApp: App {
             SplashView()
                 .environmentObject(appState)
                 .environmentObject(controller)
+                .preferredColorScheme(.dark)
                 .fullScreenCover(item: $appState.incomingCall) { call in
                     IncomingCallView(
                         call: call,
