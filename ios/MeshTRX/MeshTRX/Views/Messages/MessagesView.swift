@@ -9,6 +9,8 @@ struct MessagesView: View {
     @State private var destName: String? = nil
     @State private var filterName: String? = nil
     @State private var showDestPicker: Bool = false
+    @State private var isRecordingVoice: Bool = false
+    @State private var voiceRecordStart: Date? = nil
 
     private var isConnected: Bool { appState.bleState == .connected }
 
@@ -149,6 +151,7 @@ struct MessagesView: View {
     // MARK: - Input bar
 
     private var inputBar: some View {
+        VStack(spacing: 0) {
         HStack(spacing: 8) {
             TextField("Сообщение...", text: $messageText)
                 .textFieldStyle(.plain)
@@ -165,6 +168,21 @@ struct MessagesView: View {
                 .foregroundColor(bytesRemaining < 10 ? AppColors.redAccent : AppColors.textDim)
                 .frame(width: 28)
 
+            // Voice message button
+            if destId != nil && isConnected {
+                Button {
+                    if isRecordingVoice {
+                        stopVoiceRecording()
+                    } else {
+                        startVoiceRecording()
+                    }
+                } label: {
+                    Image(systemName: isRecordingVoice ? "stop.circle.fill" : "mic.circle.fill")
+                        .font(.system(size: 28))
+                        .foregroundColor(isRecordingVoice ? AppColors.redAccent : AppColors.blueAccent)
+                }
+            }
+
             Button {
                 sendMessage()
             } label: {
@@ -177,10 +195,75 @@ struct MessagesView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .background(AppColors.bgSurface)
+
+        if isRecordingVoice {
+            HStack {
+                Circle()
+                    .fill(AppColors.redAccent)
+                    .frame(width: 10, height: 10)
+                Text("Запись...")
+                    .font(.system(size: 13))
+                    .foregroundColor(AppColors.redAccent)
+                Spacer()
+                Button("Отмена") {
+                    cancelVoiceRecording()
+                }
+                .font(.system(size: 12))
+                .foregroundColor(AppColors.textMuted)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 4)
+            .background(AppColors.bgSurface)
+        }
+        } // VStack
     }
 
     private var canSend: Bool {
         isConnected && !messageText.trimmingCharacters(in: .whitespaces).isEmpty && bytesRemaining >= 0
+    }
+
+    private func startVoiceRecording() {
+        isRecordingVoice = true
+        voiceRecordStart = Date()
+        controller.audioEngine.startBufferedRecording()
+    }
+
+    private func stopVoiceRecording() {
+        isRecordingVoice = false
+        controller.audioEngine.stopRecording()
+        // Voice recording via file transfer: encode accumulated audio and send as FILE_TYPE_VOICE
+        if let encoded = controller.audioEngine.getRecordedCodec2Data(), encoded.count > 8 {
+            let duration = Int(Date().timeIntervalSince(voiceRecordStart ?? Date()))
+            let fmt = DateFormatter()
+            fmt.dateFormat = "HHmm"
+            let fileName = "voice_\(fmt.string(from: Date())).c2"
+            controller.sendFile(fileName: fileName, fileType: 0x04, data: encoded,
+                              destMac: destId.flatMap { macFromId($0) }, destName: destName)
+
+            let now = Int64(Date().timeIntervalSince1970 * 1000)
+            let timeFmt = DateFormatter()
+            timeFmt.dateFormat = "HH:mm"
+            let msg = ChatMessage(
+                id: now, text: "🎤 \(max(1, duration))с", isOutgoing: true, senderId: "me",
+                senderName: appState.callSign, destId: destId, destName: destName,
+                status: .sending, time: timeFmt.string(from: Date()), isVoice: true
+            )
+            appState.messages.append(msg)
+        }
+        voiceRecordStart = nil
+    }
+
+    private func cancelVoiceRecording() {
+        isRecordingVoice = false
+        controller.audioEngine.stopRecording()
+        voiceRecordStart = nil
+    }
+
+    private func macFromId(_ id: String) -> Data? {
+        guard id.count >= 4 else { return nil }
+        let hi = UInt8(id.prefix(2), radix: 16) ?? 0
+        let lo = UInt8(id.suffix(2), radix: 16) ?? 0
+        return Data([hi, lo])
     }
 
     private func sendMessage() {
@@ -227,6 +310,12 @@ struct MessageBubbleView: View {
                     if let rssi = message.rssi {
                         Text("\(rssi)dBm")
                             .font(.system(size: 10, design: .monospaced))
+                    }
+
+                    if !message.encrypted && !message.isOutgoing {
+                        Text("без шифра")
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundColor(AppColors.amberAccent)
                     }
 
                     // Status icon (outgoing)

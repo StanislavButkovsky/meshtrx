@@ -24,6 +24,8 @@ class AudioEngine {
     @Volatile var sendAudio = false
     private var isRecording = false
     private var isMonitoring = false
+    private var recordBuffer = Data()
+    private var isBuffering = false
     private var isPlaying = false
 
     // MARK: - Audio components
@@ -99,10 +101,25 @@ class AudioEngine {
 
     func stopRecording() {
         sendAudio = false
+        isBuffering = false
         if !isMonitoring {
             stopMicCapture()
         }
         log.info("Recording stopped (PTT)")
+    }
+
+    func startBufferedRecording() {
+        recordBuffer = Data()
+        isBuffering = true
+        startRecording()
+        log.info("Buffered recording started")
+    }
+
+    func getRecordedCodec2Data() -> Data? {
+        isBuffering = false
+        let data = recordBuffer
+        recordBuffer = Data()
+        return data.isEmpty ? nil : data
     }
 
     // MARK: - VOX Monitoring
@@ -217,6 +234,7 @@ class AudioEngine {
                     if packetOffset >= AudioEngine.packetSamples {
                         let encoded = codec2.encodePacket(pcm: packetBuffer)
                         onAudioEncoded?(encoded)
+                        if isBuffering { recordBuffer.append(encoded) }
                         packetOffset = 0
                     }
                 }

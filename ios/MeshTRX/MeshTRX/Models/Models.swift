@@ -49,16 +49,20 @@ struct ChatMessage: Identifiable {
     var status: MessageStatus
     let time: String
     let timeMs: Int64
+    var encrypted: Bool = true
+    var isVoice: Bool = false
 
     init(id: Int64, text: String, isOutgoing: Bool, senderId: String,
          senderName: String = "", destId: String? = nil, destName: String? = nil,
          rssi: Int? = nil, status: MessageStatus, time: String,
-         timeMs: Int64 = Int64(Date().timeIntervalSince1970 * 1000)) {
+         timeMs: Int64 = Int64(Date().timeIntervalSince1970 * 1000),
+         encrypted: Bool = true, isVoice: Bool = false) {
         self.id = id; self.text = text; self.isOutgoing = isOutgoing
         self.senderId = senderId; self.senderName = senderName
         self.destId = destId; self.destName = destName
         self.rssi = rssi; self.status = status
         self.time = time; self.timeMs = timeMs
+        self.encrypted = encrypted; self.isVoice = isVoice
     }
 }
 

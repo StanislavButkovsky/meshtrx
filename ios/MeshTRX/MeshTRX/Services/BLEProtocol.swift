@@ -55,6 +55,8 @@ enum BLECmd {
     static let cryptoAlien:  UInt8 = 0x3B
     static let setChannelAll: UInt8 = 0x36
     static let hearPlaintext: UInt8 = 0x3D
+    static let scanChannels: UInt8 = 0x34
+    static let scanResult:   UInt8 = 0x35
 }
 
 // MARK: - Packet builders

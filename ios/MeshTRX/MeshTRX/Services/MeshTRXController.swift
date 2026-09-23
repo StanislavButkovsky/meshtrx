@@ -399,6 +399,18 @@ class MeshTRXController: ObservableObject {
         bleManager.sendSetChannelAll(ch)
     }
 
+    // MARK: - Channel All
+
+    func scanChannels() {
+        bleManager.send(Data([BLECmd.scanChannels]))
+    }
+
+    // MARK: - Peers
+
+    func clearPeers() {
+        appState.peers.removeAll()
+    }
+
     // MARK: - Clear chat
 
     func clearChat() {
@@ -435,6 +447,42 @@ class MeshTRXController: ObservableObject {
             trigger: nil
         )
         UNUserNotificationCenter.current().add(request)
+    }
+
+    // MARK: - Updates
+
+    func checkForUpdates() {
+        appState.updateStatus = "Проверяю..."
+        Task {
+            do {
+                let url = URL(string: "https://meshtrx.ru/api/latest.json")!
+                let (data, _) = try await URLSession.shared.data(from: url)
+                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    let latestFw = json["firmware_version"] as? String ?? "?"
+                    let latestApp = json["app_version"] as? String ?? "?"
+                    let currentApp = "1.0.0"
+                    let currentFw = appState.firmwareVersion
+
+                    var lines: [String] = []
+                    if currentApp != latestApp {
+                        lines.append("Приложение: \(currentApp) → \(latestApp)")
+                        appState.updateAvailable = true
+                    } else {
+                        lines.append("Приложение \(currentApp) — последняя")
+                    }
+                    if !currentFw.isEmpty && currentFw != latestFw {
+                        lines.append("Прошивка: \(currentFw) → \(latestFw)")
+                        appState.updateAvailable = true
+                    } else if !currentFw.isEmpty {
+                        lines.append("Прошивка \(currentFw) — последняя")
+                    }
+                    appState.updateStatus = lines.joined(separator: "\n")
+                }
+            } catch {
+                appState.updateStatus = "Нет подключения к интернету"
+                appState.updateAvailable = false
+            }
+        }
     }
 
     // MARK: - GPS
@@ -493,6 +541,8 @@ class MeshTRXController: ObservableObject {
             handleFwVersion(data)
         case BLECmd.cryptoAlien:
             handleCryptoAlien(data)
+        case BLECmd.scanResult:
+            handleScanResult(data)
         default:
             break
         }
@@ -552,10 +602,20 @@ class MeshTRXController: ObservableObject {
         let fmt = DateFormatter()
         fmt.dateFormat = "HH:mm"
 
+        // Check encrypted flag — last byte after sender+dest has bit 0x80 on channel byte
+        var isEncrypted = true
+        if textEnd + 5 < data.count {
+            let chByte = data[textEnd + 5]
+            isEncrypted = (chByte & 0x80) != 0
+        } else if appState.keyFingerprint.isEmpty {
+            isEncrypted = true // no key set, don't show warning
+        }
+
         let msg = ChatMessage(
             id: now, text: text, isOutgoing: false, senderId: senderId,
             senderName: senderName, rssi: rssiVal, status: .delivered,
-            time: fmt.string(from: Date()), timeMs: now
+            time: fmt.string(from: Date()), timeMs: now,
+            encrypted: isEncrypted
         )
         appState.messages.append(msg)
         appState.unreadMessages += 1
@@ -595,6 +655,19 @@ class MeshTRXController: ObservableObject {
             let count = Int(data.getUInt16LE(at: 1))
             appState.alienPackets = count
         }
+    }
+
+    private func handleScanResult(_ data: Data) {
+        guard data.count >= 3 else { return }
+        var results: [String] = []
+        var offset = 1
+        while offset + 1 < data.count {
+            let ch = Int(data[offset])
+            let noise = Int(Int8(bitPattern: data[offset + 1]))
+            results.append("CH\(ch): \(noise)dBm")
+            offset += 2
+        }
+        appState.scanResultText = results.joined(separator: " · ")
     }
 
     // MARK: - Peer discovery

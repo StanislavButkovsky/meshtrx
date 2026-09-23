@@ -52,6 +52,7 @@ struct SettingsView: View {
                     voxSection
                     notificationSection
                     historySection
+                    languageSection
                     repeaterSection
                     aboutSection
                 }
@@ -218,6 +219,30 @@ struct SettingsView: View {
             }
             .foregroundColor(AppColors.textPrimary)
 
+            HStack {
+                Button("Сменить у всех") {
+                    controller.setChannelAll(selectedChannel)
+                }
+                .font(.system(size: 13))
+                .disabled(!isConnected)
+                .foregroundColor(isConnected ? AppColors.greenAccent : AppColors.textDim)
+
+                Spacer()
+
+                Button("Сканировать каналы") {
+                    controller.scanChannels()
+                }
+                .font(.system(size: 13))
+                .disabled(!isConnected)
+                .foregroundColor(isConnected ? AppColors.greenAccent : AppColors.textDim)
+            }
+
+            if !appState.scanResultText.isEmpty {
+                Text(appState.scanResultText)
+                    .font(.system(size: 12, design: .monospaced))
+                    .foregroundColor(AppColors.textDim)
+            }
+
             Button("Применить") {
                 applySettings()
             }
@@ -338,6 +363,12 @@ struct SettingsView: View {
                 Slider(value: $squelchThreshold, in: 0...5000, step: 100)
                     .tint(AppColors.greenAccent)
             }
+
+            Toggle(isOn: $appState.rogerBeep) {
+                Text("Roger beep")
+                    .foregroundColor(AppColors.textPrimary)
+            }
+            .tint(AppColors.greenAccent)
         } header: {
             Text("Аудио")
         }
@@ -387,8 +418,27 @@ struct SettingsView: View {
                 }
             }
             .foregroundColor(AppColors.textPrimary)
+
+            Button("Очистить список пиров") {
+                controller.clearPeers()
+            }
+            .foregroundColor(AppColors.redAccent)
         } header: {
             Text("Хранение")
+        }
+    }
+
+    // MARK: - Language
+
+    private var languageSection: some View {
+        Section {
+            Picker("Язык", selection: $appState.languageIndex) {
+                Text("Русский").tag(0)
+                Text("English").tag(1)
+            }
+            .foregroundColor(AppColors.textPrimary)
+        } header: {
+            Text("Язык")
         }
     }
 
@@ -450,6 +500,18 @@ struct SettingsView: View {
                      ? (isConnected ? "не сообщает" : "не подключено")
                      : appState.firmwareVersion)
                     .foregroundColor(appState.firmwareVersion.isEmpty ? AppColors.textDim : AppColors.greenAccent)
+            }
+
+            Button("Проверить обновления") {
+                controller.checkForUpdates()
+            }
+            .font(.system(size: 13))
+            .foregroundColor(AppColors.greenAccent)
+
+            if !appState.updateStatus.isEmpty {
+                Text(appState.updateStatus)
+                    .font(.system(size: 12))
+                    .foregroundColor(appState.updateAvailable ? AppColors.greenAccent : AppColors.textDim)
             }
         } header: {
             Text("О приложении")

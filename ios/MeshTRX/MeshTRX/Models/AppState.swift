@@ -45,6 +45,8 @@ class AppState: ObservableObject {
     @Published var fileHistoryDays: Int = 30
     @Published var messageHistoryDays: Int = 30
     @Published var rxVolume: Int = 200
+    @Published var rogerBeep: Bool = true
+    @Published var languageIndex: Int = 0  // 0=Русский, 1=English
 
     // Encryption
     @Published var keyFingerprint: String = ""
@@ -62,4 +64,7 @@ class AppState: ObservableObject {
     @Published var showPinDialog: Bool = false
     @Published var showDevicePicker: Bool = false
     @Published var showClearChatConfirm: Bool = false
+    @Published var scanResultText: String = ""
+    @Published var updateStatus: String = ""
+    @Published var updateAvailable: Bool = false
 }

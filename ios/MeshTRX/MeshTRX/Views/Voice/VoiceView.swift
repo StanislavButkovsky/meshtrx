@@ -23,6 +23,12 @@ struct VoiceView: View {
             AppColors.bgPrimary.ignoresSafeArea()
 
             VStack(spacing: 0) {
+                // MARK: - Network Summary
+                networkSummary
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 6)
+                    .background(AppColors.bgSurface)
+
                 // MARK: - Control Bar
                 controlBar
                     .padding(.horizontal, 16)
@@ -103,6 +109,40 @@ struct VoiceView: View {
         .sheet(isPresented: $showCallPicker) {
             callPickerSheet
         }
+    }
+
+    // MARK: - Network Summary
+
+    private var networkSummary: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            let count = appState.peers.count
+            let repeater = appState.peers.first { $0.callSign.uppercased().contains("RPT") || $0.callSign.uppercased().contains("REP") }
+            Text(count == 0 ? "Нет станций в эфире" : "\(count) \(stationsWord(count)) в эфире\(repeater != nil ? " · Ретр: \(repeater!.callSign) \(repeater!.rssi)dBm" : "")")
+                .font(.system(size: 12))
+                .foregroundColor(Color(hex: 0xaaaaaa))
+                .lineLimit(1)
+
+            if let last = appState.peers.sorted(by: { $0.lastSeenMs > $1.lastSeenMs }).first {
+                let ago = Int((Date().timeIntervalSince1970 * 1000 - Double(last.lastSeenMs)) / 1000)
+                Text("Последний: \(last.callSign) \(formatAgo(ago)) \(last.rssi)dBm/\(last.snr)dB")
+                    .font(.system(size: 12))
+                    .foregroundColor(AppColors.textDim)
+                    .lineLimit(1)
+            }
+        }
+    }
+
+    private func stationsWord(_ n: Int) -> String {
+        let mod10 = n % 10; let mod100 = n % 100
+        if mod100 >= 11 && mod100 <= 19 { return "станций" }
+        if mod10 == 1 { return "станция" }
+        if mod10 >= 2 && mod10 <= 4 { return "станции" }
+        return "станций"
+    }
+
+    private func formatAgo(_ sec: Int) -> String {
+        if sec < 60 { return "\(sec)с назад" }
+        return "\(sec / 60)мин назад"
     }
 
     // MARK: - Control Bar
