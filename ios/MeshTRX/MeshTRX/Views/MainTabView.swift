@@ -4,44 +4,100 @@ struct MainTabView: View {
     @EnvironmentObject var appState: AppState
     @State private var selectedTab = 0
 
+    private var isConnected: Bool { appState.bleState == .connected }
+
     var body: some View {
-        TabView(selection: $selectedTab) {
-            VoiceView()
-                .tabItem {
-                    Image(systemName: "mic.fill")
-                    Text("Voice")
-                }
-                .tag(0)
+        VStack(spacing: 0) {
+            // MARK: - Fixed Header
+            headerBar
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+                .padding(.bottom, 8)
+                .background(AppColors.bgPrimary)
 
-            MessagesView()
-                .tabItem {
-                    Image(systemName: "message.fill")
-                    Text("Messages")
-                }
-                .badge(appState.unreadMessages)
-                .tag(1)
+            // MARK: - Tab Content
+            TabView(selection: $selectedTab) {
+                VoiceView()
+                    .tabItem {
+                        Image(systemName: "mic.fill")
+                        Text("PTT")
+                    }
+                    .tag(0)
 
-            FilesView()
-                .tabItem {
-                    Image(systemName: "doc.fill")
-                    Text("Files")
-                }
-                .tag(2)
+                MessagesView()
+                    .tabItem {
+                        Image(systemName: "envelope.fill")
+                        Text("Чат")
+                    }
+                    .badge(appState.unreadMessages)
+                    .tag(1)
 
-            MapTabView()
-                .tabItem {
-                    Image(systemName: "map.fill")
-                    Text("Map")
-                }
-                .tag(3)
+                FilesView()
+                    .tabItem {
+                        Image(systemName: "doc.fill")
+                        Text("Файлы")
+                    }
+                    .tag(2)
 
-            SettingsView()
-                .tabItem {
-                    Image(systemName: "gear")
-                    Text("Settings")
-                }
-                .tag(4)
+                MapTabView()
+                    .tabItem {
+                        Image(systemName: "map.fill")
+                        Text("Карта")
+                    }
+                    .tag(3)
+
+                SettingsView()
+                    .tabItem {
+                        Image(systemName: "wrench.fill")
+                        Text("Настр.")
+                    }
+                    .tag(4)
+            }
+            .accentColor(.green)
         }
-        .accentColor(.green)
+    }
+
+    // MARK: - Header Bar
+
+    private var headerBar: some View {
+        HStack {
+            // Left: callsign + device name
+            VStack(alignment: .leading, spacing: 2) {
+                Text(appState.callSign.isEmpty ? "MeshTRX" : appState.callSign)
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(AppColors.textPrimary)
+                Text(appState.deviceName.isEmpty ? "—" : appState.deviceName)
+                    .font(.system(size: 12))
+                    .foregroundColor(AppColors.textMuted)
+            }
+
+            Spacer()
+
+            // Right: connection status + channel
+            VStack(alignment: .trailing, spacing: 2) {
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(isConnected ? AppColors.greenAccent : AppColors.redAccent)
+                        .frame(width: 8, height: 8)
+                    Text(connectionStatusText)
+                        .font(.system(size: 13))
+                        .foregroundColor(isConnected ? AppColors.greenAccent : AppColors.textMuted)
+                }
+                if isConnected {
+                    Text(String(format: "CH %d · %.2f MHz", appState.currentChannel, 863.15 + Double(appState.currentChannel) * 0.3))
+                        .font(.system(size: 12, design: .monospaced))
+                        .foregroundColor(AppColors.textDim)
+                }
+            }
+        }
+    }
+
+    private var connectionStatusText: String {
+        switch appState.bleState {
+        case .connected: return "Подключено"
+        case .scanning: return "Поиск..."
+        case .connecting: return "Соединение..."
+        case .disconnected: return "Отключено"
+        }
     }
 }

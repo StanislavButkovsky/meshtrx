@@ -101,6 +101,25 @@ struct MessagesView: View {
 
             Spacer()
 
+            // Clear chat
+            Button {
+                appState.showClearChatConfirm = true
+            } label: {
+                Image(systemName: "trash")
+                    .font(.system(size: 12))
+                    .foregroundColor(AppColors.redAccent)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 4)
+                    .background(AppColors.redBg)
+                    .cornerRadius(6)
+            }
+            .alert("Очистить чат", isPresented: $appState.showClearChatConfirm) {
+                Button("Удалить всю переписку с этого телефона?", role: .destructive) {
+                    controller.clearChat()
+                }
+                Button("Отмена", role: .cancel) {}
+            }
+
             // Filter
             Menu {
                 ForEach(filterOptions, id: \.self) { option in

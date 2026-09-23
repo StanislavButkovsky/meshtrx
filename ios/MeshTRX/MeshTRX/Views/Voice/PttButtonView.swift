@@ -75,7 +75,7 @@ struct PttButtonView: View {
                 updateWaves(now: newDate)
             }
         }
-        .frame(width: 180, height: 180)
+        .frame(width: 200, height: 200)
         .gesture(
             DragGesture(minimumDistance: 0)
                 .onChanged { _ in onPttDown() }

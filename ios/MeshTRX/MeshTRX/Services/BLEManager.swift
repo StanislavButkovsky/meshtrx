@@ -11,6 +11,7 @@ class BLEManager: NSObject, ObservableObject {
     var onDataReceived: ((Data) -> Void)?
     var onScanResult: ((CBPeripheral, Int) -> Void)?
     var onNeedPin: (() -> Void)?
+    var onScanStopped: (() -> Void)?
 
     // MARK: - State
 
@@ -36,7 +37,7 @@ class BLEManager: NSObject, ObservableObject {
 
     // Scan timeout
     private var scanTimer: Timer?
-    private let scanTimeout: TimeInterval = 10
+    private let scanTimeout: TimeInterval = 30
 
     private let log = Logger(subsystem: "com.meshtrx.app", category: "BLE")
 
@@ -56,7 +57,7 @@ class BLEManager: NSObject, ObservableObject {
     func startScan() {
         guard centralManager.state == .poweredOn, !isScanning else { return }
         centralManager.scanForPeripherals(
-            withServices: [BLEUUID.service],
+            withServices: nil,
             options: [CBCentralManagerScanOptionAllowDuplicatesKey: false]
         )
         isScanning = true
@@ -75,6 +76,7 @@ class BLEManager: NSObject, ObservableObject {
         scanTimer?.invalidate()
         scanTimer = nil
         log.info("Scan stopped")
+        onScanStopped?()
     }
 
     // MARK: - Connect / Disconnect
@@ -120,6 +122,10 @@ class BLEManager: NSObject, ObservableObject {
 
     var isConnected: Bool {
         connectedPeripheral != nil && rxCharacteristic != nil
+    }
+
+    var connectedDeviceIdentifier: String? {
+        connectedPeripheral?.identifier.uuidString
     }
 
     // MARK: - Auto-reconnect
@@ -179,6 +185,11 @@ class BLEManager: NSObject, ObservableObject {
     func sendRepeaterConfig(enable: Bool, ssid: String = "", password: String = "", ip: String = "") {
         send(BLEPacket.setRepeater(enable: enable, ssid: ssid, password: password, ip: ip))
     }
+
+    func sendSetKey(passphrase: String) { send(BLEPacket.setKey(passphrase: passphrase)) }
+    func sendClearKey()                  { send(BLEPacket.clearKey()) }
+    func sendHearPlaintext(_ enable: Bool) { send(BLEPacket.hearPlaintext(enable)) }
+    func sendSetChannelAll(_ ch: Int)    { send(BLEPacket.setChannelAll(ch)) }
 
     // MARK: - Private
 

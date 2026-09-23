@@ -46,8 +46,20 @@ class AppState: ObservableObject {
     @Published var messageHistoryDays: Int = 30
     @Published var rxVolume: Int = 200
 
+    // Encryption
+    @Published var keyFingerprint: String = ""
+    @Published var hearPlaintext: Bool = false
+    @Published var alienPackets: Int = 0
+
+    // Firmware
+    @Published var firmwareVersion: String = ""
+
+    // Notifications
+    @Published var notifyMode: Int = 1  // 0=off, 1=private only, 2=all
+
     // UI
     @Published var statusMessage: String = "Не подключено"
     @Published var showPinDialog: Bool = false
     @Published var showDevicePicker: Bool = false
+    @Published var showClearChatConfirm: Bool = false
 }

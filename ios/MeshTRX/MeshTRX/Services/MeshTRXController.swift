@@ -1,5 +1,7 @@
 import Foundation
 import CoreBluetooth
+import AVFoundation
+import UserNotifications
 import os.log
 
 /// Central controller — wires BLE, Audio, VOX, and AppState together.
@@ -32,6 +34,7 @@ class MeshTRXController: ObservableObject {
     init(appState: AppState) {
         self.appState = appState
         loadAuthorizedDevices()
+        setupNotifications()
         setupCallbacks()
         audioEngine.setup()
         startPeerCleanup()
@@ -54,6 +57,15 @@ class MeshTRXController: ObservableObject {
         }
         bleManager.onDataReceived = { [weak self] data in
             Task { @MainActor in self?.handleBleData(data) }
+        }
+        bleManager.onScanStopped = { [weak self] in
+            Task { @MainActor in
+                guard let self = self else { return }
+                if self.appState.bleState == .scanning {
+                    self.appState.bleState = .disconnected
+                    self.appState.statusMessage = "Не найдено"
+                }
+            }
         }
 
         audioEngine.onAudioEncoded = { [weak self] encoded in
@@ -124,9 +136,16 @@ class MeshTRXController: ObservableObject {
     }
 
     private func handleNeedPin() {
-        // For now, auto-connect (no PIN required by default)
-        // TODO: check authorizedDevices and show PIN dialog if needed
-        handleConnected()
+        let addr = bleManager.connectedDeviceIdentifier ?? ""
+        if authorizedDevices.contains(addr) {
+            log.info("Device \(addr) already authorized, skipping PIN")
+            handleConnected()
+        } else {
+            log.info("Need PIN for \(addr)")
+            appState.bleState = .connecting
+            appState.statusMessage = "Введите PIN"
+            appState.showPinDialog = true
+        }
     }
 
     // MARK: - Public commands
@@ -185,6 +204,7 @@ class MeshTRXController: ObservableObject {
     func setTxMode(_ mode: TxMode) {
         let prev = appState.txMode
         appState.txMode = mode
+        bleManager.setTxMode(mode)
 
         if prev == .vox && mode == .ptt {
             audioEngine.stopVoxMonitoring()
@@ -194,7 +214,20 @@ class MeshTRXController: ObservableObject {
         }
         if mode == .vox && appState.bleState == .connected {
             voxEngine.reset()
-            audioEngine.startVoxMonitoring()
+            requestMicPermissionAndStartVox()
+        }
+    }
+
+    private func requestMicPermissionAndStartVox() {
+        AVAudioSession.sharedInstance().requestRecordPermission { [weak self] granted in
+            Task { @MainActor in
+                guard let self = self, granted else {
+                    self?.log.error("Microphone permission denied")
+                    self?.appState.txMode = .ptt
+                    return
+                }
+                self.audioEngine.startVoxMonitoring()
+            }
         }
     }
 
@@ -342,6 +375,68 @@ class MeshTRXController: ObservableObject {
         bleManager.sendSettings(json: json)
     }
 
+    // MARK: - Encryption
+
+    func setEncryptionKey(_ passphrase: String) {
+        guard passphrase.count >= 8 else { return }
+        bleManager.sendSetKey(passphrase: passphrase)
+    }
+
+    func clearEncryptionKey() {
+        bleManager.sendClearKey()
+        appState.keyFingerprint = ""
+        appState.alienPackets = 0
+    }
+
+    func setHearPlaintext(_ enable: Bool) {
+        appState.hearPlaintext = enable
+        bleManager.sendHearPlaintext(enable)
+    }
+
+    // MARK: - Channel All
+
+    func setChannelAll(_ ch: Int) {
+        bleManager.sendSetChannelAll(ch)
+    }
+
+    // MARK: - Clear chat
+
+    func clearChat() {
+        appState.messages.removeAll()
+        appState.unreadMessages = 0
+    }
+
+    // MARK: - Notifications
+
+    private func setupNotifications() {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
+            if granted {
+                self.log.info("Notifications authorized")
+            }
+        }
+    }
+
+    private func postMessageNotification(senderName: String, text: String, isPrivate: Bool) {
+        let mode = appState.notifyMode
+        guard mode > 0 else { return }
+        if mode == 1 && !isPrivate { return }
+
+        let content = UNMutableNotificationContent()
+        content.title = senderName
+        content.body = text
+        if isPrivate {
+            content.sound = .default
+        }
+        content.threadIdentifier = isPrivate ? "meshtrx-private" : "meshtrx-broadcast"
+
+        let request = UNNotificationRequest(
+            identifier: UUID().uuidString,
+            content: content,
+            trigger: nil
+        )
+        UNUserNotificationCenter.current().add(request)
+    }
+
     // MARK: - GPS
 
     private func sendGpsToDevice() {
@@ -392,6 +487,12 @@ class MeshTRXController: ObservableObject {
             if data.count >= 2 && data[1] == 0 {
                 appState.callActive = false
             }
+        case BLECmd.keyState:
+            handleKeyState(data)
+        case BLECmd.fwVersion:
+            handleFwVersion(data)
+        case BLECmd.cryptoAlien:
+            handleCryptoAlien(data)
         default:
             break
         }
@@ -458,6 +559,42 @@ class MeshTRXController: ObservableObject {
         )
         appState.messages.append(msg)
         appState.unreadMessages += 1
+
+        // Check if message is addressed to me (dest bytes after sender)
+        var isPrivate = false
+        if textEnd + 4 < data.count {
+            let destId = String(format: "%02X%02X", data[textEnd + 3], data[textEnd + 4])
+            isPrivate = destId != "0000"
+        }
+        postMessageNotification(senderName: senderName, text: text, isPrivate: isPrivate)
+    }
+
+    // MARK: - Encryption handlers
+
+    private func handleKeyState(_ data: Data) {
+        if data.count >= 5 {
+            let fp = String(data: data[1..<5], encoding: .utf8) ?? ""
+            appState.keyFingerprint = fp
+            log.info("Key fingerprint: \(fp)")
+        } else {
+            appState.keyFingerprint = ""
+        }
+    }
+
+    private func handleFwVersion(_ data: Data) {
+        if data.count > 1 {
+            let ver = String(data: data[1...], encoding: .utf8)?
+                .trimmingCharacters(in: CharacterSet(charactersIn: "\0")) ?? ""
+            appState.firmwareVersion = ver
+            log.info("Firmware: \(ver)")
+        }
+    }
+
+    private func handleCryptoAlien(_ data: Data) {
+        if data.count >= 3 {
+            let count = Int(data.getUInt16LE(at: 1))
+            appState.alienPackets = count
+        }
     }
 
     // MARK: - Peer discovery
@@ -532,6 +669,9 @@ class MeshTRXController: ObservableObject {
         guard data.count >= 2 else { return }
         if data[1] == 1 {
             log.info("PIN accepted")
+            if let addr = bleManager.connectedDeviceIdentifier {
+                authorizeDevice(addr)
+            }
             handleConnected()
         } else {
             log.info("PIN rejected")

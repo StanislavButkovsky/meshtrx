@@ -310,11 +310,25 @@ class AudioEngine {
     // MARK: - Route
 
     func routeToSpeaker() {
-        try? AVAudioSession.sharedInstance().overrideOutputAudioPort(.speaker)
+        let session = AVAudioSession.sharedInstance()
+        do {
+            try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetooth])
+            try session.overrideOutputAudioPort(.speaker)
+            log.info("Routed to speaker")
+        } catch {
+            log.error("Route to speaker failed: \(error.localizedDescription)")
+        }
     }
 
     func routeToEarpiece() {
-        try? AVAudioSession.sharedInstance().overrideOutputAudioPort(.none)
+        let session = AVAudioSession.sharedInstance()
+        do {
+            try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetooth])
+            try session.overrideOutputAudioPort(.none)
+            log.info("Routed to earpiece")
+        } catch {
+            log.error("Route to earpiece failed: \(error.localizedDescription)")
+        }
     }
 
     // MARK: - Interruptions

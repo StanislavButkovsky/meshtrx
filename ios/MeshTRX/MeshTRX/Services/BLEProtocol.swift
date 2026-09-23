@@ -49,6 +49,12 @@ enum BLECmd {
     static let pinResult:    UInt8 = 0x26
     static let fileData:     UInt8 = 0x27
     static let setRepeater:  UInt8 = 0x28
+    static let setKey:       UInt8 = 0x37
+    static let keyState:     UInt8 = 0x38
+    static let fwVersion:    UInt8 = 0x3A
+    static let cryptoAlien:  UInt8 = 0x3B
+    static let setChannelAll: UInt8 = 0x36
+    static let hearPlaintext: UInt8 = 0x3D
 }
 
 // MARK: - Packet builders
@@ -136,6 +142,24 @@ enum BLEPacket {
         pkt.append(UInt8((chunkIndex >> 8) & 0xFF))
         pkt.append(data)
         return pkt
+    }
+
+    static func setKey(passphrase: String) -> Data {
+        var pkt = Data([BLECmd.setKey, 0x01])
+        pkt.append(passphrase.data(using: .utf8) ?? Data())
+        return pkt
+    }
+
+    static func clearKey() -> Data {
+        Data([BLECmd.setKey])
+    }
+
+    static func hearPlaintext(_ enable: Bool) -> Data {
+        Data([BLECmd.hearPlaintext, enable ? 1 : 0])
+    }
+
+    static func setChannelAll(_ ch: Int) -> Data {
+        Data([BLECmd.setChannelAll, UInt8(ch & 0xFF)])
     }
 
     static func setRepeater(enable: Bool, ssid: String = "", password: String = "", ip: String = "") -> Data {

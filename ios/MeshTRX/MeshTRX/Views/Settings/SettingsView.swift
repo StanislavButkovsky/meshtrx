@@ -18,6 +18,9 @@ struct SettingsView: View {
     @State private var fileHistoryIndex: Int = 2
     @State private var languageIndex: Int = 0
 
+    // Encryption
+    @State private var passphrase: String = ""
+
     // Repeater
     @State private var repeaterSsid: String = ""
     @State private var repeaterPass: String = ""
@@ -44,8 +47,10 @@ struct SettingsView: View {
                 Form {
                     connectionSection
                     radioSection
+                    encryptionSection
                     audioSection
                     voxSection
+                    notificationSection
                     historySection
                     repeaterSection
                     aboutSection
@@ -94,6 +99,36 @@ struct SettingsView: View {
                 controller.forgetDevice()
             }
             .foregroundColor(AppColors.redAccent)
+
+            // Scan results list
+            if appState.bleState == .scanning || !appState.scanResults.isEmpty {
+                ForEach(appState.scanResults) { device in
+                    Button {
+                        controller.connect(device.peripheral)
+                    } label: {
+                        HStack {
+                            Image(systemName: "antenna.radiowaves.left.and.right")
+                                .foregroundColor(AppColors.greenAccent)
+                            Text(device.peripheral.name ?? "MeshTRX")
+                                .foregroundColor(AppColors.textPrimary)
+                            Spacer()
+                            Text("\(device.rssi) dBm")
+                                .font(.system(size: 12, design: .monospaced))
+                                .foregroundColor(AppColors.textDim)
+                        }
+                    }
+                }
+                if appState.bleState == .scanning {
+                    HStack {
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                        Text("Поиск устройств...")
+                            .font(.system(size: 13))
+                            .foregroundColor(AppColors.textMuted)
+                            .padding(.leading, 8)
+                    }
+                }
+            }
         } header: {
             Text("Подключение")
         }
@@ -190,6 +225,87 @@ struct SettingsView: View {
             .foregroundColor(isConnected ? AppColors.greenAccent : AppColors.textDim)
         } header: {
             Text("Радио")
+        }
+    }
+
+    // MARK: - Encryption
+
+    private var encryptionSection: some View {
+        Section {
+            HStack {
+                Text("Кодовое слово")
+                    .foregroundColor(AppColors.textPrimary)
+                SecureField("Минимум 8 символов", text: $passphrase)
+                    .multilineTextAlignment(.trailing)
+                    .foregroundColor(AppColors.textSecondary)
+            }
+
+            HStack {
+                Button("Установить ключ") {
+                    controller.setEncryptionKey(passphrase)
+                    passphrase = ""
+                }
+                .disabled(!isConnected || passphrase.count < 8)
+                .foregroundColor(isConnected && passphrase.count >= 8 ? AppColors.greenAccent : AppColors.textDim)
+
+                Spacer()
+
+                Button("Убрать ключ") {
+                    controller.clearEncryptionKey()
+                }
+                .disabled(!isConnected)
+                .foregroundColor(AppColors.redAccent)
+            }
+
+            if !appState.keyFingerprint.isEmpty {
+                HStack {
+                    Text("Отпечаток")
+                        .foregroundColor(AppColors.textPrimary)
+                    Spacer()
+                    Text(appState.keyFingerprint)
+                        .font(.system(size: 18, weight: .bold, design: .monospaced))
+                        .foregroundColor(AppColors.greenAccent)
+                }
+            }
+
+            if appState.alienPackets > 0 {
+                HStack {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundColor(AppColors.amberAccent)
+                    Text("Рядом говорят другим ключом: \(appState.alienPackets) пакетов")
+                        .font(.system(size: 13))
+                        .foregroundColor(AppColors.amberAccent)
+                }
+            }
+
+            Toggle(isOn: Binding(
+                get: { appState.hearPlaintext },
+                set: { controller.setHearPlaintext($0) }
+            )) {
+                Text("Слышать открытый эфир")
+                    .foregroundColor(AppColors.textPrimary)
+            }
+            .tint(AppColors.greenAccent)
+        } header: {
+            Text("Шифрование")
+        }
+    }
+
+    // MARK: - Notifications
+
+    private var notificationSection: some View {
+        Section {
+            Picker("Уведомления", selection: Binding(
+                get: { appState.notifyMode },
+                set: { appState.notifyMode = $0 }
+            )) {
+                Text("Выкл").tag(0)
+                Text("Только личные").tag(1)
+                Text("Все сообщения").tag(2)
+            }
+            .foregroundColor(AppColors.textPrimary)
+        } header: {
+            Text("Уведомления")
         }
     }
 
@@ -320,18 +436,20 @@ struct SettingsView: View {
     private var aboutSection: some View {
         Section {
             HStack {
-                Text("Версия")
+                Text("Приложение")
                     .foregroundColor(AppColors.textPrimary)
                 Spacer()
                 Text("1.0.0")
                     .foregroundColor(AppColors.textDim)
             }
             HStack {
-                Text("Сборка")
+                Text("Прошивка рации")
                     .foregroundColor(AppColors.textPrimary)
                 Spacer()
-                Text("iOS / SwiftUI")
-                    .foregroundColor(AppColors.textDim)
+                Text(appState.firmwareVersion.isEmpty
+                     ? (isConnected ? "не сообщает" : "не подключено")
+                     : appState.firmwareVersion)
+                    .foregroundColor(appState.firmwareVersion.isEmpty ? AppColors.textDim : AppColors.greenAccent)
             }
         } header: {
             Text("О приложении")
