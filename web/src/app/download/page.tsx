@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import ApkDownload from '@/components/download/ApkDownload';
 import FirmwareDownload from '@/components/download/FirmwareDownload';
 import QrCode from '@/components/download/QrCode';
@@ -23,6 +24,23 @@ export default function DownloadPage() {
           </div>
           <QrCode />
         </div>
+
+        {/* iOS link */}
+        <Link href="/ios/" className="block p-4 rounded-xl bg-bg-card border border-border hover:border-blue-500/50 transition-colors">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🍎</span>
+            <div className="flex-1">
+              <span className="font-semibold text-text-primary">{t('ios.title')}</span>
+              <span className="ml-2 px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 text-xs font-medium">
+                {t('ios.badge')}
+              </span>
+            </div>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-text-secondary">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </div>
+        </Link>
+
         <FirmwareDownload />
         <Feedback />
         <InstallSteps />
