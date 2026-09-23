@@ -35,6 +35,10 @@ class BLEManager: NSObject, ObservableObject {
     private var connectTimer: Timer?
     private let connectTimeout: TimeInterval = 10
 
+    // Keepalive
+    private var keepaliveTimer: Timer?
+    private let keepaliveInterval: TimeInterval = 30
+
     // Scan timeout
     private var scanTimer: Timer?
     private let scanTimeout: TimeInterval = 30
@@ -128,6 +132,15 @@ class BLEManager: NSObject, ObservableObject {
         connectedPeripheral?.identifier.uuidString
     }
 
+    /// Call after PIN verified / auth complete to enable auto-reconnect and keepalive
+    func markConnected() {
+        wasConnected = true
+        reconnectAttempts = 0
+        if let p = connectedPeripheral { saveDevice(p) }
+        startKeepalive()
+        onConnected?()
+    }
+
     // MARK: - Auto-reconnect
 
     func autoConnect() {
@@ -199,6 +212,22 @@ class BLEManager: NSObject, ObservableObject {
         txCharacteristic = nil
         connectTimer?.invalidate()
         connectTimer = nil
+        stopKeepalive()
+    }
+
+    private func startKeepalive() {
+        keepaliveTimer?.invalidate()
+        keepaliveTimer = Timer.scheduledTimer(withTimeInterval: keepaliveInterval, repeats: true) { [weak self] _ in
+            guard let self = self, let peripheral = self.connectedPeripheral,
+                  let tx = self.txCharacteristic else { return }
+            // Read RSSI to keep the connection alive
+            peripheral.readRSSI()
+        }
+    }
+
+    private func stopKeepalive() {
+        keepaliveTimer?.invalidate()
+        keepaliveTimer = nil
     }
 
     private func saveDevice(_ peripheral: CBPeripheral) {
@@ -307,6 +336,13 @@ extension BLEManager: CBPeripheralDelegate {
             log.error("Notify error: \(error.localizedDescription)")
         } else {
             log.info("Notify enabled for \(characteristic.uuid)")
+        }
+    }
+
+    func peripheral(_ peripheral: CBPeripheral, didReadRSSI RSSI: NSNumber, error: Error?) {
+        // Keepalive: RSSI read keeps the BLE connection active
+        if error == nil {
+            log.debug("Keepalive RSSI: \(RSSI.intValue)")
         }
     }
 }

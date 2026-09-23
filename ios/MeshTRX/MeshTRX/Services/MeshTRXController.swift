@@ -139,7 +139,7 @@ class MeshTRXController: ObservableObject {
         let addr = bleManager.connectedDeviceIdentifier ?? ""
         if authorizedDevices.contains(addr) {
             log.info("Device \(addr) already authorized, skipping PIN")
-            handleConnected()
+            bleManager.markConnected()
         } else {
             log.info("Need PIN for \(addr)")
             appState.bleState = .connecting
@@ -745,7 +745,7 @@ class MeshTRXController: ObservableObject {
             if let addr = bleManager.connectedDeviceIdentifier {
                 authorizeDevice(addr)
             }
-            handleConnected()
+            bleManager.markConnected()
         } else {
             log.info("PIN rejected")
             appState.statusMessage = "Неверный PIN"
