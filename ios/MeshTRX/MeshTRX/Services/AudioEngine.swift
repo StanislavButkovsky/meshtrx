@@ -18,6 +18,7 @@ class AudioEngine {
 
     var volumeBoost: Float = 2.0     // 1.0=normal, 3.0=max
     var squelchThreshold: Int = 0    // RMS threshold, 0=disabled
+    var agcEnabled: Bool = true      // automatic gain control
 
     // MARK: - State
 
@@ -38,6 +39,14 @@ class AudioEngine {
     // Record buffer
     private var packetBuffer = [Int16](repeating: 0, count: packetSamples)
     private var packetOffset = 0
+
+    // AGC state
+    private var agcGain: Float = 1.0
+    private let agcTargetRms: Float = 8000   // target RMS level
+    private let agcMinGain: Float = 0.5
+    private let agcMaxGain: Float = 10.0
+    private let agcAttackRate: Float = 0.05  // fast attack
+    private let agcReleaseRate: Float = 0.01 // slow release
 
     // Playback queue
     private let playbackLock = NSLock()
@@ -210,13 +219,26 @@ class AudioEngine {
         let frameCount = Int(outputBuffer.frameLength)
         guard frameCount > 0, let int16Data = outputBuffer.int16ChannelData else { return }
 
-        let samples = Array(UnsafeBufferPointer(start: int16Data[0], count: frameCount))
+        var samples = Array(UnsafeBufferPointer(start: int16Data[0], count: frameCount))
 
         // RMS — always compute for VOX and VU meter
         var sum: Int64 = 0
         for s in samples { sum += Int64(s) * Int64(s) }
         let rms = Int(sqrt(Double(sum) / Double(frameCount)))
         onRmsLevel?(rms)
+
+        // AGC — adjust gain to keep RMS near target
+        if agcEnabled && rms > 100 {
+            let desiredGain = agcTargetRms / Float(rms)
+            let clampedTarget = min(max(desiredGain, agcMinGain), agcMaxGain)
+            let rate = clampedTarget < agcGain ? agcAttackRate : agcReleaseRate
+            agcGain += (clampedTarget - agcGain) * rate
+            agcGain = min(max(agcGain, agcMinGain), agcMaxGain)
+
+            samples = samples.map { sample in
+                Int16(clamping: Int(Float(sample) * agcGain))
+            }
+        }
 
         // Encode only if sendAudio and above squelch
         if sendAudio {

@@ -301,6 +301,7 @@ struct MessageBubbleView: View {
                 HStack(spacing: 4) {
                     Text(message.time)
                         .font(.system(size: 10, design: .monospaced))
+                        .frame(width: 36, alignment: .leading)
 
                     if message.isOutgoing, let name = message.destName {
                         Text("→ \(name)")
@@ -313,9 +314,9 @@ struct MessageBubbleView: View {
                     }
 
                     if !message.encrypted && !message.isOutgoing {
-                        Text("без шифра")
-                            .font(.system(size: 9, weight: .medium))
-                            .foregroundColor(AppColors.amberAccent)
+                        Text("⚠ без шифра")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundColor(AppColors.redAccent)
                     }
 
                     // Status icon (outgoing)

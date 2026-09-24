@@ -102,16 +102,16 @@ $SSH "$TARGET" "cd /var/www && tar czf '$ARCHIVE' \$(ls -d meshtrx meshtrx-ru me
 
 for loc in ru en; do
   echo "==> Выгрузка $loc → $MESHTRX_DEPLOY_PATH-$loc"
-  # Файлы на сервере принадлежат 1000:1000, а ходим мы root'ом: без --chown
-  # новые файлы легли бы от root и каталог стал бы разношёрстным.
-  rsync -az --delete --chown=1000:1000 \
+  rsync -az --delete \
     -e "$SSH" "out-$loc/" "$TARGET:$MESHTRX_DEPLOY_PATH-$loc/"
+  # Файлы на сервере принадлежат 1000:1000, а ходим мы root'ом.
+  $SSH "$TARGET" "chown -R 1000:1000 $MESHTRX_DEPLOY_PATH-$loc/"
 done
 
 echo "==> Проверка"
 fail=0
 check() { # домен, ожидаемый язык
-  for path in / /articles/ /docs/ /download/ /flash/ /about/ /sitemap.xml; do
+  for path in / /articles/ /docs/ /download/ /flash/ /ios/ /about/ /sitemap.xml; do
     code=$(curl -s -o /dev/null -w '%{http_code}' -m 30 "$1$path" || echo 000)
     [ "$code" = 200 ] || { echo "    $code $1$path" >&2; fail=1; }
   done

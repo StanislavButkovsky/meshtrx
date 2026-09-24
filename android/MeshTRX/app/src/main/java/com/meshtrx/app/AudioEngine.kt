@@ -30,6 +30,15 @@ class AudioEngine {
     var onRmsLevel: ((Int) -> Unit)? = null
     var volumeBoost = 2.0f // усиление приёма (1.0 = норма, 3.0 = макс)
     var squelchThreshold = 0 // порог шумоподавления RMS (0 = отключён)
+    @Volatile var agcEnabled = true // автоматическая подстройка уровня микрофона
+
+    // AGC state
+    private var agcGain = 1.0f
+    private val agcTargetRms = 8000f
+    private val agcMinGain = 0.5f
+    private val agcMaxGain = 10.0f
+    private val agcAttackRate = 0.05f  // быстрая атака
+    private val agcReleaseRate = 0.01f // медленный отпуск
     // Короткий сигнал в конце чужой передачи. Кому-то он нужен — иначе не
     // понять, договорил собеседник или связь оборвалась; кого-то раздражает,
     // особенно в помещении. Поэтому выключаемый, а не зашитый.
@@ -139,6 +148,18 @@ class AudioEngine {
                     for (s in frameBuf) sum += s.toLong() * s
                     val rms = sqrt(sum.toDouble() / read).toInt()
                     onRmsLevel?.invoke(rms)
+
+                    // AGC — подстройка уровня микрофона
+                    if (agcEnabled && rms > 100) {
+                        val desiredGain = agcTargetRms / rms
+                        val clampedTarget = desiredGain.coerceIn(agcMinGain, agcMaxGain)
+                        val rate = if (clampedTarget < agcGain) agcAttackRate else agcReleaseRate
+                        agcGain += (clampedTarget - agcGain) * rate
+                        agcGain = agcGain.coerceIn(agcMinGain, agcMaxGain)
+                        for (i in frameBuf.indices) {
+                            frameBuf[i] = (frameBuf[i] * agcGain).toInt().coerceIn(-32768, 32767).toShort()
+                        }
+                    }
 
                     // Кодировать только если sendAudio=true и есть реальный звук
                     if (sendAudio) {

@@ -224,7 +224,7 @@ MeshTRX v%2$s</string>
     <string name="clear_chat_empty">История и так пуста</string>
     <string name="device_name_only">Устройство: %1$s</string>
     <string name="channel_now">(сейчас)</string>
-    <string name="msg_open">без шифра</string>
+    <string name="msg_open"> ⚠ без шифра</string>
     <string name="notifications">Уведомления о сообщениях</string>
     <string name="notify_all">Обо всех сообщениях</string>
     <string name="notify_private">Только о личных</string>

@@ -327,7 +327,18 @@ class MessagesFragment : Fragment() {
                     else -> ""
                 }
             } else ""
-            holder.tvMeta.text = "${msg.time}$destStr$rssiStr$openMark$statusStr"
+            val metaBase = "${msg.time}$destStr$rssiStr"
+            if (openMark.isNotEmpty()) {
+                val full = "$metaBase$openMark$statusStr"
+                val span = android.text.SpannableString(full)
+                val start = metaBase.length
+                val end = start + openMark.length
+                span.setSpan(android.text.style.ForegroundColorSpan(Colors.redTx),
+                    start, end, android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                holder.tvMeta.text = span
+            } else {
+                holder.tvMeta.text = "$metaBase$statusStr"
+            }
 
             // Цвет статуса
             if (msg.isOutgoing && msg.status == MessageStatus.FAILED) {
