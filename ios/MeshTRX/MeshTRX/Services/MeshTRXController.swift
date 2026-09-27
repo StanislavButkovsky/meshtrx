@@ -428,6 +428,29 @@ class MeshTRXController: ObservableObject {
         }
     }
 
+    private func postCallNotification(call: IncomingCall) {
+        let content = UNMutableNotificationContent()
+        let typeLabel: String
+        switch call.callType {
+        case .all: typeLabel = "Общий вызов"
+        case .private: typeLabel = "Приватный вызов"
+        case .group: typeLabel = "Групповой вызов"
+        case .emergency: typeLabel = "SOS"
+        }
+        content.title = typeLabel
+        content.body = call.callSign
+        content.sound = .defaultCritical
+        content.interruptionLevel = .timeSensitive
+        content.threadIdentifier = "meshtrx-call"
+
+        let request = UNNotificationRequest(
+            identifier: "call-\(call.callSeq)",
+            content: content,
+            trigger: nil
+        )
+        UNUserNotificationCenter.current().add(request)
+    }
+
     private func postMessageNotification(senderName: String, text: String, isPrivate: Bool) {
         let mode = appState.notifyMode
         guard mode > 0 else { return }
@@ -734,6 +757,7 @@ class MeshTRXController: ObservableObject {
         appState.incomingCall = call
         addRecentCall(deviceId: senderId, callSign: callSign, isOutgoing: false,
                       callType: call.callType == .emergency ? "SOS" : call.callType == .`private` ? "PRIVATE" : "ALL")
+        postCallNotification(call: call)
     }
 
     // MARK: - PIN
