@@ -9,8 +9,13 @@ class Codec2Wrapper {
     // пакета, а принятые 32 байта iPhone не узнавал и выбрасывал.
     let framesPerPacket: Int = 4
 
-    init(mode: Int32 = 3200) {  // CODEC2_MODE_3200
+    // Номер режима, а не битрейт: CODEC2_MODE_3200 = 0. Здесь стояло 3200 —
+    // такого режима нет, codec2_create возвращал nil, и iPhone не кодировал и
+    // не декодировал ни одного кадра: в эфир уходила пустота, а с приёма
+    // звучал только сигнал конца передачи.
+    init(mode: Int32 = CODEC2_MODE_3200) {
         codec = codec2_create(mode)
+        if codec == nil { NSLog("Codec2: не удалось создать кодек, режим %d", mode) }
     }
 
     deinit {
