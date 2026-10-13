@@ -34,7 +34,10 @@ class AudioEngine {
 
     // AGC state
     private var agcGain = 1.0f
-    private val agcTargetRms = 8000f
+    // 4000, а не 8000: у речи пики в 4–5 раз выше среднего, и при 8000 громкие
+    // звуки обрезались о потолок ещё до кодека — на приёме это слышно как хрип.
+    // Громкость на той стороне добирает мягкое насыщение приёма.
+    private val agcTargetRms = 4000f
     private val agcMinGain = 0.5f
     private val agcMaxGain = 10.0f
     private val agcAttackRate = 0.05f  // быстрая атака
@@ -233,7 +236,7 @@ class AudioEngine {
             if (boost < 1.0f) for (i in pcm.indices) pcm[i] = (pcm[i] * boost).toInt().toShort()
             return
         }
-        val k = boost * 1.5f
+        val k = boost * 0.8f    // мягче: при 1.5 сжатие само звучало как перегруз
         val norm = 0.95f / kotlin.math.tanh(k)
         for (i in pcm.indices) {
             val x = pcm[i] / 32768f

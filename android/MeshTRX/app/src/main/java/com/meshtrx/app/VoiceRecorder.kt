@@ -11,7 +11,7 @@ import kotlin.math.sqrt
  */
 class VoiceRecorder(private val maxDurationSec: Int = 10) {
     companion object {
-        private const val TARGET_RMS = 8000f   // как agcTargetRms в AudioEngine
+        private const val TARGET_RMS = 4000f   // как agcTargetRms в AudioEngine
         private const val MAX_GAIN = 10f
         private const val TAG = "VoiceRecorder"
         const val SAMPLE_RATE = 8000
