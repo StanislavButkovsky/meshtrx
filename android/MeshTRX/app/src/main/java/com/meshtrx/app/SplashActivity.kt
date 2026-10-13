@@ -18,6 +18,9 @@ class SplashActivity : AppCompatActivity() {
 
         val logo = findViewById<ImageView>(R.id.splashLogo)
         val version = findViewById<TextView>(R.id.splashVersion)
+        // Номер берём из самого приложения: в разметке стояло «v4.3.1», и
+        // заставка показывала его при любой версии.
+        version.text = "v" + packageManager.getPackageInfo(packageName, 0).versionName
 
         // Fade in через animate()
         logo.alpha = 0f

@@ -29,6 +29,13 @@ enum BLECmd {
     static let fileChunk:    UInt8 = 0x0E
     static let fileRecv:     UInt8 = 0x0F
     static let fileProgress: UInt8 = 0x10
+    // Файлы v2 — как в Android: телефон отдаёт файл рации целиком, рация сама
+    // режет его на куски, шлёт в эфир и сообщает итог.
+    static let getFwVersion:     UInt8 = 0x39
+    static let getKeyState:      UInt8 = 0x3C
+    static let fileUploadStart:  UInt8 = 0x30
+    static let fileUploadData:   UInt8 = 0x31
+    static let fileUploadStatus: UInt8 = 0x32
     static let setTxMode:    UInt8 = 0x11
     static let voxStatus:    UInt8 = 0x12
     static let voxLevel:     UInt8 = 0x13

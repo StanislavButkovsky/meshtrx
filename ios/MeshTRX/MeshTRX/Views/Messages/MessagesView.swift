@@ -11,6 +11,8 @@ struct MessagesView: View {
     @State private var showDestPicker: Bool = false
     @State private var isRecordingVoice: Bool = false
     @State private var voiceRecordStart: Date? = nil
+    @State private var infoText: String? = nil
+    @State private var voiceLimitTask: Task<Void, Never>? = nil
 
     private var isConnected: Bool { appState.bleState == .connected }
 
@@ -44,25 +46,7 @@ struct MessagesView: View {
         return ["Все"] + contacts.sorted()
     }
 
-    /// Кому можно написать лично: рации, слышные в эфире, и те, от кого уже
-    /// приходили сообщения. Адрес — последние четыре знака идентификатора,
-    /// как в Android.
-    private var recipients: [(id: String, name: String)] {
-        var out: [(id: String, name: String)] = []
-        var seen = Set<String>()
-        for p in appState.peers {
-            let id = String(p.deviceId.suffix(4))
-            guard id.count == 4, !seen.contains(id) else { continue }
-            seen.insert(id)
-            out.append((id, p.callSign.isEmpty ? "TX-\(id)" : p.callSign))
-        }
-        for m in appState.messages where !m.isOutgoing && m.senderId.count == 4 && m.senderId != "??" {
-            guard !seen.contains(m.senderId) else { continue }
-            seen.insert(m.senderId)
-            out.append((m.senderId, m.senderName.isEmpty ? "TX-\(m.senderId)" : m.senderName))
-        }
-        return out
-    }
+    private var recipients: [(id: String, name: String)] { appState.directRecipients }
 
     var body: some View {
         ZStack {
@@ -96,6 +80,10 @@ struct MessagesView: View {
                 // Input bar
                 inputBar
             }
+        }
+        .alert(infoText ?? "", isPresented: Binding(
+            get: { infoText != nil }, set: { if !$0 { infoText = nil } })) {
+            Button("OK", role: .cancel) {}
         }
     }
 
@@ -135,7 +123,12 @@ struct MessagesView: View {
 
             // Clear chat
             Button {
-                appState.showClearChatConfirm = true
+                // Пусто — так и сказать, а не спрашивать впустую (как Android)
+                if appState.messages.isEmpty {
+                    infoText = "История и так пуста"
+                } else {
+                    appState.showClearChatConfirm = true
+                }
             } label: {
                 Image(systemName: "trash")
                     .font(.system(size: 12))
@@ -145,9 +138,12 @@ struct MessagesView: View {
                     .background(AppColors.redBg)
                     .cornerRadius(6)
             }
-            .alert("Очистить чат", isPresented: $appState.showClearChatConfirm) {
-                Button("Удалить всю переписку с этого телефона?", role: .destructive) {
+            // Вопрос — в тексте окна, на кнопке — действие. Раньше вопрос
+            // стоял на самой кнопке удаления.
+            .alert("Удалить всю переписку с этого телефона?", isPresented: $appState.showClearChatConfirm) {
+                Button("Очистить чат", role: .destructive) {
                     controller.clearChat()
+                    infoText = "История очищена"
                 }
                 Button("Отмена", role: .cancel) {}
             }
@@ -183,7 +179,7 @@ struct MessagesView: View {
     private var inputBar: some View {
         VStack(spacing: 0) {
         HStack(spacing: 8) {
-            TextField("Сообщение...", text: $messageText)
+            TextField("Сообщение (макс 84)", text: $messageText)
                 .textFieldStyle(.plain)
                 .foregroundColor(AppColors.textPrimary)
                 .padding(.horizontal, 12)
@@ -231,9 +227,14 @@ struct MessagesView: View {
                 Circle()
                     .fill(AppColors.redAccent)
                     .frame(width: 10, height: 10)
-                Text("Запись...")
-                    .font(.system(size: 13))
-                    .foregroundColor(AppColors.redAccent)
+                // Время записи и предел, как в Android
+                TimelineView(.periodic(from: .now, by: 0.5)) { _ in
+                    let sec = Int(Date().timeIntervalSince(voiceRecordStart ?? Date()))
+                    Text(String(format: "0:%02d / 0:%02d", min(sec, MeshTRXController.pttMaxSeconds),
+                                MeshTRXController.pttMaxSeconds))
+                        .font(.system(size: 13, design: .monospaced))
+                        .foregroundColor(AppColors.redAccent)
+                }
                 Spacer()
                 Button("Отмена") {
                     cancelVoiceRecording()
@@ -256,9 +257,16 @@ struct MessagesView: View {
         isRecordingVoice = true
         voiceRecordStart = Date()
         controller.audioEngine.startBufferedRecording()
+        // Голосовое — до 10 с, как и любая передача: потом отправляется само
+        voiceLimitTask?.cancel()
+        voiceLimitTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: UInt64(MeshTRXController.pttMaxSeconds) * 1_000_000_000)
+            if !Task.isCancelled && isRecordingVoice { stopVoiceRecording() }
+        }
     }
 
     private func stopVoiceRecording() {
+        voiceLimitTask?.cancel()
         isRecordingVoice = false
         controller.audioEngine.stopRecording()
         // Voice recording via file transfer: encode accumulated audio and send as FILE_TYPE_VOICE
@@ -273,17 +281,19 @@ struct MessagesView: View {
             let now = Int64(Date().timeIntervalSince1970 * 1000)
             let timeFmt = DateFormatter()
             timeFmt.dateFormat = "HH:mm"
-            let msg = ChatMessage(
+            var msg = ChatMessage(
                 id: now, text: "🎤 \(max(1, duration))с", isOutgoing: true, senderId: "me",
                 senderName: appState.callSign, destId: destId, destName: destName,
                 status: .sending, time: timeFmt.string(from: Date()), isVoice: true
             )
+            msg.voiceData = encoded     // своё голосовое тоже можно прослушать
             appState.messages.append(msg)
         }
         voiceRecordStart = nil
     }
 
     private func cancelVoiceRecording() {
+        voiceLimitTask?.cancel()
         isRecordingVoice = false
         controller.audioEngine.stopRecording()
         voiceRecordStart = nil
@@ -309,6 +319,7 @@ struct MessagesView: View {
 
 struct MessageBubbleView: View {
     let message: ChatMessage
+    @EnvironmentObject var controller: MeshTRXController
 
     var body: some View {
         HStack {
@@ -322,10 +333,21 @@ struct MessageBubbleView: View {
                         .foregroundColor(AppColors.greenAccent)
                 }
 
-                // Message text
-                Text(message.text)
-                    .font(.system(size: 14))
-                    .foregroundColor(AppColors.textPrimary)
+                // Message text; у голосового — ▶, нажатие проигрывает (как Android)
+                if message.isVoice {
+                    Button {
+                        if let d = message.voiceData { controller.playVoice(d) }
+                    } label: {
+                        Label(message.text, systemImage: "play.fill")
+                            .font(.system(size: 14))
+                            .foregroundColor(message.voiceData == nil ? AppColors.textDim : AppColors.textPrimary)
+                    }
+                    .disabled(message.voiceData == nil)
+                } else {
+                    Text(message.text)
+                        .font(.system(size: 14))
+                        .foregroundColor(AppColors.textPrimary)
+                }
 
                 // Meta line
                 HStack(spacing: 4) {
@@ -349,8 +371,8 @@ struct MessageBubbleView: View {
                             .foregroundColor(AppColors.redAccent)
                     }
 
-                    // Status icon (outgoing)
-                    if message.isOutgoing {
+                    // Статус — у адресных, как в Android; у общих только ✗
+                    if message.isOutgoing && (message.destId != nil || message.status == .failed) {
                         statusIcon
                     }
                 }
@@ -360,6 +382,10 @@ struct MessageBubbleView: View {
             .padding(.vertical, 6)
             .background(message.isOutgoing ? AppColors.blueBg : AppColors.bgElevated)
             .cornerRadius(12)
+            // Нажатие на ✗ — отправить ещё раз
+            .onTapGesture {
+                if message.isOutgoing && message.status == .failed { controller.retry(message) }
+            }
 
             if !message.isOutgoing { Spacer(minLength: 48) }
         }
@@ -369,11 +395,11 @@ struct MessageBubbleView: View {
     private var statusIcon: some View {
         switch message.status {
         case .sending:
-            Image(systemName: "clock")
-                .font(.system(size: 9))
+            Text("⏳").font(.system(size: 9))
         case .sent:
-            Image(systemName: "checkmark")
-                .font(.system(size: 9))
+            // «Ушло, ответа нет» — стрелка, а не галочка: сообщение могло дойти,
+            // а потеряться — ответ. Галочка здесь обещала доставку.
+            Text("↑").font(.system(size: 10, weight: .bold))
         case .accepted:
             // Рация адресата приняла, человек ещё не видел — словами, как в
             // Android: вторая галочка обещала бы больше, чем случилось.
@@ -381,12 +407,10 @@ struct MessageBubbleView: View {
                 .font(.system(size: 9))
                 .foregroundColor(AppColors.amberAccent)
         case .delivered:
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 9))
+            Text("✓").font(.system(size: 11, weight: .bold))
                 .foregroundColor(AppColors.greenAccent)
         case .failed:
-            Image(systemName: "exclamationmark.circle")
-                .font(.system(size: 9))
+            Text("✗").font(.system(size: 11, weight: .bold))
                 .foregroundColor(AppColors.redAccent)
         }
     }

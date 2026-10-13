@@ -4,7 +4,6 @@ struct VoiceView: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var controller: MeshTRXController
     @State private var speakerOn = true
-    @State private var showCallPicker = false
     @State private var isPttPressed = false
 
     private var isConnected: Bool { appState.bleState == .connected }
@@ -13,6 +12,8 @@ struct VoiceView: View {
     private var pttState: PttState {
         if appState.isPttActive {
             return isVox ? .voxTx : .tx
+        } else if appState.rxCallSign != nil {
+            return .rx      // «ПРИЁМ»: состояние было описано, но не включалось никогда
         } else {
             return isVox ? .voxIdle : .idle
         }
@@ -113,43 +114,51 @@ struct VoiceView: View {
                 .padding(.bottom, 12)
             }
         }
-        .sheet(isPresented: $showCallPicker) {
-            callPickerSheet
-        }
     }
 
     // MARK: - Network Summary
 
+    // Сводка, как в Android: слышимые станции (по сроку списка), ретранслятор по
+    // признаку маяка, последнее движение в эфире. Пересчёт раз в 15 с: «минуту
+    // назад» стареет само, без новых событий.
     private var networkSummary: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            let count = appState.peers.count
-            let repeater = appState.peers.first { $0.callSign.uppercased().contains("RPT") || $0.callSign.uppercased().contains("REP") }
-            Text(count == 0 ? "Нет станций в эфире" : "\(count) \(stationsWord(count)) в эфире\(repeater != nil ? " · Ретр: \(repeater!.callSign) \(repeater!.rssi)dBm" : "")")
-                .font(.system(size: 12))
-                .foregroundColor(Color(hex: 0xaaaaaa))
-                .lineLimit(1)
-
-            if let last = appState.peers.sorted(by: { $0.lastSeenMs > $1.lastSeenMs }).first {
-                let ago = Int((Date().timeIntervalSince1970 * 1000 - Double(last.lastSeenMs)) / 1000)
-                Text("Последний: \(last.callSign) \(formatAgo(ago)) \(last.rssi)dBm/\(last.snr)dB")
+        TimelineView(.periodic(from: .now, by: 15)) { _ in
+            let now = Int64(Date().timeIntervalSince1970 * 1000)
+            let live = appState.peers.filter { now - $0.lastSeenMs < Int64(appState.peerTimeoutMin) * 60_000 }
+            let repeater = live.first { $0.isRepeater }
+            VStack(alignment: .leading, spacing: 2) {
+                Text("слышно \(live.count) \(stationsWord(live.count)) · " +
+                     (repeater.map { "ретранслятор \($0.callSign) (\($0.rssi) dBm)" } ?? "ретранслятора не слышно"))
                     .font(.system(size: 12))
-                    .foregroundColor(AppColors.textDim)
+                    .foregroundColor(Color(hex: 0xaaaaaa))
                     .lineLimit(1)
+                if let last = live.max(by: { $0.lastSeenMs < $1.lastSeenMs }) {
+                    Text("последний: \(last.callSign), \(formatAgo(Int((now - last.lastSeenMs) / 1000))) · \(last.rssi)dBm, SNR \(last.snr)")
+                        .font(.system(size: 12))
+                        .foregroundColor(AppColors.textDim)
+                        .lineLimit(1)
+                } else {
+                    Text("в эфире тихо")
+                        .font(.system(size: 12))
+                        .foregroundColor(AppColors.textDim)
+                }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
     private func stationsWord(_ n: Int) -> String {
         let mod10 = n % 10; let mod100 = n % 100
         if mod100 >= 11 && mod100 <= 19 { return "станций" }
-        if mod10 == 1 { return "станция" }
+        if mod10 == 1 { return "станцию" }
         if mod10 >= 2 && mod10 <= 4 { return "станции" }
         return "станций"
     }
 
     private func formatAgo(_ sec: Int) -> String {
-        if sec < 60 { return "\(sec)с назад" }
-        return "\(sec / 60)мин назад"
+        if sec < 60 { return "\(sec) с назад" }
+        if sec < 3600 { return "\(sec / 60) мин назад" }
+        return "\(sec / 3600) ч назад"
     }
 
     // MARK: - Control Bar
@@ -224,6 +233,7 @@ struct VoiceView: View {
 
     private var statusDotColor: Color {
         if appState.isPttActive { return AppColors.redTx }
+        if appState.rxCallSign != nil { return AppColors.greenAccent }
         if isConnected { return AppColors.greenDim }
         return AppColors.textDim
     }
@@ -235,7 +245,15 @@ struct VoiceView: View {
 
     private var statusText: String {
         if !isConnected { return "не подключено" }
-        if appState.isPttActive { return "передача..." }
+        if appState.isPttActive {
+            if let left = appState.pttSecondsLeft, left <= 3 {
+                return left == 0 ? "предел \(MeshTRXController.pttMaxSeconds) с — отпустите кнопку"
+                                 : "передача · осталось \(left) с"
+            }
+            return "передача..."
+        }
+        if let who = appState.rxCallSign { return "приём: \(who)" }
+        if let d = appState.pttDeliveryText { return d }
         return "ожидание"
     }
 
@@ -260,108 +278,53 @@ struct VoiceView: View {
 
     // MARK: - Call Buttons
 
+    // Строка адресата, как в Android: «@», кому говорим, и одна кнопка вызова.
+    // Раньше были «ОБЩИЙ» и «ВЫЗВАТЬ» с листом и кнопкой SOS, а адресата не было.
+    @State private var showTargetPicker = false
+
     private var callButtonsRow: some View {
-        HStack(spacing: 8) {
-            Button { controller.callAll() } label: {
-                Text("ОБЩИЙ")
-                    .font(.system(size: 13, weight: .medium))
+        HStack(spacing: 10) {
+            Button { showTargetPicker = true } label: {
+                Image(systemName: "at")
+                    .font(.system(size: 18, weight: .bold))
                     .foregroundColor(AppColors.blueAccent)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 44)
+                    .frame(width: 48, height: 48)
                     .background(AppColors.blueBg)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(AppColors.blueBorder, lineWidth: 1)
-                    )
-                    .cornerRadius(6)
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(AppColors.blueBorder, lineWidth: 1))
+                    .cornerRadius(8)
             }
             .disabled(!isConnected)
-
-            Button { showCallPicker = true } label: {
-                Text("ВЫЗВАТЬ")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(AppColors.greenAccent)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 44)
-                    .background(AppColors.greenBg)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(AppColors.greenBorder, lineWidth: 1)
-                    )
-                    .cornerRadius(6)
+            .confirmationDialog("Выбрать абонента", isPresented: $showTargetPicker, titleVisibility: .visible) {
+                Button("Общий канал") { appState.pttTargetId = nil; appState.pttTargetName = nil }
+                ForEach(appState.directRecipients, id: \.id) { r in
+                    Button(r.name) { appState.pttTargetId = r.id; appState.pttTargetName = r.name }
+                }
+                Button("Отмена", role: .cancel) {}
             }
-            .disabled(!isConnected)
-        }
-    }
 
-    // MARK: - Call Picker Sheet
-
-    private var callPickerSheet: some View {
-        ZStack {
-            AppColors.bgPrimary.ignoresSafeArea()
-
-            VStack(spacing: 12) {
-                Text("Выбор вызова")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(AppColors.textPrimary)
-                    .padding(.top, 20)
-
-                // Private calls to peers
-                if appState.peers.isEmpty {
-                    Text("Нет пиров в сети")
+            VStack(alignment: .leading, spacing: 2) {
+                Text(appState.pttTargetName ?? "Общий канал")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(appState.pttTargetId == nil ? AppColors.blueAccent : AppColors.greenAccent)
+                if let id = appState.pttTargetId,
+                   let p = appState.peers.first(where: { $0.deviceId.hasSuffix(id) }) {
+                    Text("\(p.rssi) dBm · SNR \(p.snr)")
+                        .font(.system(size: 11, design: .monospaced))
                         .foregroundColor(AppColors.textDim)
-                        .padding()
-                } else {
-                    ScrollView {
-                        LazyVStack(spacing: 4) {
-                            ForEach(appState.peers) { peer in
-                                Button {
-                                    let macBytes = stride(from: 0, to: peer.deviceId.count, by: 2).compactMap {
-                                        let start = peer.deviceId.index(peer.deviceId.startIndex, offsetBy: $0)
-                                        let end = peer.deviceId.index(start, offsetBy: min(2, peer.deviceId.distance(from: start, to: peer.deviceId.endIndex)))
-                                        return UInt8(peer.deviceId[start..<end], radix: 16)
-                                    }
-                                    controller.callPrivate(macSuffix: Data(macBytes), callSign: peer.callSign)
-                                    showCallPicker = false
-                                } label: {
-                                    HStack {
-                                        Text(peer.callSign)
-                                            .foregroundColor(AppColors.textPrimary)
-                                        Spacer()
-                                        Text("\(peer.rssi) dBm")
-                                            .font(.system(size: 12, design: .monospaced))
-                                            .foregroundColor(AppColors.textDim)
-                                    }
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 12)
-                                    .background(AppColors.bgElevated)
-                                    .cornerRadius(8)
-                                }
-                            }
-                        }
-                        .padding(.horizontal, 16)
-                    }
                 }
-
-                // SOS button
-                Button {
-                    controller.callEmergency()
-                    showCallPicker = false
-                } label: {
-                    Text("SOS")
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundColor(AppColors.redAccent)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 44)
-                        .background(AppColors.redBg)
-                        .cornerRadius(8)
-                }
-                .padding(.horizontal, 16)
-
-                Button("Отмена") { showCallPicker = false }
-                    .foregroundColor(AppColors.textMuted)
-                    .padding(.bottom, 16)
             }
+
+            Spacer()
+
+            Button { controller.callTarget() } label: {
+                Image(systemName: "bell.fill")
+                    .font(.system(size: 18))
+                    .foregroundColor(AppColors.greenAccent)
+                    .frame(width: 48, height: 48)
+                    .background(AppColors.greenBg)
+                    .clipShape(Circle())
+            }
+            .disabled(!isConnected)
         }
     }
 
@@ -374,7 +337,7 @@ struct VoiceView: View {
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {
-                        ForEach(appState.recentCalls.prefix(5)) { call in
+                        ForEach(appState.recentCalls.prefix(20)) { call in
                             recentCallRow(call)
                         }
                     }
@@ -395,9 +358,15 @@ struct VoiceView: View {
 
             // Content
             VStack(alignment: .leading, spacing: 2) {
-                Text(callDisplayName(call))
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundColor(AppColors.textSecondary)
+                // ✗ — абонент молчит дольше 15 минут: дозвониться вряд ли выйдет
+                HStack(spacing: 4) {
+                    Text(callDisplayName(call))
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundColor(AppColors.textSecondary)
+                    if isSilent(call) {
+                        Text("✗").font(.system(size: 13, weight: .bold)).foregroundColor(AppColors.redAccent)
+                    }
+                }
 
                 HStack(spacing: 4) {
                     Text(formatCallTime(call.timeMs))
@@ -423,6 +392,15 @@ struct VoiceView: View {
             }
         }
         .padding(6)
+        .contentShape(Rectangle())
+        .onTapGesture { redial(call) }     // нажатие на строку — повторный вызов, как в Android
+    }
+
+    private func isSilent(_ call: RecentCall) -> Bool {
+        guard call.callType == "PRIVATE" else { return false }
+        let short = String(call.deviceId.suffix(4))
+        guard let p = appState.peers.first(where: { $0.deviceId.hasSuffix(short) }) else { return true }
+        return Int64(Date().timeIntervalSince1970 * 1000) - p.lastSeenMs > 15 * 60_000
     }
 
     // MARK: - Helpers
@@ -432,6 +410,16 @@ struct VoiceView: View {
         case "ALL":
             controller.callAll()
         case "PRIVATE":
+            // Прошивке нужен полный 4-байтный id. Если в истории только хвост
+            // из 4 знаков — достраиваем по списку абонентов.
+            var fullId = call.deviceId
+            if fullId.count < 8,
+               let p = appState.peers.first(where: { $0.deviceId.hasSuffix(fullId) }) {
+                fullId = p.deviceId
+            }
+            guard fullId.count == 8 else { return }
+            let call = RecentCall(deviceId: fullId, callSign: call.callSign,
+                                  isOutgoing: call.isOutgoing, callType: call.callType)
             let macBytes = stride(from: 0, to: call.deviceId.count, by: 2).compactMap {
                 let start = call.deviceId.index(call.deviceId.startIndex, offsetBy: $0)
                 let end = call.deviceId.index(start, offsetBy: min(2, call.deviceId.distance(from: start, to: call.deviceId.endIndex)))

@@ -6,8 +6,8 @@ class AudioEngine {
 
     static let sampleRate: Double = 8000
     static let frameSamples: Int = 160       // 20ms (Codec2 3200)
-    static let framesPerPacket: Int = 8
-    static let packetSamples: Int = frameSamples * framesPerPacket  // 1280
+    static let framesPerPacket: Int = 4      // как в прошивке: 32 байта на пакет
+    static let packetSamples: Int = frameSamples * framesPerPacket  // 640
 
     // MARK: - Callbacks
 
@@ -19,6 +19,11 @@ class AudioEngine {
     var volumeBoost: Float = 2.0     // 1.0=normal, 3.0=max
     var squelchThreshold: Int = 0    // RMS threshold, 0=disabled
     var agcEnabled: Bool = true      // automatic gain control
+    var rogerBeep: Bool = true       // сигнал в конце чужой передачи
+    // Громкая связь, как в Android: по умолчанию включена. Режим «вход и
+    // выход» по умолчанию шлёт звук в разговорный динамик, и рацию было еле
+    // слышно даже на полной громкости — переключаем на громкий явно.
+    var speakerOn: Bool = true
 
     // MARK: - State
 
@@ -32,7 +37,11 @@ class AudioEngine {
     // MARK: - Audio components
 
     private let codec2 = Codec2Wrapper()
+    // Микрофон и динамик — два отдельных движка. Раньше узел воспроизведения
+    // жил в движке микрофона и создавался только вместе с ним: в режиме PTT,
+    // пока кнопка не нажата, принятому голосу было некуда звучать.
     private var engine: AVAudioEngine?
+    private var playbackEngine: AVAudioEngine?
     private var playerNode: AVAudioPlayerNode?
     private var inputConverter: AVAudioConverter?
 
@@ -42,7 +51,8 @@ class AudioEngine {
 
     // AGC state
     private var agcGain: Float = 1.0
-    private let agcTargetRms: Float = 8000   // target RMS level
+    // 4000, как в Android: при 8000 пики речи обрезались о потолок до кодека
+    private let agcTargetRms: Float = 4000
     private let agcMinGain: Float = 0.5
     private let agcMaxGain: Float = 10.0
     private let agcAttackRate: Float = 0.05  // fast attack
@@ -80,10 +90,13 @@ class AudioEngine {
     private func configureAudioSession() {
         let session = AVAudioSession.sharedInstance()
         do {
-            try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetooth])
+            // Режим .default, а не .voiceChat: в «голосовом звонке» iOS глушит
+            // громкий динамик, и на полной громкости рацию было еле слышно
+            try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth])
             try session.setPreferredSampleRate(AudioEngine.sampleRate)
             try session.setPreferredIOBufferDuration(0.02) // 20ms
             try session.setActive(true)
+            if speakerOn { try session.overrideOutputAudioPort(.speaker) }
         } catch {
             log.error("Audio session setup failed: \(error.localizedDescription)")
         }
@@ -109,6 +122,13 @@ class AudioEngine {
     }
 
     func stopRecording() {
+        // Недобранный последний пакет — дополнить тишиной и отправить, а не
+        // выбросить: иначе с фразы срезалось до 80 мс конца
+        if sendAudio && packetOffset > 0 && !isBuffering {
+            for i in packetOffset..<AudioEngine.packetSamples { packetBuffer[i] = 0 }
+            onAudioEncoded?(codec2.encodePacket(pcm: packetBuffer))
+            packetOffset = 0
+        }
         sendAudio = false
         isBuffering = false
         if !isMonitoring {
@@ -160,6 +180,12 @@ class AudioEngine {
 
         let inputNode = engine.inputNode
         let inputFormat = inputNode.outputFormat(forBus: 0)
+        log.info("Mic format: \(inputFormat.sampleRate) Hz, \(inputFormat.channelCount) ch")
+        guard inputFormat.sampleRate > 0, inputFormat.channelCount > 0 else {
+            log.error("Microphone unavailable (no permission or busy)")
+            isRecording = false
+            return
+        }
 
         // Converter: device sample rate → 8kHz Int16 mono
         guard let converter = AVAudioConverter(from: inputFormat, to: monoFormat) else {
@@ -174,15 +200,8 @@ class AudioEngine {
             self?.processInputBuffer(buffer)
         }
 
-        // Setup playback node on same engine
-        let player = AVAudioPlayerNode()
-        self.playerNode = player
-        engine.attach(player)
-        engine.connect(player, to: engine.mainMixerNode, format: playerFormat)
-
         do {
             try engine.start()
-            if isPlaying { player.play() }
         } catch {
             log.error("Engine start failed: \(error.localizedDescription)")
         }
@@ -191,11 +210,10 @@ class AudioEngine {
     private func stopMicCapture() {
         isRecording = false
         engine?.inputNode.removeTap(onBus: 0)
-        playerNode?.stop()
         engine?.stop()
         engine = nil
-        playerNode = nil
         inputConverter = nil
+        applySpeakerRoute()     // после микрофона iOS может вернуть звук в разговорный
         packetOffset = 0
     }
 
@@ -272,8 +290,20 @@ class AudioEngine {
 
     func startPlayback() {
         isPlaying = true
-        if let player = playerNode, engine?.isRunning == true {
-            player.play()
+        if playbackEngine == nil {
+            let pe = AVAudioEngine()
+            let player = AVAudioPlayerNode()
+            pe.attach(player)
+            pe.connect(player, to: pe.mainMixerNode, format: playerFormat)
+            playbackEngine = pe
+            playerNode = player
+        }
+        do {
+            if playbackEngine?.isRunning != true { try playbackEngine?.start() }
+            playerNode?.play()
+            applySpeakerRoute()
+        } catch {
+            log.error("Playback engine start failed: \(error.localizedDescription)")
         }
         log.info("Playback started")
     }
@@ -281,6 +311,9 @@ class AudioEngine {
     func stopPlayback() {
         isPlaying = false
         playerNode?.stop()
+        playbackEngine?.stop()
+        playbackEngine = nil
+        playerNode = nil
         playbackLock.lock()
         playbackQueue.removeAll()
         playbackLock.unlock()
@@ -289,19 +322,29 @@ class AudioEngine {
 
     func playEncodedPacket(_ codec2Data: Data, isLastPacket: Bool = false) {
         if isLastPacket {
-            playRogerBeep()
+            // В последнем пакете фразы нагрузки нет — только сигнал, как в Android
+            if rogerBeep { playRogerBeep() }
             return
         }
 
         let pcm = codec2.decodePacket(encoded: codec2Data)
+        #if DEBUG
+        let rms = pcm.isEmpty ? 0 : Int(sqrt(pcm.reduce(0.0) { $0 + Double($1) * Double($1) } / Double(pcm.count)))
+        print("MTXDBG play in=\(codec2Data.count) out=\(pcm.count) rms=\(rms) playing=\(isPlaying) node=\(playerNode != nil) eng=\(playbackEngine?.isRunning == true)")
+        #endif
         schedulePlayback(samples: applyVolumeBoost(pcm))
     }
 
+    /// Громкость приёма — мягкое насыщение, как в Android: тихие места громче,
+    /// громкие плавно сжаты, без обрезания о потолок (оно давало хрип).
     private func applyVolumeBoost(_ samples: [Int16]) -> [Int16] {
-        guard volumeBoost != 1.0 else { return samples }
-        return samples.map { sample in
-            let amplified = Int(Float(sample) * volumeBoost)
-            return Int16(clamping: amplified)
+        guard volumeBoost > 1.0 else {
+            return volumeBoost == 1.0 ? samples : samples.map { Int16(Float($0) * volumeBoost) }
+        }
+        let k = volumeBoost * 0.8
+        let norm = 0.95 / tanh(k)
+        return samples.map { s in
+            Int16(clamping: Int(tanh(k * Float(s) / 32768) * norm * 32767))
         }
     }
 
@@ -333,6 +376,11 @@ class AudioEngine {
 
     private func schedulePlayback(samples: [Int16]) {
         guard let player = playerNode, isPlaying else { return }
+        // Движок мог остановиться (смена маршрута звука, прерывание) — поднимаем
+        if playbackEngine?.isRunning != true {
+            try? playbackEngine?.start()
+            player.play()
+        }
 
         let frameCount = AVAudioFrameCount(samples.count)
         guard let buffer = AVAudioPCMBuffer(pcmFormat: playerFormat, frameCapacity: frameCount) else { return }
@@ -349,10 +397,15 @@ class AudioEngine {
 
     // MARK: - Route
 
+    private func applySpeakerRoute() {
+        try? AVAudioSession.sharedInstance().overrideOutputAudioPort(speakerOn ? .speaker : .none)
+    }
+
     func routeToSpeaker() {
+        speakerOn = true
         let session = AVAudioSession.sharedInstance()
         do {
-            try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetooth])
+            try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth])
             try session.overrideOutputAudioPort(.speaker)
             log.info("Routed to speaker")
         } catch {
@@ -361,9 +414,10 @@ class AudioEngine {
     }
 
     func routeToEarpiece() {
+        speakerOn = false
         let session = AVAudioSession.sharedInstance()
         do {
-            try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetooth])
+            try session.setCategory(.playAndRecord, mode: .default, options: [.allowBluetooth])
             try session.overrideOutputAudioPort(.none)
             log.info("Routed to earpiece")
         } catch {
@@ -384,6 +438,10 @@ class AudioEngine {
         case .ended:
             log.info("Audio interruption ended")
             try? AVAudioSession.sharedInstance().setActive(true)
+            if isPlaying {
+                try? playbackEngine?.start()
+                playerNode?.play()
+            }
             if isRecording {
                 // Restart engine after interruption
                 stopMicCapture()

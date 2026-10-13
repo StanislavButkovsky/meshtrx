@@ -2,9 +2,19 @@ import SwiftUI
 import MapKit
 
 struct MapTabView: View {
+    @EnvironmentObject var controller: MeshTRXController
+    var body: some View {
+        MapTabContent(locationManager: controller.locationManager)
+    }
+}
+
+struct MapTabContent: View {
     @EnvironmentObject var appState: AppState
-    @StateObject private var locationManager = LocationManager()
+    @ObservedObject var locationManager: LocationManager
     @State private var showRadar = false
+    // Кнопки «Я» и «Все», как в Android: счётчики-сигналы для карты
+    @State private var centerMeTick = 0
+    @State private var showAllTick = 0
 
     var body: some View {
         ZStack {
@@ -20,7 +30,19 @@ struct MapTabView: View {
                         RadarView(heading: locationManager.heading)
                             .environmentObject(appState)
                     } else {
-                        MapContentView(appState: appState, locationManager: locationManager)
+                        MapContentView(appState: appState, locationManager: locationManager,
+                                       centerMeTick: centerMeTick, showAllTick: showAllTick)
+                        VStack(spacing: 12) {
+                            Spacer()
+                            HStack {
+                                Spacer()
+                                VStack(spacing: 12) {
+                                    mapButton("Я") { centerMeTick += 1 }
+                                    mapButton("ВСЕ") { showAllTick += 1 }
+                                }
+                                .padding(16)
+                            }
+                        }
                     }
 
                     // GPS status overlay
@@ -38,14 +60,17 @@ struct MapTabView: View {
                 }
             }
         }
-        .onAppear {
-            locationManager.requestPermission()
-        }
-        .onChange(of: locationManager.latitude) { lat in
-            appState.myLat = lat
-        }
-        .onChange(of: locationManager.longitude) { lon in
-            appState.myLon = lon
+    }
+
+    private func mapButton(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 13, weight: .bold))
+                .foregroundColor(.white)
+                .frame(width: 56, height: 56)
+                .background(AppColors.greenBg)
+                .clipShape(Circle())
+                .overlay(Circle().stroke(AppColors.greenBorder, lineWidth: 1))
         }
     }
 
@@ -90,11 +115,34 @@ struct MapTabView: View {
 struct MapContentView: UIViewRepresentable {
     let appState: AppState
     let locationManager: LocationManager
+    var centerMeTick: Int = 0
+    var showAllTick: Int = 0
+
+    /// Делегат карты. Без него MKMapView не рисует линии: раньше они
+    /// добавлялись, но видно их не было.
+    final class Coordinator: NSObject, MKMapViewDelegate {
+        var didCenter = false
+        var lastCenterTick = 0
+        var lastShowAllTick = 0
+        var lineColors: [ObjectIdentifier: UIColor] = [:]
+
+        func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+            guard let line = overlay as? MKPolyline else { return MKOverlayRenderer(overlay: overlay) }
+            let r = MKPolylineRenderer(polyline: line)
+            r.strokeColor = lineColors[ObjectIdentifier(line)] ?? .systemGreen
+            r.lineWidth = 2
+            r.lineDashPattern = [6, 6]
+            return r
+        }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
 
     func makeUIView(context: Context) -> MKMapView {
         let mapView = MKMapView()
         mapView.showsUserLocation = true
         mapView.mapType = .standard
+        mapView.delegate = context.coordinator
         return mapView
     }
 
@@ -103,6 +151,7 @@ struct MapContentView: UIViewRepresentable {
         let old = mapView.annotations.filter { !($0 is MKUserLocation) }
         mapView.removeAnnotations(old)
         mapView.removeOverlays(mapView.overlays)
+        context.coordinator.lineColors.removeAll()
 
         let myLat = appState.myLat
         let myLon = appState.myLon
@@ -134,17 +183,27 @@ struct MapContentView: UIViewRepresentable {
                     CLLocationCoordinate2D(latitude: pLat, longitude: pLon)
                 ]
                 let polyline = MKPolyline(coordinates: coords, count: 2)
+                // Цвет по давности: свежий — зелёный, до получаса — жёлтый, старше — серый
+                context.coordinator.lineColors[ObjectIdentifier(polyline)] =
+                    ageSec < 300 ? .systemGreen : ageSec < 1800 ? .systemOrange : .systemGray
                 mapView.addOverlay(polyline)
             }
         }
 
-        // Center on first update
-        if let lat = myLat, let lon = myLon, mapView.annotations.count <= 2 {
-            let region = MKCoordinateRegion(
+        // На себе — один раз и по кнопке «Я». Раньше центрировалось при каждом
+        // обновлении, и при одном абоненте карту было не сдвинуть.
+        let c = context.coordinator
+        if let lat = myLat, let lon = myLon, !c.didCenter || centerMeTick != c.lastCenterTick {
+            c.didCenter = true
+            c.lastCenterTick = centerMeTick
+            mapView.setRegion(MKCoordinateRegion(
                 center: CLLocationCoordinate2D(latitude: lat, longitude: lon),
-                latitudinalMeters: 2000, longitudinalMeters: 2000
-            )
-            mapView.setRegion(region, animated: false)
+                latitudinalMeters: 2000, longitudinalMeters: 2000), animated: true)
+        }
+        // «Все» — показать себя и всех абонентов с координатами
+        if showAllTick != c.lastShowAllTick {
+            c.lastShowAllTick = showAllTick
+            mapView.showAnnotations(mapView.annotations, animated: true)
         }
     }
 

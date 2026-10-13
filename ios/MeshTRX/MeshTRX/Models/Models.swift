@@ -17,11 +17,11 @@ enum ListenMode: String {
 
 // accepted — рация адресата приняла, но телефона у неё нет: сообщение ждёт
 // на рации и будет показано, когда человек подключится (прошивка 4.4.32).
-enum MessageStatus: String {
+enum MessageStatus: String, Codable {
     case sending, sent, accepted, delivered, failed
 }
 
-enum FileStatus: String {
+enum FileStatus: String, Codable {
     case pending, transferring, done, failed
 }
 
@@ -39,7 +39,7 @@ enum VoxState: String {
 
 // MARK: - Data Models
 
-struct ChatMessage: Identifiable {
+struct ChatMessage: Identifiable, Codable {
     let id: Int64
     let text: String
     let isOutgoing: Bool
@@ -53,6 +53,8 @@ struct ChatMessage: Identifiable {
     let timeMs: Int64
     var encrypted: Bool = true
     var isVoice: Bool = false
+    // Само голосовое (Codec2) — чтобы его можно было проиграть из чата
+    var voiceData: Data? = nil
     // Номер, под которым сообщение ушло в эфир: по нему приходит подтверждение.
     var seq: Int? = nil
 
@@ -70,7 +72,7 @@ struct ChatMessage: Identifiable {
     }
 }
 
-struct Peer: Identifiable {
+struct Peer: Identifiable, Codable {
     var id: String { deviceId }
     let deviceId: String
     let callSign: String
@@ -81,10 +83,13 @@ struct Peer: Identifiable {
     let lastSeenMs: Int64
     var lat: Double? = nil
     var lon: Double? = nil
+    // Признак ретранслятора из маяка (BEACON_FLAG_REPEATER), как в Android.
+    // Раньше ретранслятор угадывался по «RPT/REP» в позывном.
+    var isRepeater: Bool = false
 }
 
-struct RecentCall: Identifiable {
-    let id = UUID()
+struct RecentCall: Identifiable, Codable {
+    var id = UUID()
     let deviceId: String
     let callSign: String
     let isOutgoing: Bool
@@ -122,8 +127,11 @@ struct IncomingCall: Identifiable {
     }
 }
 
-struct FileTransfer: Identifiable {
-    var id: Int { sessionId }
+struct FileTransfer: Identifiable, Codable {
+    // Своё id, а не sessionId: у входящих и исходящих номера сессий идут
+    // независимо, совпадали — и список путал строки.
+    var uid = UUID()
+    var id: UUID { uid }
     let sessionId: Int
     let fileName: String
     let fileType: Int       // 0x01=photo, 0x02=text, 0x03=binary
