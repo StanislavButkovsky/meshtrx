@@ -628,6 +628,9 @@ class MeshTRXController: ObservableObject {
 
     /// Проиграть запись Codec2 (голосовое из чата, адресный PTT): кусками по 32 байта
     func playVoice(_ data: Data) {
+        #if DEBUG
+        NSLog("MTXDBG playVoice bytes=%d nonzero=%d", data.count, data.filter { $0 != 0 }.count)
+        #endif
         audioEngine.startPlayback()
         audioEngine.rogerBeep = appState.rogerBeep
         let bytes = [UInt8](data)

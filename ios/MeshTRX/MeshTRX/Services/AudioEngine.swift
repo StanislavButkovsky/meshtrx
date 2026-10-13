@@ -311,6 +311,11 @@ class AudioEngine {
         }
 
         let pcm = codec2.decodePacket(encoded: codec2Data)
+        #if DEBUG
+        let rms = pcm.isEmpty ? 0 : Int(sqrt(pcm.reduce(0.0) { $0 + Double($1) * Double($1) } / Double(pcm.count)))
+        NSLog("MTXDBG play in=%d out=%d rms=%d playing=%d node=%d eng=%d", codec2Data.count, pcm.count, rms,
+              isPlaying ? 1 : 0, playerNode == nil ? 0 : 1, playbackEngine?.isRunning == true ? 1 : 0)
+        #endif
         schedulePlayback(samples: applyVolumeBoost(pcm))
     }
 
