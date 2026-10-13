@@ -116,6 +116,7 @@ class MeshTRXController: ObservableObject {
         appState.statusMessage = "Подключено"
         audioEngine.startPlayback()
         bleManager.requestSettings()
+        bleManager.scanPeers()      // список абонентов должен наполниться сразу, как в Android
         sendGpsToDevice()
     }
 

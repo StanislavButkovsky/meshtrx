@@ -192,6 +192,10 @@ class BLEManager: NSObject, ObservableObject {
     }
     func sendSettings(json: String)          { send(BLEPacket.setSettings(json: json)) }
     func requestSettings()                   { send(BLEPacket.getSettings()) }
+    /// Попросить соседей отозваться маяками. Рация делает это и сама в момент
+    /// подключения, но ответы приходят раньше, чем телефон готов их принять, —
+    /// и список абонентов оставался пустым до следующего маяка (минуты).
+    func scanPeers()                         { send(Data([BLECmd.scanPeers])) }
     func sendPinCheck(_ pin: Int)            { send(BLEPacket.pinCheck(pin)) }
     func setTxMode(_ mode: TxMode)           { send(BLEPacket.setTxMode(mode)) }
 
