@@ -17,11 +17,11 @@ enum ListenMode: String {
 
 // accepted — рация адресата приняла, но телефона у неё нет: сообщение ждёт
 // на рации и будет показано, когда человек подключится (прошивка 4.4.32).
-enum MessageStatus: String {
+enum MessageStatus: String, Codable {
     case sending, sent, accepted, delivered, failed
 }
 
-enum FileStatus: String {
+enum FileStatus: String, Codable {
     case pending, transferring, done, failed
 }
 
@@ -39,7 +39,7 @@ enum VoxState: String {
 
 // MARK: - Data Models
 
-struct ChatMessage: Identifiable {
+struct ChatMessage: Identifiable, Codable {
     let id: Int64
     let text: String
     let isOutgoing: Bool
@@ -72,7 +72,7 @@ struct ChatMessage: Identifiable {
     }
 }
 
-struct Peer: Identifiable {
+struct Peer: Identifiable, Codable {
     var id: String { deviceId }
     let deviceId: String
     let callSign: String
@@ -85,8 +85,8 @@ struct Peer: Identifiable {
     var lon: Double? = nil
 }
 
-struct RecentCall: Identifiable {
-    let id = UUID()
+struct RecentCall: Identifiable, Codable {
+    var id = UUID()
     let deviceId: String
     let callSign: String
     let isOutgoing: Bool
@@ -124,10 +124,10 @@ struct IncomingCall: Identifiable {
     }
 }
 
-struct FileTransfer: Identifiable {
+struct FileTransfer: Identifiable, Codable {
     // Своё id, а не sessionId: у входящих и исходящих номера сессий идут
     // независимо, совпадали — и список путал строки.
-    let uid = UUID()
+    var uid = UUID()
     var id: UUID { uid }
     let sessionId: Int
     let fileName: String

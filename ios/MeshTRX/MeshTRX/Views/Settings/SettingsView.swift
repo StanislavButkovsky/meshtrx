@@ -10,12 +10,11 @@ struct SettingsView: View {
     @State private var txPower: Double = 14
     @State private var dutyCycle: Bool = true
     @State private var beaconIndex: Int = 3
-    @State private var peerTimeoutIndex: Int = 2
-    @State private var rxVolume: Double = 200
-    @State private var squelchThreshold: Double = 0
-    @State private var voxThreshold: Double = 800
-    @State private var voxHangtime: Double = 800
-    @State private var fileHistoryIndex: Int = 2
+    /// Ползунок поверх целой настройки в AppState: меняется сразу, без «Применить»
+    private func intBinding(_ kp: ReferenceWritableKeyPath<AppState, Int>) -> Binding<Double> {
+        Binding(get: { Double(appState[keyPath: kp]) },
+                set: { appState[keyPath: kp] = Int($0) })
+    }
     @State private var languageIndex: Int = 0
 
     // Encryption
@@ -217,7 +216,9 @@ struct SettingsView: View {
             }
             .foregroundColor(AppColors.textPrimary)
 
-            Picker("Таймаут пиров", selection: $peerTimeoutIndex) {
+            Picker("Удалять станции через", selection: Binding(
+                get: { timeoutValues.firstIndex(of: appState.peerTimeoutMin) ?? 2 },
+                set: { appState.peerTimeoutMin = timeoutValues[$0] })) {
                 ForEach(0..<timeoutOptions.count, id: \.self) { i in
                     Text(timeoutOptions[i]).tag(i)
                 }
@@ -348,29 +349,29 @@ struct SettingsView: View {
                     Text("Громкость приёма")
                         .foregroundColor(AppColors.textPrimary)
                     Spacer()
-                    Text("\(Int(rxVolume))%")
+                    Text("\(appState.rxVolume)%")
                         .foregroundColor(AppColors.textSecondary)
                         .font(.system(size: 13, design: .monospaced))
                 }
-                Slider(value: $rxVolume, in: 50...300, step: 10)
+                Slider(value: intBinding(\.rxVolume), in: 50...300, step: 10)
                     .tint(AppColors.greenAccent)
             }
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Text("Шумоподавление PTT")
+                    Text("PTT RMS (отсечка шума)")
                         .foregroundColor(AppColors.textPrimary)
                     Spacer()
-                    Text(squelchThreshold == 0 ? "Выкл" : "\(Int(squelchThreshold))")
+                    Text(appState.squelchThreshold == 0 ? "Выкл" : "\(appState.squelchThreshold)")
                         .foregroundColor(AppColors.textSecondary)
                         .font(.system(size: 13, design: .monospaced))
                 }
-                Slider(value: $squelchThreshold, in: 0...5000, step: 100)
+                Slider(value: intBinding(\.squelchThreshold), in: 0...1000, step: 10)
                     .tint(AppColors.greenAccent)
             }
 
             Toggle(isOn: $appState.rogerBeep) {
-                Text("Roger beep")
+                Text("Звук окончания передачи")
                     .foregroundColor(AppColors.textPrimary)
             }
             .tint(AppColors.greenAccent)
@@ -388,24 +389,24 @@ struct SettingsView: View {
                     Text("Порог VOX")
                         .foregroundColor(AppColors.textPrimary)
                     Spacer()
-                    Text("\(Int(voxThreshold))")
+                    Text("\(appState.voxThreshold)")
                         .foregroundColor(AppColors.textSecondary)
                         .font(.system(size: 13, design: .monospaced))
                 }
-                Slider(value: $voxThreshold, in: 100...5000, step: 100)
+                Slider(value: intBinding(\.voxThreshold), in: 0...5000, step: 100)
                     .tint(AppColors.greenAccent)
             }
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Text("Hangtime VOX")
+                    Text("Задержка VOX")
                         .foregroundColor(AppColors.textPrimary)
                     Spacer()
-                    Text("\(Int(voxHangtime)) мс")
+                    Text("\(appState.voxHangtimeMs) мс")
                         .foregroundColor(AppColors.textSecondary)
                         .font(.system(size: 13, design: .monospaced))
                 }
-                Slider(value: $voxHangtime, in: 200...3000, step: 100)
+                Slider(value: intBinding(\.voxHangtimeMs), in: 200...2000, step: 100)
                     .tint(AppColors.greenAccent)
             }
         } header: {
@@ -417,7 +418,9 @@ struct SettingsView: View {
 
     private var historySection: some View {
         Section {
-            Picker("История файлов", selection: $fileHistoryIndex) {
+            Picker("История файлов", selection: Binding(
+                get: { historyValues.firstIndex(of: appState.fileHistoryDays) ?? 2 },
+                set: { appState.fileHistoryDays = historyValues[$0] })) {
                 ForEach(0..<historyOptions.count, id: \.self) { i in
                     Text(historyOptions[i]).tag(i)
                 }
@@ -531,13 +534,6 @@ struct SettingsView: View {
 
     private func applySettings() {
         let beaconSec = beaconSeconds[beaconIndex]
-        appState.peerTimeoutMin = timeoutValues[peerTimeoutIndex]
-        appState.fileHistoryDays = historyValues[fileHistoryIndex]
-        appState.rxVolume = Int(rxVolume)
-        controller.audioEngine.volumeBoost = Float(rxVolume) / 100.0
-        controller.audioEngine.squelchThreshold = Int(squelchThreshold)
-        controller.voxEngine.threshold = Int(voxThreshold)
-        controller.voxEngine.hangtimeMs = Int64(voxHangtime)
 
         if selectedChannel != appState.currentChannel {
             controller.setChannel(selectedChannel)

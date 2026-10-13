@@ -53,6 +53,12 @@ class AppState: ObservableObject {
     @Published var messageHistoryDays: Int = 30
     @Published var rxVolume: Int = 200
     @Published var rogerBeep: Bool = true
+    // Звук и VOX — телефонные настройки: применяются сразу и хранятся, как в
+    // Android. Раньше жили в экране настроек и уходили только по «Применить»,
+    // которая без связи с рацией выключена.
+    @Published var squelchThreshold: Int = 0
+    @Published var voxThreshold: Int = 800
+    @Published var voxHangtimeMs: Int = 800
     @Published var languageIndex: Int = 0  // 0=Русский, 1=English
 
     // Encryption
@@ -64,7 +70,8 @@ class AppState: ObservableObject {
     @Published var firmwareVersion: String = ""
 
     // Notifications
-    @Published var notifyMode: Int = 1  // 0=off, 1=private only, 2=all
+    // По умолчанию «обо всех», как в Android (было «только личные»)
+    @Published var notifyMode: Int = 2  // 0=off, 1=private only, 2=all
 
     // UI
     @Published var statusMessage: String = "Не подключено"

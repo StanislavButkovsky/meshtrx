@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 import CoreBluetooth
 import AVFoundation
 import UserNotifications
@@ -11,6 +12,7 @@ class MeshTRXController: ObservableObject {
 
     let bleManager = BLEManager()
     let audioEngine = AudioEngine()
+    var cancellables = Set<AnyCancellable>()
     let voxEngine = VoxEngine()
     let appState: AppState
 
@@ -33,6 +35,7 @@ class MeshTRXController: ObservableObject {
 
     init(appState: AppState) {
         self.appState = appState
+        loadPersisted()
         loadAuthorizedDevices()
         setupNotifications()
         setupCallbacks()
@@ -41,6 +44,7 @@ class MeshTRXController: ObservableObject {
         // Доступ к микрофону спрашиваем сразу, как Android: иначе первое
         // нажатие PTT уходит в тишину, пока система показывает свой вопрос.
         AVAudioSession.sharedInstance().requestRecordPermission { _ in }
+        setupPersistence()
     }
 
     // MARK: - Предел передачи
@@ -1076,5 +1080,102 @@ class MeshTRXController: ObservableObject {
         peerCleanupTimer?.invalidate()
         audioEngine.destroy()
         bleManager.disconnect()
+    }
+}
+
+// MARK: - Хранение между запусками
+//
+// Раньше не хранилось ничего: после перезапуска пропадали переписка, абоненты,
+// последние вызовы, файлы, позывной и настройки звука. Настройки — в
+// UserDefaults, данные — JSON-файлами в Application Support (файлы бывают по
+// 100 КБ, в UserDefaults им не место). Сроки хранения — как в Android.
+
+private enum Store {
+    static let d = UserDefaults.standard
+    static var dir: URL {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let u = base.appendingPathComponent("meshtrx", isDirectory: true)
+        try? FileManager.default.createDirectory(at: u, withIntermediateDirectories: true)
+        return u
+    }
+    static func save<T: Encodable>(_ v: T, _ name: String) {
+        guard let data = try? JSONEncoder().encode(v) else { return }
+        try? data.write(to: dir.appendingPathComponent(name), options: .atomic)
+    }
+    static func load<T: Decodable>(_ t: T.Type, _ name: String) -> T? {
+        guard let data = try? Data(contentsOf: dir.appendingPathComponent(name)) else { return nil }
+        return try? JSONDecoder().decode(t, from: data)
+    }
+}
+
+extension MeshTRXController {
+    func loadPersisted() {
+        let d = Store.d
+        if let cs = d.string(forKey: "my_callsign"), !cs.isEmpty { appState.callSign = cs }
+        if d.object(forKey: "rx_volume") != nil { appState.rxVolume = d.integer(forKey: "rx_volume") }
+        if d.object(forKey: "roger_beep") != nil { appState.rogerBeep = d.bool(forKey: "roger_beep") }
+        if d.object(forKey: "ptt_rms") != nil { appState.squelchThreshold = d.integer(forKey: "ptt_rms") }
+        if d.object(forKey: "vox_threshold") != nil { appState.voxThreshold = d.integer(forKey: "vox_threshold") }
+        if d.object(forKey: "vox_hangtime") != nil { appState.voxHangtimeMs = d.integer(forKey: "vox_hangtime") }
+        if d.object(forKey: "notify_mode") != nil { appState.notifyMode = d.integer(forKey: "notify_mode") }
+        if d.object(forKey: "peer_timeout_min") != nil { appState.peerTimeoutMin = d.integer(forKey: "peer_timeout_min") }
+        if d.object(forKey: "file_history_days") != nil { appState.fileHistoryDays = d.integer(forKey: "file_history_days") }
+
+        let now = Int64(Date().timeIntervalSince1970 * 1000)
+        let day: Int64 = 24 * 3600 * 1000
+        if let m = Store.load([ChatMessage].self, "messages.json") {
+            let keep = Int64(appState.messageHistoryDays) * day
+            appState.messages = m.filter { now - $0.timeMs < keep }
+        }
+        if let p = Store.load([Peer].self, "peers.json") {
+            let keep = Int64(appState.peerTimeoutMin) * 60_000
+            appState.peers = p.filter { now - $0.lastSeenMs < keep }
+        }
+        if let r = Store.load([RecentCall].self, "recent_calls.json") { appState.recentCalls = r }
+        if let f = Store.load([FileTransfer].self, "files.json") {
+            let keep = Int64(appState.fileHistoryDays) * day
+            // Незавершённая передача после перезапуска уже не завершится
+            appState.fileTransfers = f.filter { now - $0.timeMs < keep }.map {
+                var t = $0; if t.status == .transferring || t.status == .pending { t.status = .failed }; return t
+            }
+        }
+    }
+
+    func setupPersistence() {
+        // Звук и VOX — применяем сразу, как только человек двинул ползунок
+        appState.$rxVolume.sink { [weak self] v in
+            self?.audioEngine.volumeBoost = Float(v) / 100
+            Store.d.set(v, forKey: "rx_volume")
+        }.store(in: &cancellables)
+        appState.$rogerBeep.sink { [weak self] v in
+            self?.audioEngine.rogerBeep = v
+            Store.d.set(v, forKey: "roger_beep")
+        }.store(in: &cancellables)
+        appState.$squelchThreshold.sink { [weak self] v in
+            self?.audioEngine.squelchThreshold = v
+            Store.d.set(v, forKey: "ptt_rms")
+        }.store(in: &cancellables)
+        appState.$voxThreshold.sink { [weak self] v in
+            self?.voxEngine.threshold = v
+            Store.d.set(v, forKey: "vox_threshold")
+        }.store(in: &cancellables)
+        appState.$voxHangtimeMs.sink { [weak self] v in
+            self?.voxEngine.hangtimeMs = Int64(v)
+            Store.d.set(v, forKey: "vox_hangtime")
+        }.store(in: &cancellables)
+        appState.$notifyMode.sink { Store.d.set($0, forKey: "notify_mode") }.store(in: &cancellables)
+        appState.$peerTimeoutMin.sink { Store.d.set($0, forKey: "peer_timeout_min") }.store(in: &cancellables)
+        appState.$fileHistoryDays.sink { Store.d.set($0, forKey: "file_history_days") }.store(in: &cancellables)
+
+        // Данные — с задержкой, чтобы не писать на диск на каждое обновление
+        let delay = DispatchQueue.main
+        appState.$messages.dropFirst().debounce(for: .seconds(1), scheduler: delay)
+            .sink { Store.save($0, "messages.json") }.store(in: &cancellables)
+        appState.$peers.dropFirst().debounce(for: .seconds(2), scheduler: delay)
+            .sink { Store.save($0, "peers.json") }.store(in: &cancellables)
+        appState.$recentCalls.dropFirst().debounce(for: .seconds(1), scheduler: delay)
+            .sink { Store.save($0, "recent_calls.json") }.store(in: &cancellables)
+        appState.$fileTransfers.dropFirst().debounce(for: .seconds(1), scheduler: delay)
+            .sink { Store.save($0, "files.json") }.store(in: &cancellables)
     }
 }
