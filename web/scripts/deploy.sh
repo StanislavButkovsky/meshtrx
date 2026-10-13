@@ -111,7 +111,7 @@ done
 echo "==> Проверка"
 fail=0
 check() { # домен, ожидаемый язык
-  for path in / /articles/ /docs/ /download/ /flash/ /ios/ /about/ /sitemap.xml; do
+  for path in / /articles/ /docs/ /download/ /flash/ /ios/ /about/ /privacy/ /sitemap.xml; do
     code=$(curl -s -o /dev/null -w '%{http_code}' -m 30 "$1$path" || echo 000)
     [ "$code" = 200 ] || { echo "    $code $1$path" >&2; fail=1; }
   done
