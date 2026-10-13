@@ -121,29 +121,66 @@ class BleManager(private val context: Context) {
         Log.d(TAG, "Scan stopped")
     }
 
+    // Попытка соединения или живое соединение, о конце которого приложению
+    // ещё не сказали. По нему onDisconnected зовётся ровно один раз, откуда
+    // бы ни пришёл разрыв: от стека, по таймауту или при выключении Bluetooth.
+    @Volatile private var linkOpen = false
+
+    // Таймаут смотрит только на то, появились ли характеристики. Раньше он
+    // требовал ещё и живой bluetoothGatt — а когда Bluetooth выключен,
+    // connectGatt возвращает null, таймаут молчал, и приложение вечно
+    // показывало «соединение».
     private val connectTimeoutRunnable = Runnable {
-        if (bluetoothGatt != null && rxCharacteristic == null) {
+        if (rxCharacteristic == null) {
             Log.w(TAG, "Connect timeout, closing GATT")
-            try { bluetoothGatt?.close() } catch (_: Exception) {}
-            bluetoothGatt = null
-            handler.post { onDisconnected?.invoke() }
+            dropLink("таймаут подключения")
         }
     }
+
+    fun isAdapterOn(): Boolean = bluetoothAdapter?.isEnabled == true
 
     fun connect(device: BluetoothDevice) {
         stopScan()
         handler.removeCallbacks(connectTimeoutRunnable)
+        linkOpen = true
+        if (!isAdapterOn()) {
+            dropLink("Bluetooth выключен")
+            return
+        }
         bluetoothGatt = device.connectGatt(context, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
+        if (bluetoothGatt == null) {
+            dropLink("connectGatt вернул null")
+            return
+        }
         Log.d(TAG, "Connecting to ${device.name}")
         handler.postDelayed(connectTimeoutRunnable, 10_000)  // 10 сек таймаут
     }
 
+    /** Закрыть соединение по решению человека: о разрыве не сообщаем — он сам
+     *  его попросил, и переподключение здесь ни к чему. */
     fun disconnect() {
-        bluetoothGatt?.disconnect()
-        bluetoothGatt?.close()
+        handler.removeCallbacks(connectTimeoutRunnable)
+        linkOpen = false
+        try { bluetoothGatt?.disconnect() } catch (_: Exception) {}
+        try { bluetoothGatt?.close() } catch (_: Exception) {}
         bluetoothGatt = null
         rxCharacteristic = null
         txCharacteristic = null
+    }
+
+    /** Соединения больше нет, хотя никто его не закрывал: Bluetooth выключили,
+     *  стек сообщил о разрыве, запись не прошла. Закрываем и говорим об этом
+     *  приложению — один раз, сколько бы причин ни сошлось. */
+    fun dropLink(reason: String) {
+        handler.removeCallbacks(connectTimeoutRunnable)
+        try { bluetoothGatt?.close() } catch (_: Exception) {}
+        bluetoothGatt = null
+        rxCharacteristic = null
+        txCharacteristic = null
+        if (!linkOpen) return
+        linkOpen = false
+        Log.d(TAG, "Link dropped: $reason")
+        handler.post { onDisconnected?.invoke() }
     }
 
     fun isConnected(): Boolean = bluetoothGatt != null && rxCharacteristic != null
@@ -214,7 +251,7 @@ class BleManager(private val context: Context) {
         send(byteArrayOf(CMD_SCAN_CHANNELS.toByte()))
     }
 
-    fun sendMessage(seq: Int, destId: String?, text: String) {
+    fun sendMessage(seq: Int, destId: String?, text: String): Boolean {
         val textBytes = text.toByteArray(Charsets.UTF_8)
         val pkt = ByteArray(4 + textBytes.size)
         pkt[0] = CMD_SEND_MESSAGE.toByte()
@@ -227,7 +264,7 @@ class BleManager(private val context: Context) {
             pkt[2] = 0; pkt[3] = 0 // broadcast
         }
         System.arraycopy(textBytes, 0, pkt, 4, textBytes.size)
-        send(pkt)
+        return send(pkt)
     }
 
     fun sendSettings(json: String) {
@@ -307,7 +344,17 @@ class BleManager(private val context: Context) {
 
     private val gattCallback = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
-            if (newState == BluetoothProfile.STATE_CONNECTED) {
+            // Запоздалый колбэк от прежнего соединения не должен рвать новое.
+            if (bluetoothGatt != null && gatt !== bluetoothGatt) {
+                try { gatt.close() } catch (_: Exception) {}
+                return
+            }
+            if (newState == BluetoothProfile.STATE_CONNECTED && status != BluetoothGatt.GATT_SUCCESS) {
+                // «Подключено» с ошибкой — соединения на деле нет, а дальше
+                // по нему никто не скажет ни слова.
+                Log.w(TAG, "Connected with error status=$status, closing")
+                dropLink("подключение с ошибкой $status")
+            } else if (newState == BluetoothProfile.STATE_CONNECTED) {
                 Log.d(TAG, "Connected, discovering services")
                 // Таймаут не снимаем, а продлеваем: соединение установлено, но
                 // характеристик ещё нет — застрять можно и на этом этапе.
@@ -317,10 +364,7 @@ class BleManager(private val context: Context) {
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 Log.d(TAG, "Disconnected (status=$status)")
                 try { gatt.close() } catch (_: Exception) {}
-                bluetoothGatt = null
-                rxCharacteristic = null
-                txCharacteristic = null
-                handler.post { onDisconnected?.invoke() }
+                dropLink("стек сообщил о разрыве, status=$status")
             }
         }
 
@@ -338,10 +382,7 @@ class BleManager(private val context: Context) {
             if (service == null) {
                 Log.w(TAG, "Service discovery failed (status=$status), closing GATT")
                 try { gatt.close() } catch (_: Exception) {}
-                bluetoothGatt = null
-                rxCharacteristic = null
-                txCharacteristic = null
-                handler.post { onDisconnected?.invoke() }
+                dropLink("нет сервиса MeshTRX")
                 return
             }
             rxCharacteristic = service.getCharacteristic(RX_CHAR_UUID)
@@ -349,10 +390,7 @@ class BleManager(private val context: Context) {
             if (rxCharacteristic == null || txCharacteristic == null) {
                 Log.w(TAG, "UART characteristics missing, closing GATT")
                 try { gatt.close() } catch (_: Exception) {}
-                bluetoothGatt = null
-                rxCharacteristic = null
-                txCharacteristic = null
-                handler.post { onDisconnected?.invoke() }
+                dropLink("нет сервиса MeshTRX")
                 return
             }
 

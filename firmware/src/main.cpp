@@ -29,6 +29,7 @@
 #include "debug.h"
 #include "utils.h"
 #include "test_console.h"
+#include "inbox.h"
 
 // === Пины ===
 #define PIN_LED       35
@@ -334,6 +335,7 @@ void setup() {
   // режиме ключ из памяти не читался вовсе — после перезагрузки рация считала,
   // что шифрования нет, хотя человек его задал.
   cryptoInit();
+  inboxInit();
 
   // Проверить режим ретранслятора
   repeaterInit();
@@ -943,16 +945,29 @@ static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr) 
       // Из самого пакета телефон этого не знает — адрес получателя ему никогда
       // не передавался, и до 4.4.31 личное от общего он отличить не мог.
       bleData[2 + textLen + 4] = addressedToMe ? 1 : 0;
-      bleSendNotify(bleData, 2 + textLen + 1 + 2 + 2);
+      size_t bleLen = 2 + textLen + 1 + 2 + 2;
+      // Телефона нет или он ещё ни разу не заговорил — сообщение ждёт в буфере. И
+      // пока в буфере что-то лежит, новое тоже идёт туда: иначе свежее
+      // сообщение обогнало бы накопленные, и порядок в чате перепутался бы.
+      bool shown = false;
+      if (bleIsConnected() && blePhoneSpoke && inboxEmpty()) {
+        shown = bleSendNotify(bleData, bleLen);
+      }
+      if (!shown) {
+        uint16_t evicted = inboxPush(bleData, bleLen);
+        LOG_F("EVT TEXT_STORED seq=%d n=%u evicted=%u\n",
+              pkt->seq, inboxCount(), evicted);
+      }
 
       // OLED: показать первые 16 символов
       char msgPreview[22];
       snprintf(msgPreview, sizeof(msgPreview), "MSG: %.16s", pkt->text);
       oledShowMessage(msgPreview, "", 3000);
 
-      // BLE ACK (локально на телефон)
-      uint8_t ackBle[2] = {BLE_CMD_MESSAGE_ACK, pkt->seq};
-      bleSendNotify(ackBle, 2);
+      // Здесь раньше уходил MESSAGE_ACK своему же телефону с номером
+      // принятого сообщения. Телефон искал по этому номеру СВОЁ исходящее и
+      // ставил ему галочку: у двух людей номера идут независимо, и чужое
+      // входящее с совпавшим номером «подтверждало» неотправленное.
 
       // LoRa ACK для адресных сообщений
       {
@@ -966,28 +981,31 @@ static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr) 
           ack.seq = pkt->seq;
           memcpy(ack.sender, senderMac, 2);
           memcpy(ack.dest, pkt->sender, 2); // обратно отправителю
+          ack.status = shown ? TEXT_ACK_DELIVERED : TEXT_ACK_STORED;
           bool ok = loraSend((uint8_t*)&ack, sizeof(ack));
           loraStartReceive();
-          LOG_F("EVT TEXT_ACK_TX seq=%d ok=%d\n", pkt->seq, ok ? 1 : 0);
+          LOG_F("EVT TEXT_ACK_TX seq=%d ok=%d status=%d\n", pkt->seq, ok ? 1 : 0, ack.status);
         }
       }
       break;
     }
 
     case PKT_TYPE_TEXT_ACK: {
-      if (len < (int)sizeof(LoRaTextAck)) break;
+      if (len < TEXT_ACK_LEN_V1) break;
       LoRaTextAck* pkt = (LoRaTextAck*)data;
+      uint8_t ackStatus = len >= (int)sizeof(LoRaTextAck) ? pkt->status : TEXT_ACK_DELIVERED;
       if (pkt->channel != currentChannel) break;
       // Проверить что ACK для нас
       uint16_t d = pkt->dest[0] | (pkt->dest[1] << 8);
       uint16_t me = senderMac[0] | (senderMac[1] << 8);
       if (d != me) break;
-      // Уведомить телефон: MESSAGE_ACK с seq
-      uint8_t ackBle[2] = {BLE_CMD_MESSAGE_ACK, pkt->seq};
-      bleSendNotify(ackBle, 2);
-      LOG_F("[Text] ACK received for seq %d\n", pkt->seq);
+      // Уведомить телефон: MESSAGE_ACK с seq и тем, что именно подтвердили.
+      // Старое приложение третий байт не читает и ставит галочку, как раньше.
+      uint8_t ackBle[3] = {BLE_CMD_MESSAGE_ACK, pkt->seq, ackStatus};
+      bleSendNotify(ackBle, 3);
+      LOG_F("[Text] ACK received for seq %d status %d\n", pkt->seq, ackStatus);
 #ifdef TEST_CONSOLE
-      Serial.printf("EVT TEXT_ACK_RX seq=%d rssi=%d\n", pkt->seq, rssi);
+      Serial.printf("EVT TEXT_ACK_RX seq=%d rssi=%d status=%d\n", pkt->seq, rssi, ackStatus);
 #endif
       break;
     }
@@ -1576,6 +1594,26 @@ static void bleTaskFunc(void* param) {
       } else if (versionStage == 1 && millis() - connectedAt > 2200) {
         sendKeyState();
         versionStage = 2;
+      }
+    }
+
+    // Сообщения, пришедшие без телефона. Отдаём, когда телефон заговорил
+    // и уже получил версию и ключ, — по одному с паузой: два уведомления
+    // подряд стек BLE теряет. К пакету дописываем, сколько секунд сообщение
+    // пролежало, чтобы в чате стояло время приёма, а не время подключения.
+    if (versionStage == 2 && blePhoneSpoke && !inboxEmpty() &&
+        millis() - connectedAt > 3000) {
+      for (int i = 0; i < 8 && bleIsConnected(); i++) {
+        uint8_t msg[INBOX_MAX_RECORD + 4];
+        uint32_t ageMs = 0;
+        size_t n = inboxPeek(msg, INBOX_MAX_RECORD, &ageMs);
+        if (!n) break;
+        uint32_t ageSec = ageMs / 1000;
+        memcpy(msg + n, &ageSec, 4);
+        if (!bleSendNotify(msg, n + 4)) break;   // попробуем на следующем проходе
+        inboxDrop();
+        LOG_F("EVT TEXT_FLUSH age=%lu left=%u\n", (unsigned long)ageSec, inboxCount());
+        vTaskDelay(pdMS_TO_TICKS(150));
       }
     }
 
@@ -2459,7 +2497,7 @@ void testHookInfo() {
   // и адрес из INFO, подставленный в TX, попадал в другое устройство.
   Serial.printf("EVT INFO fw=%s name=%s cs=%s id=%04X ch=%d freq=%.3f pwr=%d duty=%d "
                 "lora_mode=%d ble=%d file_state=%d uptime=%lu boot=%lu heap=%lu "
-                "min_heap=%lu bat=%.2f pm=%d test=%d ptt=%d qaudio=%u\n",
+                "min_heap=%lu bat=%.2f pm=%d test=%d ptt=%d qaudio=%u inbox=%u inbox_cap=%u\n",
     FW_VERSION, bleGetDeviceName().c_str(), beaconGetCallSign(),
     (unsigned)(senderMac[0] | (senderMac[1] << 8)),
     currentChannel, loraGetFrequency(currentChannel), loraGetTxPower(),
@@ -2469,7 +2507,8 @@ void testHookInfo() {
     (unsigned long)ESP.getFreeHeap(), (unsigned long)ESP.getMinFreeHeap(),
     getCachedBattery(), pmConfigResult,
     testConsoleIsActive() ? 1 : 0, pttActive ? 1 : 0,
-    txAudioQueue ? (unsigned)uxQueueMessagesWaiting(txAudioQueue) : 0);
+    txAudioQueue ? (unsigned)uxQueueMessagesWaiting(txAudioQueue) : 0,
+    (unsigned)inboxCount(), (unsigned)inboxCapacityBytes());
 
   Serial.printf("EVT INFO_TASKS lora=%u ble=%u filesend=%u main=%u\n",
     loraTaskHandle ? (unsigned)uxTaskGetStackHighWaterMark(loraTaskHandle) : 0,

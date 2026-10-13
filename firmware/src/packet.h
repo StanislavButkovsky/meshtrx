@@ -97,7 +97,14 @@ struct LoRaTextPacket {
 };
 #pragma pack(pop)
 
-// === Текстовый ACK (7 байт) ===
+// === Текстовый ACK (8 байт; до 4.4.32 — 7, без status) ===
+// Что значит подтверждение. До 4.4.32 нода подтверждала любой принятый
+// пакет, даже когда телефона рядом нет и сообщение никто не увидит, — а
+// отправитель видел «доставлено». Теперь нода говорит, что именно случилось.
+// Старые прошивки байта status не шлют: такой ACK считается «доставлено».
+#define TEXT_ACK_DELIVERED  0   // отдано на телефон адресата
+#define TEXT_ACK_STORED     1   // принято нодой, телефон не подключён — ждёт в буфере
+#define TEXT_ACK_LEN_V1     7
 #pragma pack(push, 1)
 struct LoRaTextAck {
   uint8_t  type;        // 0xB1
@@ -105,6 +112,7 @@ struct LoRaTextAck {
   uint8_t  seq;         // seq подтверждаемого сообщения
   uint8_t  sender[2];   // кто подтверждает
   uint8_t  dest[2];     // кому подтверждение (= sender оригинала)
+  uint8_t  status;      // TEXT_ACK_DELIVERED / TEXT_ACK_STORED
 };
 #pragma pack(pop)
 

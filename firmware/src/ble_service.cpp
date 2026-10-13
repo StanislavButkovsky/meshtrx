@@ -17,6 +17,7 @@ volatile uint32_t bleStaleLinks = 0;
 volatile uint32_t bleLastRxMs = 0;
 volatile uint32_t bleIdleDrops = 0;
 volatile bool bleLinkAuthorized = false;
+volatile bool blePhoneSpoke = false;
 volatile uint32_t bleLastConnMs = 0;
 volatile uint32_t bleLastDiscMs = 0;
 
@@ -35,6 +36,7 @@ class ServerCallbacks : public NimBLEServerCallbacks {
     bleLastConnMs = millis();
     bleLastRxMs = bleLastConnMs;
     bleLinkAuthorized = false;   // каждое соединение здоровается заново
+    blePhoneSpoke = false;
     Serial.printf("EVT BLE_CONN n=%lu gap_ms=%lu\n",
       (unsigned long)bleConnCount,
       (unsigned long)(bleLastDiscMs ? bleLastConnMs - bleLastDiscMs : 0));
@@ -65,6 +67,7 @@ class RxCallbacks : public NimBLECharacteristicCallbacks {
   void onWrite(NimBLECharacteristic* pCharacteristic, NimBLEConnInfo& connInfo) override {
     NimBLEAttValue val = pCharacteristic->getValue();
     bleLastRxMs = millis();
+    blePhoneSpoke = true;
     if (val.length() > 0 && dataCallback) {
       dataCallback((uint8_t*)val.data(), val.length());
     }

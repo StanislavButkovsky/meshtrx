@@ -130,7 +130,7 @@ class MessagesFragment : Fragment() {
                 .setMessage(getString(R.string.clear_chat_confirm))
                 .setPositiveButton(getString(R.string.clear_chat)) { _, _ ->
                     ServiceState.messages.value = emptyList()
-                    service?.saveMessages()
+                    service?.saveMessages(emptyList())
                     Toast.makeText(requireContext(), getString(R.string.clear_chat_done),
                         Toast.LENGTH_SHORT).show()
                 }
@@ -193,7 +193,7 @@ class MessagesFragment : Fragment() {
             val list = ServiceState.messages.value?.toMutableList() ?: mutableListOf()
             list.add(msg)
             ServiceState.messages.postValue(list)
-            service?.saveMessages()
+            service?.saveMessages(list)
 
             Toast.makeText(requireContext(), "Voice ${duration}s → ${destName}", Toast.LENGTH_SHORT).show()
         }
@@ -320,12 +320,18 @@ class MessagesFragment : Fragment() {
                 when (msg.status) {
                     MessageStatus.SENDING -> " \u23F3"    // ⏳ ждём подтверждения
                     MessageStatus.DELIVERED -> " \u2713"  // ✓ адресат подтвердил
+                    // Рация адресата приняла, а человек ещё не видел: телефон
+                    // у неё не подключён. Словами, а не значком — галочка тут
+                    // обещала бы больше, чем случилось.
+                    MessageStatus.ACCEPTED -> " " + getString(R.string.msg_accepted)
                     // ↑ — ушло в эфир, подтверждения нет. Не то же самое, что
                     // «не доставлено»: потеряться мог и сам ответ.
                     MessageStatus.SENT -> " \u2191"       // ↑
                     MessageStatus.FAILED -> " \u2717"     // ✗
                     else -> ""
                 }
+            } else if (msg.isOutgoing && msg.status == MessageStatus.FAILED) {
+                " \u2717"   // общее сообщение не ушло даже на свою рацию
             } else ""
             val metaBase = "${msg.time}$destStr$rssiStr"
             if (openMark.isNotEmpty()) {
@@ -345,6 +351,8 @@ class MessagesFragment : Fragment() {
                 holder.tvMeta.setTextColor(Colors.redTx)
             } else if (msg.isOutgoing && msg.status == MessageStatus.DELIVERED) {
                 holder.tvMeta.setTextColor(Colors.greenAccent)
+            } else if (msg.isOutgoing && msg.status == MessageStatus.ACCEPTED) {
+                holder.tvMeta.setTextColor(Colors.amberAccent)
             } else {
                 holder.tvMeta.setTextColor(0xFF666666.toInt())
             }

@@ -2,9 +2,12 @@ package com.meshtrx.app
 
 import android.annotation.SuppressLint
 import android.app.*
+import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.os.*
 import android.util.Log
@@ -81,6 +84,7 @@ class MeshTRXService : Service() {
         loadFileTransfers()
         loadMessages()
         startPeerCleanup()
+        registerReceiver(adapterReceiver, IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED))
 
         // Загрузить позывной
         val saved = prefs.getString("my_callsign", null)
@@ -234,13 +238,42 @@ class MeshTRXService : Service() {
         startScan(showPicker = true)
     }
 
+    // Bluetooth выключили в шторке. Стек о разрыве при этом часто молчит, и
+    // приложение продолжало показывать «подключено» или вечное «соединение»,
+    // пока человек сам не нажимал «отмена». Поэтому следим за адаптером сами:
+    // выключили — соединения нет; включили — переподключаемся к своей рации.
+    private val adapterReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            when (intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, -1)) {
+                BluetoothAdapter.STATE_TURNING_OFF, BluetoothAdapter.STATE_OFF -> {
+                    Log.d(TAG, "Bluetooth выключен")
+                    handler.removeCallbacks(reconnectRunnable)
+                    bleManager.dropLink("Bluetooth выключен")
+                    // Если соединения и не было, dropLink молчит — статус ставим сами
+                    ServiceState.connectionState.postValue(BleState.DISCONNECTED)
+                    ServiceState.statusMessage.postValue("Bluetooth выключен")
+                }
+                BluetoothAdapter.STATE_ON -> {
+                    Log.d(TAG, "Bluetooth включён, переподключаемся")
+                    reconnectAttempts = 0
+                    handler.removeCallbacks(reconnectRunnable)
+                    handler.postDelayed(reconnectRunnable, 1500) // стеку нужно подняться
+                }
+            }
+        }
+    }
+
     // Устройство освобождает канал от молчащего клиента: иначе брошенное
     // соединение делает рацию невидимой для всех остальных. Приложение может
     // часами только слушать эфир, поэтому периодически напоминаем о себе.
     private val keepAliveRunnable = object : Runnable {
         override fun run() {
             if (ServiceState.connectionState.value == BleState.CONNECTED) {
-                bleManager.requestSettings()
+                // Запись не прошла — соединения на деле нет, хотя о разрыве
+                // никто не сообщил. Не делаем вид, что всё в порядке.
+                if (!bleManager.requestSettings() && !bleManager.isConnected()) {
+                    bleManager.dropLink("keepalive не ушёл")
+                }
             }
             handler.postDelayed(this, KEEPALIVE_INTERVAL_MS)
         }
@@ -283,6 +316,11 @@ class MeshTRXService : Service() {
         val name = prefs.getString("last_device_name", "") ?: ""
         if (!isDeviceAuthorized(addr)) return
         if (ServiceState.connectionState.value != BleState.DISCONNECTED) return
+        if (!bleManager.isAdapterOn()) {
+            // Пробовать бессмысленно; включение адаптера разбудит нас само
+            ServiceState.statusMessage.postValue("Bluetooth выключен")
+            return
+        }
 
         Log.d(TAG, "Auto-connecting to $name ($addr)")
         ServiceState.deviceName.postValue(name)
@@ -292,7 +330,13 @@ class MeshTRXService : Service() {
 
         val adapter = (applicationContext.getSystemService(Context.BLUETOOTH_SERVICE)
                 as android.bluetooth.BluetoothManager).adapter
-        val device = adapter?.getRemoteDevice(addr) ?: return
+        val device = adapter?.getRemoteDevice(addr)
+        if (device == null) {
+            // Раньше здесь был тихий return после CONNECTING — статус застревал,
+            // а следующая попытка ждала DISCONNECTED и не начиналась никогда.
+            ServiceState.connectionState.postValue(BleState.DISCONNECTED)
+            return
+        }
         bleManager.connect(device)
     }
 
@@ -597,7 +641,12 @@ class MeshTRXService : Service() {
 
     fun sendTextMessage(text: String, destId: String? = null, destName: String? = null) {
         val seq = msgSeq++
-        bleManager.sendMessage(seq, destId, text)
+        // Раньше результат записи выбрасывался: при выключенном Bluetooth
+        // сообщение получало «отправлено», а статус связи не менялся.
+        val written = bleManager.sendMessage(seq, destId, text)
+        if (!written && (!bleManager.isAdapterOn() || !bleManager.isConnected())) {
+            bleManager.dropLink("сообщение не ушло на рацию")
+        }
         val now = System.currentTimeMillis()
         val isAddressed = destId != null && destId.isNotEmpty()
         val msg = ChatMessage(
@@ -606,7 +655,11 @@ class MeshTRXService : Service() {
             senderName = ServiceState.callSign.value ?: "",
             destId = destId, destName = destName,
             rssi = null,
-            status = if (isAddressed) MessageStatus.SENDING else MessageStatus.SENT,
+            status = when {
+                !written -> MessageStatus.FAILED
+                isAddressed -> MessageStatus.SENDING
+                else -> MessageStatus.SENT
+            },
             time = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
                 .format(java.util.Date()),
             timeMs = now,
@@ -615,7 +668,7 @@ class MeshTRXService : Service() {
         val list = ServiceState.messages.value?.toMutableList() ?: mutableListOf()
         list.add(msg)
         ServiceState.messages.postValue(list)
-        saveMessages()
+        saveMessages(list)
 
         // Адресное: повторяем, пока не придёт подтверждение.
         //
@@ -624,13 +677,14 @@ class MeshTRXService : Service() {
         // ретранслятор. Двух секунд на это не хватало, и приложение начинало
         // слать повторы поверх ещё не пришедшего ответа, занимая тот же
         // полудуплексный канал, по которому ответ и должен вернуться.
-        if (isAddressed) {
+        if (isAddressed && written) {
             val msgId = now
             Thread {
                 for (pause in longArrayOf(3000, 5000, 8000)) {
                     Thread.sleep(pause)
                     val current = ServiceState.messages.value?.find { it.id == msgId }
-                    if (current?.status == MessageStatus.DELIVERED) return@Thread
+                    if (current?.status == MessageStatus.DELIVERED ||
+                        current?.status == MessageStatus.ACCEPTED) return@Thread
                     Log.d(TAG, "[Text] Retry for seq=$seq")
                     bleManager.sendMessage(seq, destId, text)
                 }
@@ -641,7 +695,8 @@ class MeshTRXService : Service() {
                 // назад раньше времени. Поэтому «ушло, ответа нет» — отдельное
                 // состояние, а не отказ.
                 val current = ServiceState.messages.value?.find { it.id == msgId }
-                if (current?.status != MessageStatus.DELIVERED) {
+                if (current?.status != MessageStatus.DELIVERED &&
+                    current?.status != MessageStatus.ACCEPTED) {
                     updateMessageStatus(msgId, MessageStatus.SENT)
                 }
             }.start()
@@ -684,7 +739,7 @@ class MeshTRXService : Service() {
         if (idx >= 0) {
             list[idx] = list[idx].copy(status = status)
             ServiceState.messages.postValue(list)
-            saveMessages()
+            saveMessages(list)
         }
     }
 
@@ -765,26 +820,35 @@ class MeshTRXService : Service() {
                     // Прошивки до 4.4.31 признака не шлют. Тогда считаем
                     // сообщение общим: разбудить зря хуже, чем промолчать.
                     val toMe = textEnd + 4 < data.size && data[textEnd + 4].toInt() == 1
+                    // С 4.4.32 сообщение, пролежавшее на рации без телефона,
+                    // приходит с возрастом в секундах — время в чате ставим
+                    // по приёму, а не по подключению телефона.
+                    val ageSec = if (textEnd + 8 < data.size)
+                        (data[textEnd + 5].toLong() and 0xFF) or
+                        ((data[textEnd + 6].toLong() and 0xFF) shl 8) or
+                        ((data[textEnd + 7].toLong() and 0xFF) shl 16) or
+                        ((data[textEnd + 8].toLong() and 0xFF) shl 24) else 0L
 
                     // Найти позывной отправителя из peers
                     val senderName = ServiceState.peers.value
                         ?.find { it.deviceId.endsWith(senderId) }?.callSign ?: "TX-$senderId"
                     val now = System.currentTimeMillis()
+                    val rxAt = now - ageSec * 1000
                     val msg = ChatMessage(
                         id = now,
                         text = text, isOutgoing = false,
                         senderId = senderId, senderName = senderName,
                         rssi = rssiVal, status = MessageStatus.DELIVERED,
                         time = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
-                            .format(java.util.Date()),
-                        timeMs = now,
+                            .format(java.util.Date(rxAt)),
+                        timeMs = rxAt,
                         encrypted = encrypted,
                         toMe = toMe
                     )
                     val list = ServiceState.messages.value?.toMutableList() ?: mutableListOf()
                     list.add(msg)
                     ServiceState.messages.postValue(list)
-                    saveMessages()
+                    saveMessages(list)
                     notifyIncomingMessage(msg)
 
                     if (senderId != "??") {
@@ -829,7 +893,11 @@ class MeshTRXService : Service() {
             }
             BleManager.CMD_MESSAGE_ACK -> {
                 val ackSeq = data[1].toInt() and 0xFF
-                Log.d(TAG, "Message ACK seq=$ackSeq")
+                // Третий байт (с 4.4.32): 1 — рация адресата приняла, но
+                // телефона у неё нет, сообщение ждёт там. Старые прошивки его
+                // не шлют — это «доставлено», как и было.
+                val stored = data.size >= 3 && data[2].toInt() == 1
+                Log.d(TAG, "Message ACK seq=$ackSeq stored=$stored")
                 // Найти сообщение с этим seq и пометить как доставленное
                 val list = ServiceState.messages.value?.toMutableList() ?: return
                 // Ищем по номеру, под которым сообщение ушло в эфир. Раньше
@@ -846,9 +914,10 @@ class MeshTRXService : Service() {
                     (it.status == MessageStatus.SENDING || it.status == MessageStatus.SENT) &&
                     (it.seq and 0xFF) == ackSeq }
                 if (idx >= 0) {
-                    list[idx] = list[idx].copy(status = MessageStatus.DELIVERED)
+                    list[idx] = list[idx].copy(status =
+                        if (stored) MessageStatus.ACCEPTED else MessageStatus.DELIVERED)
                     ServiceState.messages.postValue(list)
-                    saveMessages()
+                    saveMessages(list)
                 }
             }
             BleManager.CMD_PEER_SEEN -> {
@@ -944,6 +1013,9 @@ class MeshTRXService : Service() {
                         Log.d(TAG, "PIN rejected!")
                         ServiceState.statusMessage.postValue("Неверный PIN")
                         bleManager.disconnect()
+                        // disconnect() о разрыве не сообщает — без этого статус
+                        // так и оставался «соединение»
+                        ServiceState.connectionState.postValue(BleState.DISCONNECTED)
                     }
                 }
             }
@@ -1109,7 +1181,7 @@ class MeshTRXService : Service() {
                             val msgList = ServiceState.messages.value?.toMutableList() ?: mutableListOf()
                             msgList.add(msg)
                             ServiceState.messages.postValue(msgList)
-                            saveMessages()
+                            saveMessages(msgList)
                         } else {
                             val transfer = FileTransfer(
                                 sessionId = 0, fileName = "$recvFileName от $senderName", fileType = fileType,
@@ -1469,11 +1541,14 @@ class MeshTRXService : Service() {
         if (idx < 0) return
         list[idx] = list[idx].copy(status = status)
         ServiceState.messages.postValue(list)
-        saveMessages()
+        saveMessages(list)
     }
 
-    fun saveMessages() {
-        val msgs = ServiceState.messages.value ?: return
+    // Список передаём явно: postValue применяется позже, и value сразу после
+    // него ещё старое. Раньше так и сохранялось — после перезапуска галочки
+    // откатывались к ⏳, а только что пришедшее сообщение могло пропасть.
+    fun saveMessages(list: List<ChatMessage>? = null) {
+        val msgs = list ?: ServiceState.messages.value ?: return
         val json = msgs.joinToString("\n") { m ->
             "${m.id}\t${m.text.replace("\t", " ").replace("\n", " ")}\t${m.isOutgoing}\t${m.senderId}\t" +
             "${m.senderName}\t${m.destId ?: ""}\t${m.destName ?: ""}\t${m.rssi ?: ""}\t" +
@@ -1616,6 +1691,7 @@ class MeshTRXService : Service() {
 
     override fun onDestroy() {
         stopReconnect()
+        try { unregisterReceiver(adapterReceiver) } catch (_: Exception) {}
         savePeers()
         saveFileTransfers()
         saveMessages()

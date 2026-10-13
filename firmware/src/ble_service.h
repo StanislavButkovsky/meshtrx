@@ -15,7 +15,7 @@
 #define BLE_CMD_STATUS_UPDATE 0x06  // ESP→телефон
 #define BLE_CMD_SEND_MESSAGE  0x07
 #define BLE_CMD_RECV_MESSAGE  0x08  // ESP→телефон
-#define BLE_CMD_MESSAGE_ACK   0x09  // ESP→телефон
+#define BLE_CMD_MESSAGE_ACK   0x09  // ESP→телефон: [seq][status — с 4.4.32, TEXT_ACK_*]
 #define BLE_CMD_SET_SETTINGS  0x0A
 #define BLE_CMD_GET_SETTINGS  0x0B
 #define BLE_CMD_SETTINGS_RESP 0x0C  // ESP→телефон
@@ -83,6 +83,10 @@ extern volatile uint32_t bleLastRxMs;
 extern volatile uint32_t bleIdleDrops;
 // Клиент прошёл проверку PIN — такое соединение считаем рабочим
 extern volatile bool bleLinkAuthorized;
+// Телефон прислал хоть одну команду в этом соединении — значит, он подписан на
+// уведомления и слушает. По PIN этого не понять: знакомую рацию приложение
+// при переподключении PIN не спрашивает, и флаг авторизации так и остаётся false.
+extern volatile bool blePhoneSpoke;
 extern volatile uint32_t bleLastConnMs;
 extern volatile uint32_t bleLastDiscMs;  // выставляется в onConnect, сбрасывается в bleTask
 

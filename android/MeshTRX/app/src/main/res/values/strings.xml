@@ -225,6 +225,8 @@ MeshTRX v%2$s</string>
     <string name="device_name_only">Device: %1$s</string>
     <string name="channel_now">(now)</string>
     <string name="msg_open"> ⚠ unencrypted</string>
+    <!-- Рация адресата приняла, но телефона у неё нет: сообщение ждёт там -->
+    <string name="msg_accepted">✓ accepted by node</string>
     <string name="notifications">Message notifications</string>
     <string name="notify_all">All messages</string>
     <string name="notify_private">Direct messages only</string>

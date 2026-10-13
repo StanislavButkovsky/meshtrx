@@ -339,6 +339,24 @@ At the bottom of the PTT screen there is a scrollable list of recent calls:
 3. **To: [name]** appears above the input field
 4. Only the addressee receives the message
 
+An addressed message carries a mark next to its time:
+
+| Mark | Meaning |
+|---|---|
+| ⏳ | waiting for the addressee's radio to answer |
+| ✓ (green) | delivered: the message is on the addressee's phone |
+| ✓ accepted by node | the addressee's radio took it, but their phone is not connected right now — the message waits on the radio and shows up once they connect |
+| ↑ | sent over the air, no answer — the message may have arrived and the answer got lost |
+| ✗ | did not even reach your own radio — tap the message to send it again |
+
+### If the phone was disconnected from the radio
+
+The radio keeps incoming messages while no phone is connected and hands them
+over on connect, with the time they actually arrived. Space is limited: about
+two hundred ordinary messages on a V3, several thousand on a V4. When it runs
+out, the oldest are dropped first. The buffer lives in memory and is lost when
+the radio is switched off. Requires firmware 4.4.32.
+
 ### Notifications
 
 When the app is in the background, an incoming message raises a system
@@ -536,7 +554,7 @@ matches.
 
 **Also hear unencrypted traffic.** If you need both the open shared chat and
 encrypted conversations with your own group, switch this on next to the
-passphrase. Unencrypted messages become visible again and are marked with a lock
+passphrase. Unencrypted messages become visible again and are marked with the words "unencrypted" in red
 so that protected and unprotected do not look alike. It is off by default, and
 here is why:
 
