@@ -352,7 +352,10 @@ class VoiceFragment : Fragment() {
         ServiceState.lastRxCallSign.observe(viewLifecycleOwner) { name ->
             if (name.isNotEmpty()) tvRxCallSign.text = name
         }
-        ServiceState.lastRxDeviceId.observe(viewLifecycleOwner) { _ -> }
+        // Здесь был пустой подписчик на lastRxDeviceId. Пустая лямбда — один
+        // общий объект на всё приложение, и когда экранов голоса становилось два
+        // (приложение открыли повторно поверх открытого), LiveData падала:
+        // «Cannot add the same observer with different lifecycles».
 
         // Пункт 2: авто-выбор адресата только при входящем PRIVATE вызове
         ServiceState.incomingCall.observe(viewLifecycleOwner) { call ->

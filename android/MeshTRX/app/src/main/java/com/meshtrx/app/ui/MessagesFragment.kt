@@ -39,10 +39,24 @@ class MessagesFragment : Fragment() {
             stackFromEnd = true
         }
 
+        // Предел — 84 байта UTF-8, как режет прошивка, а не 84 символа: иначе
+        // русский текст длиннее 42 букв обрезался на рации молча
+        val tvBytesLeft = v.findViewById<TextView>(R.id.tvBytesLeft)
+        etMessage.filters = arrayOf(Utf8LimitFilter(MAX_TEXT_BYTES))
+        etMessage.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) {
+                val left = MAX_TEXT_BYTES - (s?.toString()?.toByteArray(Charsets.UTF_8)?.size ?: 0)
+                tvBytesLeft.text = left.toString()
+                tvBytesLeft.setTextColor(if (left < 10) Colors.redTx else 0xFF555555.toInt())
+            }
+        })
+
         // Отправка
         btnSend.setOnClickListener {
             val text = etMessage.text.toString().trim()
-            if (text.isNotEmpty() && text.length <= 84) {
+            if (text.isNotEmpty() && text.toByteArray(Charsets.UTF_8).size <= MAX_TEXT_BYTES) {
                 service?.sendTextMessage(text, destId, destName)
                 etMessage.text.clear()
             }
@@ -384,5 +398,32 @@ class MessagesFragment : Fragment() {
         override fun getItemCount() = messages.size
 
         private fun Int.dp(): Int = (this * resources.displayMetrics.density).toInt()
+    }
+}
+
+/** Сколько байт текста помещается в пакет: столько берёт прошивка (main.cpp, SEND_MESSAGE) */
+private const val MAX_TEXT_BYTES = 84
+
+/**
+ * Не даёт набрать больше maxBytes в UTF-8. Вставку, которая не влезает,
+ * обрезает по целым символам — половина русской буквы в эфир не уйдёт.
+ */
+private class Utf8LimitFilter(private val maxBytes: Int) : android.text.InputFilter {
+    override fun filter(source: CharSequence, start: Int, end: Int,
+                        dest: android.text.Spanned, dstart: Int, dend: Int): CharSequence? {
+        val kept = dest.subSequence(0, dstart).toString() + dest.subSequence(dend, dest.length)
+        val room = maxBytes - kept.toByteArray(Charsets.UTF_8).size
+        val insert = source.subSequence(start, end).toString()
+        if (insert.toByteArray(Charsets.UTF_8).size <= room) return null   // влезает целиком
+        val sb = StringBuilder()
+        var used = 0
+        var i = 0
+        while (i < insert.length) {
+            val cp = insert.codePointAt(i)
+            val n = String(Character.toChars(cp)).toByteArray(Charsets.UTF_8).size
+            if (used + n > room) break
+            sb.appendCodePoint(cp); used += n; i += Character.charCount(cp)
+        }
+        return sb.toString()
     }
 }

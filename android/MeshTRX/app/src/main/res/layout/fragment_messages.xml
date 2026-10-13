@@ -89,10 +89,20 @@
                 android:textColorHint="#555555"
                 android:background="#1a1a1a"
                 android:paddingHorizontal="8dp"
-                android:maxLength="84"
                 android:inputType="text"
                 android:singleLine="true"
                 android:layout_marginHorizontal="4dp" />
+
+            <!-- Сколько байт осталось: рация режет текст по 84 байтам, а русская
+                 буква занимает два — счёт в символах обрезал сообщение молча -->
+            <TextView android:id="@+id/tvBytesLeft"
+                android:layout_width="28dp"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="84"
+                android:textSize="11sp"
+                android:fontFamily="monospace"
+                android:textColor="#555555" />
 
             <ImageButton android:id="@+id/btnSend"
                 android:layout_width="40dp"
