@@ -61,6 +61,9 @@ struct MainTabView: View {
             .onChange(of: selectedTab) { tab in
                 if tab == 1 { appState.unreadMessages = 0 }
             }
+            .onChange(of: appState.requestedTab) { tab in
+                if let tab = tab { selectedTab = tab; appState.requestedTab = nil }
+            }
             .onChange(of: appState.unreadMessages) { n in
                 if selectedTab == 1 && n > 0 { appState.unreadMessages = 0 }
             }
@@ -76,30 +79,48 @@ struct MainTabView: View {
                 Text(appState.callSign.isEmpty ? "MeshTRX" : appState.callSign)
                     .font(.system(size: 18, weight: .bold))
                     .foregroundColor(AppColors.textPrimary)
-                Text(appState.deviceName.isEmpty ? "—" : appState.deviceName)
+                Text(appState.deviceName)
                     .font(.system(size: 12))
                     .foregroundColor(AppColors.textMuted)
             }
 
             Spacer()
 
-            // Right: connection status + channel
+            // Справа, как в Android: значок Bluetooth, батарея рации, канал
             VStack(alignment: .trailing, spacing: 2) {
-                HStack(spacing: 4) {
-                    Circle()
-                        .fill(isConnected ? AppColors.greenAccent : AppColors.redAccent)
-                        .frame(width: 8, height: 8)
-                    Text(connectionStatusText)
+                HStack(spacing: 6) {
+                    if appState.bleState == .connecting || appState.bleState == .scanning {
+                        Text(connectionStatusText)
+                            .font(.system(size: 12))
+                            .foregroundColor(AppColors.textMuted)
+                    }
+                    Image(systemName: "dot.radiowaves.left.and.right")
                         .font(.system(size: 13))
-                        .foregroundColor(isConnected ? AppColors.greenAccent : AppColors.textMuted)
+                        .foregroundColor(isConnected ? AppColors.greenAccent : AppColors.textDim)
+                    if isConnected && appState.batteryVoltage > 0.5 {
+                        Image(systemName: batteryIcon)
+                            .font(.system(size: 13))
+                            .foregroundColor(batteryColor)
+                        Text(String(format: "%.1fv", appState.batteryVoltage))
+                            .font(.system(size: 12, design: .monospaced))
+                            .foregroundColor(batteryColor)
+                    }
                 }
-                if isConnected {
-                    Text(String(format: "CH %d · %.2f MHz", appState.currentChannel, 863.15 + Double(appState.currentChannel) * 0.3))
-                        .font(.system(size: 12, design: .monospaced))
-                        .foregroundColor(AppColors.textDim)
-                }
+                Text(String(format: "CH %d · %.2f MHz", appState.currentChannel, 863.15 + Double(appState.currentChannel) * 0.3))
+                    .font(.system(size: 12, design: .monospaced))
+                    .foregroundColor(AppColors.greenAccent)
             }
         }
+    }
+
+    // Пороги — как в Android
+    private var batteryIcon: String {
+        let v = appState.batteryVoltage
+        return v >= 4.0 ? "battery.100" : v >= 3.8 ? "battery.75" : v >= 3.6 ? "battery.50" : v >= 3.4 ? "battery.25" : "battery.0"
+    }
+    private var batteryColor: Color {
+        let v = appState.batteryVoltage
+        return v >= 3.8 ? AppColors.greenAccent : v >= 3.6 ? AppColors.amberAccent : AppColors.redTx
     }
 
     private var connectionStatusText: String {

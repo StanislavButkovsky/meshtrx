@@ -15,6 +15,7 @@ class MeshTRXController: ObservableObject {
     // GPS живёт с приложением, как в Android: раньше включался только на
     // вкладке «Карта», и рация получала координаты лишь при подключении.
     let locationManager = LocationManager()
+    let notificationDelegate = NotificationDelegate()
     private var lastGpsSentAt: Date = .distantPast
     var cancellables = Set<AnyCancellable>()
     let voxEngine = VoxEngine()
@@ -710,6 +711,8 @@ class MeshTRXController: ObservableObject {
     // MARK: - Notifications
 
     private func setupNotifications() {
+        UNUserNotificationCenter.current().delegate = notificationDelegate
+        notificationDelegate.onOpenChat = { [weak self] in self?.appState.requestedTab = 1 }
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
             if granted {
                 self.log.info("Notifications authorized")
@@ -722,7 +725,7 @@ class MeshTRXController: ObservableObject {
         let typeLabel: String
         switch call.callType {
         case .all: typeLabel = "Общий вызов"
-        case .private: typeLabel = "Приватный вызов"
+        case .private: typeLabel = "Личный вызов"
         case .group: typeLabel = "Групповой вызов"
         case .emergency: typeLabel = "SOS"
         }
@@ -746,15 +749,19 @@ class MeshTRXController: ObservableObject {
         if mode == 1 && !isPrivate { return }
 
         let content = UNMutableNotificationContent()
-        content.title = senderName
+        // Заголовки — как в Android: сразу видно, лично это или в общий чат
+        content.title = "\(senderName) — \(isPrivate ? "лично вам" : "в общий чат")"
         content.body = text
         if isPrivate {
             content.sound = .default
         }
         content.threadIdentifier = isPrivate ? "meshtrx-private" : "meshtrx-broadcast"
+        content.userInfo = ["open": "chat"]
 
+        // Одно уведомление на отправителя, отдельно личное и общее, как в Android:
+        // новое сообщение обновляет его, а не плодит ленту
         let request = UNNotificationRequest(
-            identifier: UUID().uuidString,
+            identifier: "msg-\(isPrivate ? "p" : "a")-\(senderName)",
             content: content,
             trigger: nil
         )
@@ -927,6 +934,8 @@ class MeshTRXController: ObservableObject {
         let r = Int(data[2]) | (Int(data[3]) << 8)
         appState.rssi = Int(Int16(bitPattern: UInt16(r)))
         appState.snr = Int(Int8(bitPattern: data[4]))
+        // Байт 5 — напряжение батареи рации в десятых вольта (как читает Android)
+        if data.count >= 6, data[5] > 0 { appState.batteryVoltage = Float(data[5]) / 10 }
     }
 
     // MARK: - Messages
@@ -1333,5 +1342,29 @@ extension MeshTRXController {
             .sink { Store.save($0, "recent_calls.json") }.store(in: &cancellables)
         appState.$fileTransfers.dropFirst().debounce(for: .seconds(1), scheduler: delay)
             .sink { Store.save($0, "files.json") }.store(in: &cancellables)
+    }
+}
+
+// MARK: - Нажатие на уведомление
+
+/// Нажатие на уведомление о сообщении открывает чат. Раньше делегата не было,
+/// и нажатие просто запускало приложение на той вкладке, где его оставили.
+final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
+    var onOpenChat: (() -> Void)?
+
+    func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                didReceive response: UNNotificationResponse,
+                                withCompletionHandler completionHandler: @escaping () -> Void) {
+        if response.notification.request.content.userInfo["open"] as? String == "chat" {
+            DispatchQueue.main.async { self.onOpenChat?() }
+        }
+        completionHandler()
+    }
+
+    // Приложение открыто — баннер не нужен: сообщение и так видно (как в Android)
+    func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                willPresent notification: UNNotification,
+                                withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        completionHandler([])
     }
 }

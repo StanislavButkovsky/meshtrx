@@ -23,6 +23,8 @@ class AppState: ObservableObject {
     @Published var rxCallSign: String? = nil
     // Адресат голоса (последние 4 знака id) — как «@» в Android. nil — общий канал.
     @Published var pttTargetId: String? = nil
+    // Просьба открыть вкладку (нажали на уведомление о сообщении)
+    @Published var requestedTab: Int? = nil
     @Published var pttTargetName: String? = nil
     // Судьба адресной передачи: «отправка...», «доставлено», «не доставлено»
     @Published var pttDeliveryText: String? = nil
