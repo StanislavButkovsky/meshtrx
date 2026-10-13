@@ -44,6 +44,26 @@ struct MessagesView: View {
         return ["Все"] + contacts.sorted()
     }
 
+    /// Кому можно написать лично: рации, слышные в эфире, и те, от кого уже
+    /// приходили сообщения. Адрес — последние четыре знака идентификатора,
+    /// как в Android.
+    private var recipients: [(id: String, name: String)] {
+        var out: [(id: String, name: String)] = []
+        var seen = Set<String>()
+        for p in appState.peers {
+            let id = String(p.deviceId.suffix(4))
+            guard id.count == 4, !seen.contains(id) else { continue }
+            seen.insert(id)
+            out.append((id, p.callSign.isEmpty ? "TX-\(id)" : p.callSign))
+        }
+        for m in appState.messages where !m.isOutgoing && m.senderId.count == 4 && m.senderId != "??" {
+            guard !seen.contains(m.senderId) else { continue }
+            seen.insert(m.senderId)
+            out.append((m.senderId, m.senderName.isEmpty ? "TX-\(m.senderId)" : m.senderName))
+        }
+        return out
+    }
+
     var body: some View {
         ZStack {
             AppColors.bgPrimary.ignoresSafeArea()
@@ -100,6 +120,16 @@ struct MessagesView: View {
                 .cornerRadius(6)
             }
             .disabled(!isConnected)
+            // Окна выбора получателя раньше не было вовсе: кнопка выставляла
+            // флаг, который ничего не открывал, и писать лично было нельзя.
+            .confirmationDialog("Отправить кому?", isPresented: $showDestPicker,
+                                titleVisibility: .visible) {
+                Button("Все") { destId = nil; destName = nil }
+                ForEach(recipients, id: \.id) { r in
+                    Button(r.name) { destId = r.id; destName = r.name }
+                }
+                Button("Отмена", role: .cancel) {}
+            }
 
             Spacer()
 
@@ -344,6 +374,12 @@ struct MessageBubbleView: View {
         case .sent:
             Image(systemName: "checkmark")
                 .font(.system(size: 9))
+        case .accepted:
+            // Рация адресата приняла, человек ещё не видел — словами, как в
+            // Android: вторая галочка обещала бы больше, чем случилось.
+            Text("✓ принято нодой")
+                .font(.system(size: 9))
+                .foregroundColor(AppColors.amberAccent)
         case .delivered:
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 9))

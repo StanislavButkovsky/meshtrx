@@ -55,6 +55,7 @@ enum BLECmd {
     static let cryptoAlien:  UInt8 = 0x3B
     static let setChannelAll: UInt8 = 0x36
     static let hearPlaintext: UInt8 = 0x3D
+    static let scanPeers:    UInt8 = 0x33
     static let scanChannels: UInt8 = 0x34
     static let scanResult:   UInt8 = 0x35
 }
@@ -76,8 +77,18 @@ enum BLEPacket {
         Data([BLECmd.setChannel, UInt8(ch & 0xFF)])
     }
 
-    static func sendMessage(seq: Int, text: String) -> Data {
+    /// Формат прошивки: [0x07, seq, dest[0], dest[1], текст]. dest 0000 — всем.
+    /// Раньше адрес не передавался вовсе, и рация принимала за него первые
+    /// два байта текста: сообщение уходило по случайному адресу без начала.
+    static func sendMessage(seq: Int, destId: String?, text: String) -> Data {
         var pkt = Data([BLECmd.sendMessage, UInt8(seq & 0xFF)])
+        if let d = destId, d.count >= 4,
+           let b0 = UInt8(d.prefix(2), radix: 16),
+           let b1 = UInt8(d.dropFirst(2).prefix(2), radix: 16) {
+            pkt.append(contentsOf: [b0, b1])
+        } else {
+            pkt.append(contentsOf: [0, 0])
+        }
         pkt.append(text.data(using: .utf8) ?? Data())
         return pkt
     }

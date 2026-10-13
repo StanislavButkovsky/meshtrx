@@ -37,7 +37,9 @@ class BLEManager: NSObject, ObservableObject {
 
     // Keepalive
     private var keepaliveTimer: Timer?
-    private let keepaliveInterval: TimeInterval = 30
+    // Как в Android: 15 с. Рация обрывает соединение, в котором 45 с не было
+    // ни одной записи и не было PIN (знакомую рацию приложение PIN не спрашивает).
+    private let keepaliveInterval: TimeInterval = 15
 
     // Scan timeout
     private var scanTimer: Timer?
@@ -185,9 +187,15 @@ class BLEManager: NSObject, ObservableObject {
     func sendPttStart()                      { send(BLEPacket.pttStart()) }
     func sendPttEnd()                        { send(BLEPacket.pttEnd()) }
     func setChannel(_ ch: Int)               { send(BLEPacket.setChannel(ch)) }
-    func sendMessage(seq: Int, text: String) { send(BLEPacket.sendMessage(seq: seq, text: text)) }
+    func sendMessage(seq: Int, destId: String?, text: String) {
+        send(BLEPacket.sendMessage(seq: seq, destId: destId, text: text))
+    }
     func sendSettings(json: String)          { send(BLEPacket.setSettings(json: json)) }
     func requestSettings()                   { send(BLEPacket.getSettings()) }
+    /// Попросить соседей отозваться маяками. Рация делает это и сама в момент
+    /// подключения, но ответы приходят раньше, чем телефон готов их принять, —
+    /// и список абонентов оставался пустым до следующего маяка (минуты).
+    func scanPeers()                         { send(Data([BLECmd.scanPeers])) }
     func sendPinCheck(_ pin: Int)            { send(BLEPacket.pinCheck(pin)) }
     func setTxMode(_ mode: TxMode)           { send(BLEPacket.setTxMode(mode)) }
 
@@ -218,10 +226,12 @@ class BLEManager: NSObject, ObservableObject {
     private func startKeepalive() {
         keepaliveTimer?.invalidate()
         keepaliveTimer = Timer.scheduledTimer(withTimeInterval: keepaliveInterval, repeats: true) { [weak self] _ in
-            guard let self = self, let peripheral = self.connectedPeripheral,
-                  let tx = self.txCharacteristic else { return }
-            // Read RSSI to keep the connection alive
-            peripheral.readRSSI()
+            guard let self = self, self.connectedPeripheral != nil,
+                  self.txCharacteristic != nil else { return }
+            // Раньше здесь был readRSSI(): это обмен на уровне радио, до
+            // прошивки он не доходит, и через минуту рация закрывала соединение
+            // как брошенное. Нужна именно запись — запрос настроек, как в Android.
+            self.requestSettings()
         }
     }
 
