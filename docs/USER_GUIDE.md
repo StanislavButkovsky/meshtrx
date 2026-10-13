@@ -154,7 +154,7 @@ esptool.py --chip esp32s3 --port COM3 --baud 921600 \
 ```bash
 cd android/MeshTRX
 ./gradlew assembleDebug
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb install -r app/build/outputs/apk/site/debug/app-site-debug.apk
 ```
 
 ### 3. Подключение по BLE

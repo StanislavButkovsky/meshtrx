@@ -57,7 +57,7 @@ pio run -e heltec_wifi_lora_32_V43 --target upload --upload-port /dev/ttyUSB0   
 ```bash
 cd android/MeshTRX
 ./gradlew assembleDebug
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb install -r app/build/outputs/apk/site/debug/app-site-debug.apk
 ```
 
 ### Run the desktop client

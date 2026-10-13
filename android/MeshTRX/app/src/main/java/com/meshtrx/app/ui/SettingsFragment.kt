@@ -508,7 +508,9 @@ class SettingsFragment : Fragment() {
             }
             tvUpdateFw.setTextColor(if (fwOld) colorNew else colorOk)
 
-            latestUrl = if (appOld) latest.appUrl else null
+            // Сборка для магазина ведёт в его карточку, сборка для сайта — на APK
+            latestUrl = if (!appOld) null
+                else com.meshtrx.app.BuildConfig.STORE_URL.ifEmpty { latest.appUrl }
             btnUpdateGet.visibility = if (appOld) View.VISIBLE else View.GONE
         }
 
