@@ -53,6 +53,8 @@ struct ChatMessage: Identifiable {
     let timeMs: Int64
     var encrypted: Bool = true
     var isVoice: Bool = false
+    // Само голосовое (Codec2) — чтобы его можно было проиграть из чата
+    var voiceData: Data? = nil
     // Номер, под которым сообщение ушло в эфир: по нему приходит подтверждение.
     var seq: Int? = nil
 
@@ -123,7 +125,10 @@ struct IncomingCall: Identifiable {
 }
 
 struct FileTransfer: Identifiable {
-    var id: Int { sessionId }
+    // Своё id, а не sessionId: у входящих и исходящих номера сессий идут
+    // независимо, совпадали — и список путал строки.
+    let uid = UUID()
+    var id: UUID { uid }
     let sessionId: Int
     let fileName: String
     let fileType: Int       // 0x01=photo, 0x02=text, 0x03=binary

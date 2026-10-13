@@ -11,6 +11,10 @@ struct FilesView: View {
     @State private var showPreview: Bool = false
     @State private var showFilePicker: Bool = false
     @State private var showImagePicker: Bool = false
+    // Файл уходит только адресно, как в Android: сначала выбираем, кому
+    @State private var pendingSend: (name: String, type: Int, data: Data)? = nil
+    @State private var showRecipientPicker: Bool = false
+    @State private var errorText: String? = nil
 
     private var isConnected: Bool { appState.bleState == .connected }
 
@@ -43,6 +47,17 @@ struct FilesView: View {
                     showPreview = true
                 }
             }
+        }
+        .confirmationDialog("Отправить кому?", isPresented: $showRecipientPicker,
+                            titleVisibility: .visible) {
+            ForEach(appState.directRecipients, id: \.id) { r in
+                Button(r.name) { send(to: r.id, name: r.name) }
+            }
+            Button("Отмена", role: .cancel) { pendingSend = nil }
+        }
+        .alert(errorText ?? "", isPresented: Binding(
+            get: { errorText != nil }, set: { if !$0 { errorText = nil } })) {
+            Button("OK", role: .cancel) {}
         }
     }
 
@@ -125,7 +140,8 @@ struct FilesView: View {
     private var transferList: some View {
         ScrollView {
             LazyVStack(spacing: 2) {
-                ForEach(appState.fileTransfers) { transfer in
+                // Голосовые (0x04) и адресный PTT (0x05) живут в чате и в динамике
+                ForEach(appState.fileTransfers.filter { $0.fileType != 0x04 && $0.fileType != 0x05 }) { transfer in
                     FileTransferRow(transfer: transfer)
                 }
             }
@@ -142,17 +158,38 @@ struct FilesView: View {
         defer { url.stopAccessingSecurityScopedResource() }
 
         guard let data = try? Data(contentsOf: url) else { return }
-        guard data.count <= ImageProcessor.maxFileSize else { return }
+        guard data.count <= ImageProcessor.maxFileSize else {
+            errorText = "Файл слишком большой (\(data.count / 1024) КБ, макс \(ImageProcessor.maxFileSize / 1024) КБ)"
+            return
+        }
 
         let name = url.lastPathComponent
         let fileType: Int = name.hasSuffix(".txt") ? 0x02 : 0x03
-        controller.sendFile(fileName: name, fileType: fileType, data: data)
+        askRecipient(name: name, type: fileType, data: data)
     }
 
     private func sendPendingPhoto() {
         guard let data = pendingPhotoData else { return }
-        controller.sendFile(fileName: pendingPhotoName, fileType: 0x01, data: data)
+        askRecipient(name: pendingPhotoName, type: 0x01, data: data)
         cancelPreview()
+    }
+
+    private func askRecipient(name: String, type: Int, data: Data) {
+        if appState.directRecipients.isEmpty {
+            errorText = "Никого не слышно — файл отправлять некому"
+            return
+        }
+        pendingSend = (name, type, data)
+        showRecipientPicker = true
+    }
+
+    private func send(to id: String, name: String) {
+        guard let p = pendingSend,
+              let b0 = UInt8(id.prefix(2), radix: 16),
+              let b1 = UInt8(id.suffix(2), radix: 16) else { return }
+        controller.sendFile(fileName: p.name, fileType: p.type, data: p.data,
+                            destMac: Data([b0, b1]), destName: name)
+        pendingSend = nil
     }
 
     private func cancelPreview() {

@@ -378,37 +378,40 @@ class MeshTRXController: ObservableObject {
 
     // MARK: - Send file
 
+    /// Файлы v2, как в Android: [0x30, тип, адрес(2), размер(4), имя(20)], затем
+    /// данные кусками [0x31, …] по 120 байт, а итог рация сообщает сама (0x32).
+    /// Раньше шёл старый протокол, и галочка ставилась, как только данные ушли
+    /// на свою рацию, а не когда файл дошёл.
     func sendFile(fileName: String, fileType: Int, data: Data, destMac: Data? = nil, destName: String? = nil) {
-        let sessionId = (fileSessionCounter + 1) & 0xFF
         fileSessionCounter += 1
-        let chunkSize = 120
-        let totalChunks = (data.count + chunkSize - 1) / chunkSize
+        let sessionId = fileSessionCounter & 0xFF
         let dest = destMac ?? Data([0, 0])
 
-        // FILE_START header
-        var header = Data(count: 36)
-        header[0] = BLECmd.fileStart
-        header[1] = 0xC0 // PKT_TYPE_FILE_START
-        header[2] = UInt8(appState.currentChannel & 0xFF)
-        header[3] = UInt8(sessionId)
-        header[4] = 2 // TTL
-        header[5] = 0; header[6] = 0 // sender (ESP32 fills)
-        header[7] = dest.count > 0 ? dest[0] : 0
-        header[8] = dest.count > 1 ? dest[1] : 0
-        header[9] = UInt8(fileType & 0xFF)
-        header[10] = UInt8(totalChunks & 0xFF)
-        header[11] = UInt8((totalChunks >> 8) & 0xFF)
-        header[12] = UInt8(data.count & 0xFF)
-        header[13] = UInt8((data.count >> 8) & 0xFF)
-        header[14] = UInt8((data.count >> 16) & 0xFF)
-        header[15] = UInt8((data.count >> 24) & 0xFF)
-        // name (max 19 bytes)
-        let nameBytes = Array(fileName.data(using: .utf8)?.prefix(19) ?? Data())
-        for (i, b) in nameBytes.enumerated() { header[16 + i] = b }
+        // Имя — до 19 байт, расширение сохраняем
+        var shortName = fileName
+        if shortName.utf8.count > 19 {
+            let ext = (fileName as NSString).pathExtension
+            let base = (fileName as NSString).deletingPathExtension
+            if !ext.isEmpty && ext.count < 6 {
+                shortName = String(base.prefix(19 - ext.count - 1)) + "." + ext
+            } else {
+                shortName = String(fileName.prefix(19))
+            }
+        }
 
+        var header = Data(count: 28)
+        header[0] = BLECmd.fileUploadStart
+        header[1] = UInt8(fileType & 0xFF)
+        header[2] = dest.count > 0 ? dest[0] : 0
+        header[3] = dest.count > 1 ? dest[1] : 0
+        header[4] = UInt8(data.count & 0xFF)
+        header[5] = UInt8((data.count >> 8) & 0xFF)
+        header[6] = UInt8((data.count >> 16) & 0xFF)
+        header[7] = UInt8((data.count >> 24) & 0xFF)
+        for (i, b) in Array(shortName.utf8.prefix(20)).enumerated() { header[8 + i] = b }
         bleManager.send(header)
 
-        // Add to transfer list
+        let totalChunks = (data.count + 119) / 120
         let transfer = FileTransfer(
             sessionId: sessionId, fileName: fileName, fileType: fileType,
             totalSize: data.count, chunksTotal: totalChunks, chunksDone: 0,
@@ -416,32 +419,74 @@ class MeshTRXController: ObservableObject {
             timeMs: Int64(Date().timeIntervalSince1970 * 1000),
             data: data, destMac: destMac, destName: destName
         )
+        let uid = transfer.uid
+        // Голосовые (0x04) и адресный PTT (0x05) в «Файлах» не показываем — как Android
         appState.fileTransfers.insert(transfer, at: 0)
 
-        // Send chunks with timer (100ms interval)
-        var chunkIndex = 0
-        Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] timer in
-            guard let self = self else { timer.invalidate(); return }
-            guard chunkIndex < totalChunks else {
-                timer.invalidate()
-                if let idx = self.appState.fileTransfers.firstIndex(where: { $0.sessionId == sessionId }) {
-                    self.appState.fileTransfers[idx].status = .done
-                }
-                return
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 50_000_000)   // рации — выделить буфер
+            var offset = 0
+            while offset < data.count {
+                guard let self = self else { return }
+                let len = min(120, data.count - offset)
+                var chunk = Data([BLECmd.fileUploadData])
+                chunk.append(data[offset..<offset + len])
+                self.bleManager.send(chunk)
+                offset += len
+                try? await Task.sleep(nanoseconds: 50_000_000)
             }
-            let offset = chunkIndex * chunkSize
-            let len = min(chunkSize, data.count - offset)
-            var chunkData = Data([BLECmd.fileChunk,
-                              UInt8(chunkIndex & 0xFF), UInt8((chunkIndex >> 8) & 0xFF),
-                              dest[0], dest.count > 1 ? dest[1] : 0])
-            chunkData.append(data[offset..<offset + len])
-            self.bleManager.send(chunkData)
-
-            chunkIndex += 1
-            if let idx = self.appState.fileTransfers.firstIndex(where: { $0.sessionId == sessionId }) {
-                self.appState.fileTransfers[idx].chunksDone = chunkIndex
+            // Ждём итога от рации; нет ответа за 120 с — не доставлено
+            let deadline = Date().addingTimeInterval(120)
+            while Date() < deadline {
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                guard let self = self,
+                      let t = self.appState.fileTransfers.first(where: { $0.uid == uid }) else { return }
+                if t.status != .transferring { return }
             }
+            guard let self = self,
+                  let i = self.appState.fileTransfers.firstIndex(where: { $0.uid == uid }),
+                  self.appState.fileTransfers[i].status == .transferring else { return }
+            self.appState.fileTransfers[i].status = .failed
+            self.markVoiceStatus(fileType: fileType, ok: false)
         }
+    }
+
+    /// Итог отправки от рации: [0x32, статус, сессия]. 0 принят, 1 занята,
+    /// 2 отправляется, 3 доставлен, 4 не доставлен, 5 не хватило памяти.
+    private func handleFileUploadStatus(_ data: Data) {
+        guard data.count >= 3 else { return }
+        let status = Int(data[1])
+        log.info("UPLOAD_STATUS status=\(status) session=\(Int(data[2]))")
+        guard let i = appState.fileTransfers.lastIndex(where: { $0.isOutgoing && $0.status == .transferring })
+        else { return }
+        let fileType = appState.fileTransfers[i].fileType
+        switch status {
+        case 1:
+            appState.fileTransfers[i].status = .failed
+            appState.statusMessage = "Устройство занято"
+            markVoiceStatus(fileType: fileType, ok: false)
+        case 3:
+            appState.fileTransfers[i].status = .done
+            appState.fileTransfers[i].chunksDone = appState.fileTransfers[i].chunksTotal
+            markVoiceStatus(fileType: fileType, ok: true)
+        case 4:
+            appState.fileTransfers[i].status = .failed
+            markVoiceStatus(fileType: fileType, ok: false)
+        case 5:
+            appState.fileTransfers[i].status = .failed
+            appState.statusMessage = "Файл слишком большой"
+            markVoiceStatus(fileType: fileType, ok: false)
+        default:
+            break
+        }
+    }
+
+    /// Голосовое в чате — тот же файл: его судьбу переносим на сообщение.
+    private func markVoiceStatus(fileType: Int, ok: Bool) {
+        guard fileType == 0x04,
+              let i = appState.messages.lastIndex(where: { $0.isOutgoing && $0.isVoice && $0.status == .sending })
+        else { return }
+        appState.messages[i].status = ok ? .delivered : .failed
     }
 
     private func addRecentCall(deviceId: String, callSign: String, isOutgoing: Bool, callType: String) {
@@ -638,6 +683,8 @@ class MeshTRXController: ObservableObject {
             log.info("Settings: \(json)")
         case BLECmd.pinResult:
             handlePinResult(data)
+        case BLECmd.fileUploadStatus:
+            handleFileUploadStatus(data)
         case BLECmd.fileProgress:
             handleFileProgress(data)
         case BLECmd.fileRecv:
@@ -915,6 +962,8 @@ class MeshTRXController: ObservableObject {
         incomingFileSize = Int(data.getInt32LE(at: 2))
         incomingFileBuffer = Data(count: incomingFileSize)
         incomingFileOffset = 0
+        incomingFileSender = ""
+        incomingFileName = ""
 
         if data.count >= 29 {
             incomingFileSender = String(format: "%02X%02X", data[7], data[8])
@@ -935,22 +984,61 @@ class MeshTRXController: ObservableObject {
                                              with: chunk.prefix(toCopy))
         incomingFileOffset += toCopy
 
-        if incomingFileOffset >= incomingFileSize {
-            // File complete
-            let transfer = FileTransfer(
-                sessionId: fileSessionCounter,
-                fileName: incomingFileName.isEmpty ? "file" : incomingFileName,
-                fileType: incomingFileType,
-                totalSize: incomingFileSize,
-                chunksTotal: 1, chunksDone: 1,
-                isOutgoing: false, status: .done,
-                timeMs: Int64(Date().timeIntervalSince1970 * 1000),
-                data: incomingFileBuffer
-            )
-            fileSessionCounter += 1
-            appState.fileTransfers.insert(transfer, at: 0)
+        if incomingFileOffset >= incomingFileSize, let fileData = incomingFileBuffer {
             incomingFileBuffer = nil
-            log.info("File received: \(transfer.fileName)")
+            let sender = incomingFileSender
+            var senderName: String? = nil
+            if !sender.isEmpty {
+                senderName = appState.peers.first { $0.deviceId.hasSuffix(sender) }?.callSign
+                if senderName?.isEmpty != false { senderName = "TX-\(sender)" }
+            }
+            switch incomingFileType {
+            case 0x05:
+                // Адресная PTT-передача: проигрываем сразу, в «Файлы» не кладём
+                audioEngine.rogerBeep = appState.rogerBeep
+                var off = 0
+                while off + 32 <= fileData.count {
+                    audioEngine.playEncodedPacket(fileData[off..<off + 32])
+                    off += 32
+                }
+                audioEngine.playEncodedPacket(Data(), isLastPacket: true)
+            case 0x04:
+                // Голосовое сообщение — в чат, как в Android
+                let secs = fileData.count / 400      // 3200 бит/с = 400 байт в секунду
+                let now = Int64(Date().timeIntervalSince1970 * 1000)
+                let fmt = DateFormatter(); fmt.dateFormat = "HH:mm"
+                var msg = ChatMessage(
+                    id: now, text: "\u{1F3A4} \(secs)s", isOutgoing: false,
+                    senderId: sender.isEmpty ? "??" : sender,
+                    senderName: senderName ?? "", rssi: appState.rssi, status: .delivered,
+                    time: fmt.string(from: Date()), timeMs: now, isVoice: true
+                )
+                msg.voiceData = fileData
+                appState.messages.append(msg)
+                appState.unreadMessages += 1
+            default:
+                var name = incomingFileName
+                if name.isEmpty {
+                    name = incomingFileType == 0x01 ? "photo_received.jpg"
+                         : incomingFileType == 0x02 ? "text_received.txt" : "file_received.bin"
+                } else if !name.contains(".") {
+                    name += incomingFileType == 0x01 ? ".jpg" : incomingFileType == 0x02 ? ".txt" : ".bin"
+                }
+                fileSessionCounter += 1
+                var transfer = FileTransfer(
+                    sessionId: fileSessionCounter & 0xFF,
+                    fileName: name,
+                    fileType: incomingFileType,
+                    totalSize: incomingFileSize,
+                    chunksTotal: 1, chunksDone: 1,
+                    isOutgoing: false, status: .done,
+                    timeMs: Int64(Date().timeIntervalSince1970 * 1000),
+                    data: fileData
+                )
+                transfer.destName = senderName      // у входящего здесь — отправитель
+                appState.fileTransfers.insert(transfer, at: 0)
+                log.info("File received: \(name)")
+            }
         }
     }
 

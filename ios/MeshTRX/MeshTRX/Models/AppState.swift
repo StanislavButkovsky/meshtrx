@@ -14,6 +14,8 @@ class AppState: ObservableObject {
 
     // PTT / Audio
     @Published var isPttActive: Bool = false
+    // Последнее, что сказала рация про отправку файла (для строки состояния)
+    @Published var fileStatusMessage: String? = nil
     // Сколько секунд передачи осталось (nil — не передаём). Предел 10 с, как в
     // Android и прошивке: в полудуплексе говорящий занимает канал целиком.
     @Published var pttSecondsLeft: Int? = nil
@@ -72,4 +74,28 @@ class AppState: ObservableObject {
     @Published var scanResultText: String = ""
     @Published var updateStatus: String = ""
     @Published var updateAvailable: Bool = false
+}
+
+
+// MARK: - Кому можно написать или отправить лично
+
+extension AppState {
+    /// Рации, слышные в эфире, и те, от кого уже приходили сообщения. Адрес —
+    /// последние четыре знака идентификатора, как в Android.
+    var directRecipients: [(id: String, name: String)] {
+        var out: [(id: String, name: String)] = []
+        var seen = Set<String>()
+        for p in peers.sorted(by: { $0.rssi > $1.rssi }) {
+            let id = String(p.deviceId.suffix(4))
+            guard id.count == 4, !seen.contains(id) else { continue }
+            seen.insert(id)
+            out.append((id, p.callSign.isEmpty ? "TX-\(id)" : p.callSign))
+        }
+        for m in messages where !m.isOutgoing && m.senderId.count == 4 && m.senderId != "??" {
+            guard !seen.contains(m.senderId) else { continue }
+            seen.insert(m.senderId)
+            out.append((m.senderId, m.senderName.isEmpty ? "TX-\(m.senderId)" : m.senderName))
+        }
+        return out
+    }
 }

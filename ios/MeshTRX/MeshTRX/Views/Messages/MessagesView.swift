@@ -44,25 +44,7 @@ struct MessagesView: View {
         return ["Все"] + contacts.sorted()
     }
 
-    /// Кому можно написать лично: рации, слышные в эфире, и те, от кого уже
-    /// приходили сообщения. Адрес — последние четыре знака идентификатора,
-    /// как в Android.
-    private var recipients: [(id: String, name: String)] {
-        var out: [(id: String, name: String)] = []
-        var seen = Set<String>()
-        for p in appState.peers {
-            let id = String(p.deviceId.suffix(4))
-            guard id.count == 4, !seen.contains(id) else { continue }
-            seen.insert(id)
-            out.append((id, p.callSign.isEmpty ? "TX-\(id)" : p.callSign))
-        }
-        for m in appState.messages where !m.isOutgoing && m.senderId.count == 4 && m.senderId != "??" {
-            guard !seen.contains(m.senderId) else { continue }
-            seen.insert(m.senderId)
-            out.append((m.senderId, m.senderName.isEmpty ? "TX-\(m.senderId)" : m.senderName))
-        }
-        return out
-    }
+    private var recipients: [(id: String, name: String)] { appState.directRecipients }
 
     var body: some View {
         ZStack {
