@@ -160,6 +160,14 @@ class MeshTRXController: ObservableObject {
         bleManager.requestSettings()
         bleManager.scanPeers()      // список абонентов должен наполниться сразу, как в Android
         sendGpsToDevice()
+        // Версию и ключ рация называет сама, но уведомление, посланное до
+        // подписки телефона, теряется — переспрашиваем, по одному и с паузой.
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            self?.bleManager.send(Data([BLECmd.getKeyState]))
+            try? await Task.sleep(nanoseconds: 700_000_000)
+            self?.bleManager.send(Data([BLECmd.getFwVersion]))
+        }
     }
 
     private func handleDisconnected() {
@@ -807,14 +815,15 @@ class MeshTRXController: ObservableObject {
 
     // MARK: - Encryption handlers
 
+    /// [0x38, есть ключ, отпечаток(4), слушать открытый эфир]. Раньше отпечаток
+    /// читался с байта «есть ключ», и без ключа на экране стоял мусор.
     private func handleKeyState(_ data: Data) {
-        if data.count >= 5 {
-            let fp = String(data: data[1..<5], encoding: .utf8) ?? ""
-            appState.keyFingerprint = fp
-            log.info("Key fingerprint: \(fp)")
-        } else {
-            appState.keyFingerprint = ""
-        }
+        guard data.count >= 6 else { return }
+        let has = data[1] == 1
+        let fp = String(data: data[2..<6], encoding: .ascii) ?? ""
+        appState.keyFingerprint = has ? fp : ""
+        if data.count >= 7 { appState.hearPlaintext = data[6] == 1 }
+        log.info("Key: \(has ? "есть, отпечаток \(fp)" : "снят")")
     }
 
     private func handleFwVersion(_ data: Data) {
@@ -833,17 +842,21 @@ class MeshTRXController: ObservableObject {
         }
     }
 
+    /// [0x35, лучший канал, уровень шума каналов 0..22] — уровни знаковые.
+    /// Раньше байты читались парами «канал–шум», и результат был бессмыслен.
     private func handleScanResult(_ data: Data) {
         guard data.count >= 3 else { return }
-        var results: [String] = []
-        var offset = 1
-        while offset + 1 < data.count {
-            let ch = Int(data[offset])
-            let noise = Int(Int8(bitPattern: data[offset + 1]))
-            results.append("CH\(ch): \(noise)dBm")
-            offset += 2
+        let best = Int(data[1])
+        let levels = data[2...].map { Int(Int8(bitPattern: $0)) }
+        let quiet = levels.enumerated().sorted { $0.element < $1.element }.prefix(3)
+            .map { "CH \($0.offset) (\($0.element) dBm)" }.joined(separator: ", ")
+        var text = "Тише всего: \(quiet)"
+        if let noisy = levels.enumerated().max(by: { $0.element < $1.element }) {
+            text += "\nШумнее всего: CH \(noisy.offset) (\(noisy.element) dBm)"
         }
-        appState.scanResultText = results.joined(separator: " · ")
+        text += "\nЧтобы перевести всю группу разом — «Сменить канал у всех»"
+        appState.scanResultText = text
+        if best < levels.count { appState.scanBestChannel = best }
     }
 
     // MARK: - Peer discovery

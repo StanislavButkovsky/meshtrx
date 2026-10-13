@@ -72,6 +72,7 @@ class AppState: ObservableObject {
     @Published var showDevicePicker: Bool = false
     @Published var showClearChatConfirm: Bool = false
     @Published var scanResultText: String = ""
+    @Published var scanBestChannel: Int? = nil   // самый тихий канал по последнему поиску
     @Published var updateStatus: String = ""
     @Published var updateAvailable: Bool = false
 }

@@ -65,6 +65,10 @@ struct SettingsView: View {
             callSign = appState.callSign
             selectedChannel = appState.currentChannel
         }
+        // Поиск свободного канала сам выставляет самый тихий, как в Android
+        .onChange(of: appState.scanBestChannel) { best in
+            if let best = best { selectedChannel = best }
+        }
     }
 
     // MARK: - Connection
