@@ -185,7 +185,9 @@ class BLEManager: NSObject, ObservableObject {
     func sendPttStart()                      { send(BLEPacket.pttStart()) }
     func sendPttEnd()                        { send(BLEPacket.pttEnd()) }
     func setChannel(_ ch: Int)               { send(BLEPacket.setChannel(ch)) }
-    func sendMessage(seq: Int, text: String) { send(BLEPacket.sendMessage(seq: seq, text: text)) }
+    func sendMessage(seq: Int, destId: String?, text: String) {
+        send(BLEPacket.sendMessage(seq: seq, destId: destId, text: text))
+    }
     func sendSettings(json: String)          { send(BLEPacket.setSettings(json: json)) }
     func requestSettings()                   { send(BLEPacket.getSettings()) }
     func sendPinCheck(_ pin: Int)            { send(BLEPacket.pinCheck(pin)) }

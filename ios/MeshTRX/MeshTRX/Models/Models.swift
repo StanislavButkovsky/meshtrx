@@ -15,8 +15,10 @@ enum ListenMode: String {
     case all, privateOnly
 }
 
+// accepted — рация адресата приняла, но телефона у неё нет: сообщение ждёт
+// на рации и будет показано, когда человек подключится (прошивка 4.4.32).
 enum MessageStatus: String {
-    case sending, sent, delivered, failed
+    case sending, sent, accepted, delivered, failed
 }
 
 enum FileStatus: String {
@@ -51,6 +53,8 @@ struct ChatMessage: Identifiable {
     let timeMs: Int64
     var encrypted: Bool = true
     var isVoice: Bool = false
+    // Номер, под которым сообщение ушло в эфир: по нему приходит подтверждение.
+    var seq: Int? = nil
 
     init(id: Int64, text: String, isOutgoing: Bool, senderId: String,
          senderName: String = "", destId: String? = nil, destName: String? = nil,

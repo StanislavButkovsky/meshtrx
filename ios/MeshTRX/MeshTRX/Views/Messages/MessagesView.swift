@@ -344,6 +344,12 @@ struct MessageBubbleView: View {
         case .sent:
             Image(systemName: "checkmark")
                 .font(.system(size: 9))
+        case .accepted:
+            // Рация адресата приняла, человек ещё не видел — словами, как в
+            // Android: вторая галочка обещала бы больше, чем случилось.
+            Text("✓ принято нодой")
+                .font(.system(size: 9))
+                .foregroundColor(AppColors.amberAccent)
         case .delivered:
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 9))

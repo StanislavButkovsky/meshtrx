@@ -241,17 +241,63 @@ class MeshTRXController: ObservableObject {
     func sendTextMessage(_ text: String, destId: String? = nil, destName: String? = nil) {
         let seq = msgSeq
         msgSeq += 1
-        bleManager.sendMessage(seq: seq, text: text)
+        bleManager.sendMessage(seq: seq, destId: destId, text: text)
 
         let now = Int64(Date().timeIntervalSince1970 * 1000)
         let fmt = DateFormatter()
         fmt.dateFormat = "HH:mm"
-        let msg = ChatMessage(
+        let isAddressed = !(destId ?? "").isEmpty
+        var msg = ChatMessage(
             id: now, text: text, isOutgoing: true, senderId: "me",
             senderName: appState.callSign, destId: destId, destName: destName,
-            rssi: nil, status: .sending, time: fmt.string(from: Date()), timeMs: now
+            rssi: nil, status: isAddressed ? .sending : .sent,
+            time: fmt.string(from: Date()), timeMs: now
         )
+        msg.seq = seq
         appState.messages.append(msg)
+
+        // Адресное повторяем, пока не придёт подтверждение — паузы растут, как
+        // в Android: через ретранслятор ответу нужно больше времени.
+        if isAddressed {
+            retryText(msgId: now, seq: seq, destId: destId, text: text, pauses: [3, 5, 8])
+        }
+    }
+
+    private func retryText(msgId: Int64, seq: Int, destId: String?, text: String, pauses: [Double]) {
+        guard let pause = pauses.first else {
+            // Подтверждения так и нет: «ушло, ответа нет», а не «не доставлено» —
+            // потеряться мог и сам ответ.
+            if let i = appState.messages.firstIndex(where: { $0.id == msgId }),
+               appState.messages[i].status == .sending {
+                appState.messages[i].status = .sent
+            }
+            return
+        }
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(pause * 1_000_000_000))
+            guard let self = self,
+                  let i = self.appState.messages.firstIndex(where: { $0.id == msgId }),
+                  self.appState.messages[i].status == .sending else { return }
+            self.log.info("Text retry seq=\(seq)")
+            self.bleManager.sendMessage(seq: seq, destId: destId, text: text)
+            self.retryText(msgId: msgId, seq: seq, destId: destId, text: text,
+                           pauses: Array(pauses.dropFirst()))
+        }
+    }
+
+    /// Подтверждение от рации: [0x09, seq, status]. status (прошивка 4.4.32):
+    /// 0 — на телефоне адресата, 1 — принято его рацией, телефона у неё нет.
+    /// Старые прошивки третьего байта не шлют — это «доставлено».
+    private func handleMessageAck(_ data: Data) {
+        guard data.count >= 2 else { return }
+        let seq = Int(data[1])
+        let stored = data.count >= 3 && data[2] == 1
+        log.info("Message ACK seq=\(seq) stored=\(stored)")
+        guard let i = appState.messages.lastIndex(where: {
+            $0.isOutgoing && ($0.seq.map { $0 & 0xFF == seq } ?? false) &&
+            ($0.status == .sending || $0.status == .sent)
+        }) else { return }
+        appState.messages[i].status = stored ? .accepted : .delivered
     }
 
     // MARK: - Calls
@@ -536,7 +582,7 @@ class MeshTRXController: ObservableObject {
         case BLECmd.recvMessage:
             handleRecvMessage(data)
         case BLECmd.messageAck:
-            log.info("Message ACK seq=\(data.count > 1 ? Int(data[1]) : -1)")
+            handleMessageAck(data)
         case BLECmd.peerSeen:
             handlePeerSeen(data)
         case BLECmd.getLocation:
@@ -621,34 +667,38 @@ class MeshTRXController: ObservableObject {
         }
 
         let senderName = appState.peers.first { $0.deviceId.hasSuffix(senderId) }?.callSign ?? "TX-\(senderId)"
+
+        // После отправителя прошивка кладёт: признак шифрования (4.4.27+),
+        // признак «лично нам» (4.4.31+) и — у сообщений, пролежавших на рации
+        // без телефона, — возраст в секундах, uint32 LE (4.4.32+). Раньше эти
+        // байты читались как канал и адрес получателя, и пометки выходили
+        // наугад. Старая прошивка признаков не шлёт: тогда без пометки.
+        var isEncrypted = true
+        if textEnd + 3 < data.count {
+            isEncrypted = data[textEnd + 3] == 1 || appState.keyFingerprint.isEmpty
+        }
+        let isPrivate = textEnd + 4 < data.count && data[textEnd + 4] == 1
+        var ageSec: Int64 = 0
+        if textEnd + 8 < data.count {
+            ageSec = Int64(data[textEnd + 5]) | Int64(data[textEnd + 6]) << 8 |
+                     Int64(data[textEnd + 7]) << 16 | Int64(data[textEnd + 8]) << 24
+        }
+
         let now = Int64(Date().timeIntervalSince1970 * 1000)
+        let rxAt = now - ageSec * 1000
         let fmt = DateFormatter()
         fmt.dateFormat = "HH:mm"
-
-        // Check encrypted flag — last byte after sender+dest has bit 0x80 on channel byte
-        var isEncrypted = true
-        if textEnd + 5 < data.count {
-            let chByte = data[textEnd + 5]
-            isEncrypted = (chByte & 0x80) != 0
-        } else if appState.keyFingerprint.isEmpty {
-            isEncrypted = true // no key set, don't show warning
-        }
 
         let msg = ChatMessage(
             id: now, text: text, isOutgoing: false, senderId: senderId,
             senderName: senderName, rssi: rssiVal, status: .delivered,
-            time: fmt.string(from: Date()), timeMs: now,
+            time: fmt.string(from: Date(timeIntervalSince1970: Double(rxAt) / 1000)),
+            timeMs: rxAt,
             encrypted: isEncrypted
         )
         appState.messages.append(msg)
         appState.unreadMessages += 1
 
-        // Check if message is addressed to me (dest bytes after sender)
-        var isPrivate = false
-        if textEnd + 4 < data.count {
-            let destId = String(format: "%02X%02X", data[textEnd + 3], data[textEnd + 4])
-            isPrivate = destId != "0000"
-        }
         postMessageNotification(senderName: senderName, text: text, isPrivate: isPrivate)
     }
 
