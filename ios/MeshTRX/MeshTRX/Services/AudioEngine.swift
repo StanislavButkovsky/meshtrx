@@ -165,6 +165,12 @@ class AudioEngine {
 
         let inputNode = engine.inputNode
         let inputFormat = inputNode.outputFormat(forBus: 0)
+        log.info("Mic format: \(inputFormat.sampleRate) Hz, \(inputFormat.channelCount) ch")
+        guard inputFormat.sampleRate > 0, inputFormat.channelCount > 0 else {
+            log.error("Microphone unavailable (no permission or busy)")
+            isRecording = false
+            return
+        }
 
         // Converter: device sample rate → 8kHz Int16 mono
         guard let converter = AVAudioConverter(from: inputFormat, to: monoFormat) else {

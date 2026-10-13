@@ -52,13 +52,15 @@ class Codec2Wrapper {
 
     /// Decode full packet: 64 bytes → 1280 samples (8 frames)
     func decodePacket(encoded: Data) -> [Int16] {
+        // Сначала в массив: срез Data хранит индексы исходника, и обращение
+        // к нему с нуля роняло приложение при проигрывании голосовой записи.
+        let bytes = [UInt8](encoded)
         var result = [Int16]()
         for i in 0..<framesPerPacket {
             let offset = i * bytesPerFrame
-            let end = min(offset + bytesPerFrame, encoded.count)
-            guard offset < encoded.count else { break }
-            let frame = encoded[offset..<end]
-            result.append(contentsOf: decode(encoded: Data(frame)))
+            let end = min(offset + bytesPerFrame, bytes.count)
+            guard offset < bytes.count else { break }
+            result.append(contentsOf: decode(encoded: Data(bytes[offset..<end])))
         }
         return result
     }

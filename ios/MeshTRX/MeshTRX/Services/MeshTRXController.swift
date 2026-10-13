@@ -285,6 +285,16 @@ class MeshTRXController: ObservableObject {
 
     func pttDown() {
         guard appState.txMode == .ptt, !appState.isPttActive else { return }
+        // Без доступа к микрофону передача ушла бы пустой — говорим об этом прямо
+        if AVAudioSession.sharedInstance().recordPermission != .granted {
+            AVAudioSession.sharedInstance().requestRecordPermission { _ in }
+            appState.pttDeliveryText = "нет доступа к микрофону — разрешите в Настройках iPhone"
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(nanoseconds: 4_000_000_000)
+                self?.appState.pttDeliveryText = nil
+            }
+            return
+        }
         appState.isPttActive = true
         audioEngine.rogerBeep = appState.rogerBeep
         if appState.pttTargetId != nil {
@@ -620,9 +630,10 @@ class MeshTRXController: ObservableObject {
     func playVoice(_ data: Data) {
         audioEngine.startPlayback()
         audioEngine.rogerBeep = appState.rogerBeep
+        let bytes = [UInt8](data)
         var off = 0
-        while off + 32 <= data.count {
-            audioEngine.playEncodedPacket(data[off..<off + 32])
+        while off + 32 <= bytes.count {
+            audioEngine.playEncodedPacket(Data(bytes[off..<off + 32]))
             off += 32
         }
         audioEngine.playEncodedPacket(Data(), isLastPacket: true)
