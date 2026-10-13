@@ -37,7 +37,9 @@ class BLEManager: NSObject, ObservableObject {
 
     // Keepalive
     private var keepaliveTimer: Timer?
-    private let keepaliveInterval: TimeInterval = 30
+    // Как в Android: 15 с. Рация обрывает соединение, в котором 45 с не было
+    // ни одной записи и не было PIN (знакомую рацию приложение PIN не спрашивает).
+    private let keepaliveInterval: TimeInterval = 15
 
     // Scan timeout
     private var scanTimer: Timer?
@@ -220,10 +222,12 @@ class BLEManager: NSObject, ObservableObject {
     private func startKeepalive() {
         keepaliveTimer?.invalidate()
         keepaliveTimer = Timer.scheduledTimer(withTimeInterval: keepaliveInterval, repeats: true) { [weak self] _ in
-            guard let self = self, let peripheral = self.connectedPeripheral,
-                  let tx = self.txCharacteristic else { return }
-            // Read RSSI to keep the connection alive
-            peripheral.readRSSI()
+            guard let self = self, self.connectedPeripheral != nil,
+                  self.txCharacteristic != nil else { return }
+            // Раньше здесь был readRSSI(): это обмен на уровне радио, до
+            // прошивки он не доходит, и через минуту рация закрывала соединение
+            // как брошенное. Нужна именно запись — запрос настроек, как в Android.
+            self.requestSettings()
         }
     }
 
