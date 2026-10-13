@@ -245,6 +245,10 @@ class AudioEngine {
     }
 
     private fun playRogerBeep() {
+        playbackQueue.offer(rogerBeepSamples())
+    }
+
+    private fun rogerBeepSamples(): ShortArray {
         val duration = 0.08 // 80мс
         val samples = (SAMPLE_RATE * duration).toInt()
         val beep = ShortArray(samples)
@@ -259,11 +263,17 @@ class AudioEngine {
                          Math.sin(2 * Math.PI * freq2 * t) * 0.5) * envelope * 16000 * volumeBoost
             beep[i] = sample.toInt().coerceIn(-32768, 32767).toShort()
         }
-        playbackQueue.offer(beep)
+        return beep
     }
 
-    /** Воспроизвести PCM напрямую (для голосовых сообщений) */
-    fun playPcmDirect(pcm: ShortArray) {
+    /** Воспроизвести PCM напрямую (голосовые сообщения, личные PTT-записи).
+     *  withBeep — дописать сигнал конца передачи, как у живой речи (личная PTT-запись). */
+    fun playPcmDirect(pcm: ShortArray, withBeep: Boolean = false) {
+        // Та же мягкая громкость, что у живого приёма: умножение с обрезанием
+        // давало хрип и в голосовых, и в личных записях
+        val loud = pcm.copyOf()
+        loudness(loud, volumeBoost)
+        val full = if (withBeep && rogerBeep) loud + rogerBeepSamples() else loud
         val at = android.media.AudioTrack.Builder()
             .setAudioAttributes(android.media.AudioAttributes.Builder()
                 .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
@@ -274,16 +284,10 @@ class AudioEngine {
                 .setChannelMask(android.media.AudioFormat.CHANNEL_OUT_MONO)
                 .setEncoding(android.media.AudioFormat.ENCODING_PCM_16BIT)
                 .build())
-            .setBufferSizeInBytes(pcm.size * 2)
+            .setBufferSizeInBytes(full.size * 2)
             .setTransferMode(android.media.AudioTrack.MODE_STATIC)
             .build()
-        // Усиление
-        val amplified = if (volumeBoost != 1.0f) {
-            ShortArray(pcm.size) { i ->
-                (pcm[i] * volumeBoost).toInt().coerceIn(-32768, 32767).toShort()
-            }
-        } else pcm
-        at.write(amplified, 0, amplified.size)
+        at.write(full, 0, full.size)
         at.play()
         // Освободить после воспроизведения
         Thread {

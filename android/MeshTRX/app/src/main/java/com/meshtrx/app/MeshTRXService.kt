@@ -707,7 +707,8 @@ class MeshTRXService : Service() {
         return saveFileData(name, timeMs, data)
     }
 
-    fun playVoiceMessage(data: ByteArray) {
+    /** withBeep — личная PTT-запись: в конце сигнал, как у живой речи и как на iPhone */
+    fun playVoiceMessage(data: ByteArray, withBeep: Boolean = false) {
         ServiceState.isPlayingVoice.postValue(true)
         Thread {
             val codec2 = Codec2Wrapper()
@@ -721,7 +722,7 @@ class MeshTRXService : Service() {
                 System.arraycopy(decoded, 0, pcm, i * Codec2Wrapper.FRAME_SAMPLES, Codec2Wrapper.FRAME_SAMPLES)
             }
             codec2.destroy()
-            audioEngine.playPcmDirect(pcm)
+            audioEngine.playPcmDirect(pcm, withBeep)
             // Подождать окончания воспроизведения
             Thread.sleep((pcm.size * 1000L / 8000) + 200)
             ServiceState.isPlayingVoice.postValue(false)
@@ -1161,7 +1162,7 @@ class MeshTRXService : Service() {
                                 Log.d(TAG, "PTT voice received: ${fileData.size} bytes from $senderName")
                             }
                             // Воспроизвести в любом случае (даже битый)
-                            playVoiceMessage(fileData)
+                            playVoiceMessage(fileData, withBeep = true)
                             deleteFileData(localPath)
                         } else if (fileType == 0x04) {
                             // Голосовое сообщение из чата — добавить в чат, не в файлы
