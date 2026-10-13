@@ -447,6 +447,8 @@ class MeshTRXController: ObservableObject {
     private func addRecentCall(deviceId: String, callSign: String, isOutgoing: Bool, callType: String) {
         let call = RecentCall(deviceId: deviceId, callSign: callSign,
                               isOutgoing: isOutgoing, callType: callType)
+        // Без повторов, как в Android: один абонент — одна строка, свежая сверху
+        appState.recentCalls.removeAll { $0.deviceId == deviceId && $0.callType == callType }
         appState.recentCalls.insert(call, at: 0)
         if appState.recentCalls.count > 20 {
             appState.recentCalls = Array(appState.recentCalls.prefix(20))
@@ -645,8 +647,10 @@ class MeshTRXController: ObservableObject {
         case BLECmd.incomingCall:
             handleIncomingCall(data)
         case BLECmd.callStatus:
-            if data.count >= 2 && data[1] == 0 {
+            // 3 — тайм-аут, 4 — вызов отменён: окно вызова закрываем, как Android
+            if data.count >= 2 && (data[1] == 0 || data[1] >= 3) {
                 appState.callActive = false
+                if data[1] >= 3 { appState.incomingCall = nil }
             }
         case BLECmd.keyState:
             handleKeyState(data)
@@ -843,18 +847,32 @@ class MeshTRXController: ObservableObject {
 
     // MARK: - Calls
 
+    /// Вызов от рации: [0x1F, тип, id(4), позывной(9), широта(4), долгота(4), seq]
+    /// — 24 байта (call_manager.cpp). Раньше разбиралась старая раскладка
+    /// с 2-байтным id: позывной выходил мусором, а seq — чужим байтом.
     private func handleIncomingCall(_ data: Data) {
-        guard data.count >= 10 else { return }
-        let callTypeCode = Int(data[1])
-        let senderId = String(format: "%02X%02X", data[2], data[3])
-        let csData = data[4..<min(13, data.count)]
-        let callSign = String(data: csData, encoding: .utf8)?.trimmingCharacters(in: CharacterSet(charactersIn: "\0")) ?? ""
-        let callSeq = Int(data[min(13, data.count - 1)])
+        guard data.count >= 24 else { return }
+        let callType = CallType.fromCode(Int(data[1]))
+        let senderId = String(format: "%02X%02X%02X%02X", data[2], data[3], data[4], data[5])
+        var callSign = String(data: data[6..<15], encoding: .utf8)?
+            .trimmingCharacters(in: CharacterSet(charactersIn: "\0")) ?? ""
+        if callSign.isEmpty { callSign = "TX-\(senderId.suffix(4))" }
+        let latE7 = data.getInt32LE(at: 15)
+        let lonE7 = data.getInt32LE(at: 19)
+        let hasPos = latE7 != 0 || lonE7 != 0
+        let callSeq = Int(data[23])
+
+        // Как в Android: личный и SOS — всегда, общий и групповой — только
+        // в режиме «Слушать всех». И не перебиваем уже открытый вызов.
+        let show = callType == .emergency || callType == .`private` || appState.listenMode == .all
+        guard show, appState.incomingCall == nil else { return }
 
         let call = IncomingCall(
-            callType: CallType.fromCode(callTypeCode),
+            callType: callType,
             senderId: senderId, callSign: callSign,
-            callSeq: callSeq
+            lat: hasPos ? Double(latE7) / 1e7 : nil,
+            lon: hasPos ? Double(lonE7) / 1e7 : nil,
+            callSeq: callSeq, rssi: appState.rssi
         )
         appState.incomingCall = call
         addRecentCall(deviceId: senderId, callSign: callSign, isOutgoing: false,

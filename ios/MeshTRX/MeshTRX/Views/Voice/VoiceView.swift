@@ -353,20 +353,8 @@ struct VoiceView: View {
                     }
                 }
 
-                // SOS button
-                Button {
-                    controller.callEmergency()
-                    showCallPicker = false
-                } label: {
-                    Text("SOS")
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundColor(AppColors.redAccent)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 44)
-                        .background(AppColors.redBg)
-                        .cornerRadius(8)
-                }
-                .padding(.horizontal, 16)
+                // Кнопки SOS здесь больше нет: прошивка эту команду не исполняет
+                // (в Android её убрали), и человек думал бы, что позвал на помощь.
 
                 Button("Отмена") { showCallPicker = false }
                     .foregroundColor(AppColors.textMuted)
@@ -442,6 +430,16 @@ struct VoiceView: View {
         case "ALL":
             controller.callAll()
         case "PRIVATE":
+            // Прошивке нужен полный 4-байтный id. Если в истории только хвост
+            // из 4 знаков — достраиваем по списку абонентов.
+            var fullId = call.deviceId
+            if fullId.count < 8,
+               let p = appState.peers.first(where: { $0.deviceId.hasSuffix(fullId) }) {
+                fullId = p.deviceId
+            }
+            guard fullId.count == 8 else { return }
+            let call = RecentCall(deviceId: fullId, callSign: call.callSign,
+                                  isOutgoing: call.isOutgoing, callType: call.callType)
             let macBytes = stride(from: 0, to: call.deviceId.count, by: 2).compactMap {
                 let start = call.deviceId.index(call.deviceId.startIndex, offsetBy: $0)
                 let end = call.deviceId.index(start, offsetBy: min(2, call.deviceId.distance(from: start, to: call.deviceId.endIndex)))

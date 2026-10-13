@@ -20,8 +20,7 @@ struct MeshTRXApp: App {
                 .fullScreenCover(item: $appState.incomingCall) { call in
                     IncomingCallView(
                         call: call,
-                        onAccept: { controller.acceptCall(call) },
-                        onReject: { controller.rejectCall(call) }
+                        onDismiss: { appState.incomingCall = nil }
                     )
                 }
                 .sheet(isPresented: $appState.showPinDialog) {

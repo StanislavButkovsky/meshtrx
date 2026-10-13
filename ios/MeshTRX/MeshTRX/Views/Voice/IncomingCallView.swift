@@ -3,10 +3,12 @@ import AudioToolbox
 
 struct IncomingCallView: View {
     let call: IncomingCall
-    var onAccept: () -> Void = {}
-    var onReject: () -> Void = {}
+    // Как в Android: только «OK», окно закрывается без ответа в эфир.
+    // Раньше были «Принять/Отклонить», а через 30 с уходил автоматический отказ.
+    var onDismiss: () -> Void = {}
 
-    @State private var secondsLeft: Int = 30
+    static let timeoutSec = 10
+    @State private var secondsLeft: Int = timeoutSec
     @State private var timer: Timer?
     @State private var pulseScale: CGFloat = 1.0
 
@@ -31,15 +33,15 @@ struct IncomingCallView: View {
     private var callTypeLabel: String {
         switch call.callType {
         case .all: return "Общий вызов"
-        case .private: return "Приватный вызов"
+        case .private: return "Личный вызов"
         case .group: return "Групповой вызов"
-        case .emergency: return "SOS"
+        case .emergency: return "!!! SOS !!!"
         }
     }
 
     var body: some View {
         ZStack {
-            Color.black.opacity(0.95).ignoresSafeArea()
+            (call.callType == .emergency ? AppColors.redBg : Color.black.opacity(0.95)).ignoresSafeArea()
 
             VStack(spacing: 24) {
                 Spacer()
@@ -71,11 +73,22 @@ struct IncomingCallView: View {
                     .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true),
                                value: pulseScale)
 
+                Text("ID: \(call.senderId)")
+                    .font(.system(size: 13, design: .monospaced))
+                    .foregroundColor(AppColors.textMuted)
+
                 // RSSI
                 if call.rssi != 0 {
                     Text("\(call.rssi) dBm")
                         .font(.system(size: 14, design: .monospaced))
                         .foregroundColor(AppColors.textMuted)
+                }
+
+                // Координаты — у SOS они главное, как в Android
+                if let lat = call.lat, let lon = call.lon {
+                    Text(String(format: "%.5f, %.5f", lat, lon))
+                        .font(.system(size: 14, design: .monospaced))
+                        .foregroundColor(call.callType == .emergency ? AppColors.redAccent : AppColors.textMuted)
                 }
 
                 // Countdown
@@ -85,33 +98,16 @@ struct IncomingCallView: View {
 
                 Spacer()
 
-                // Accept / Reject buttons
-                HStack(spacing: 60) {
-                    // Reject
-                    Button {
-                        stopTimer()
-                        onReject()
-                    } label: {
-                        Image(systemName: "phone.down.fill")
-                            .font(.system(size: 28))
-                            .foregroundColor(.white)
-                            .frame(width: 64, height: 64)
-                            .background(AppColors.redAccent)
-                            .clipShape(Circle())
-                    }
-
-                    // Accept
-                    Button {
-                        stopTimer()
-                        onAccept()
-                    } label: {
-                        Image(systemName: "phone.fill")
-                            .font(.system(size: 28))
-                            .foregroundColor(.white)
-                            .frame(width: 64, height: 64)
-                            .background(AppColors.greenAccent)
-                            .clipShape(Circle())
-                    }
+                Button {
+                    stopTimer()
+                    onDismiss()
+                } label: {
+                    Text("OK")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(.white)
+                        .frame(width: 160, height: 56)
+                        .background(callColor)
+                        .cornerRadius(12)
                 }
 
                 Spacer().frame(height: 40)
@@ -137,14 +133,14 @@ struct IncomingCallView: View {
     }
 
     private func startTimer() {
-        secondsLeft = 30
+        secondsLeft = Self.timeoutSec
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
             if secondsLeft > 0 {
                 secondsLeft -= 1
                 if secondsLeft % 5 == 0 { vibrate() }
             } else {
                 stopTimer()
-                onReject() // auto-reject after 30s
+                onDismiss()   // через 10 с просто закрыть, ответа в эфир нет
             }
         }
     }
