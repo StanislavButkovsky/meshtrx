@@ -4,7 +4,7 @@ import { SITE } from '@/lib/constants';
 import { useLanguage } from '@/components/LanguageProvider';
 
 export default function Footer() {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
 
   return (
     <footer className="border-t border-border mt-auto">
@@ -26,6 +26,10 @@ export default function Footer() {
           <span>•</span>
           <a href={SITE.licenseUrl} target="_blank" rel="noopener noreferrer" className="hover:text-accent transition-colors">
             {SITE.license}
+          </a>
+          <span>•</span>
+          <a href="/privacy/" className="hover:text-accent transition-colors">
+            {locale === 'ru' ? 'Конфиденциальность' : 'Privacy'}
           </a>
           <span>•</span>
           <span>meshtrx.com / meshtrx.ru</span>

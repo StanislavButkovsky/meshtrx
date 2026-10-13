@@ -24,6 +24,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: 'articles/', changeFrequency: 'monthly', priority: 0.7 },
     { path: 'flash/', changeFrequency: 'monthly', priority: 0.7 },
     { path: 'about/', changeFrequency: 'monthly', priority: 0.6 },
+    { path: 'privacy/', changeFrequency: 'monthly', priority: 0.3 },
   ];
 
   // У статьи своя дата: она не переписывается с каждым релизом, и подставлять
