@@ -490,7 +490,11 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = JS2U6UBWWF;
-				GCC_PREPROCESSOR_DEFINITIONS = "CODEC2_MODE_EN_DEFAULT=0";
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"CODEC2_MODE_EN_DEFAULT=0",
+					"CODEC2_MODE_3200_EN=1",
+				);
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
@@ -562,7 +566,11 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = JS2U6UBWWF;
-				GCC_PREPROCESSOR_DEFINITIONS = "CODEC2_MODE_EN_DEFAULT=0";
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"CODEC2_MODE_EN_DEFAULT=0",
+					"CODEC2_MODE_3200_EN=1",
+				);
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
