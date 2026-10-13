@@ -5,7 +5,9 @@ import android.bluetooth.BluetoothDevice
 enum class BleState { DISCONNECTED, SCANNING, CONNECTING, CONNECTED }
 enum class TxMode { PTT, VOX }
 enum class ListenMode { ALL, PRIVATE_ONLY }
-enum class MessageStatus { SENDING, SENT, DELIVERED, FAILED }
+// ACCEPTED — рация адресата приняла, но телефона у неё нет: сообщение ждёт
+// на рации и будет показано, когда человек подключится (с 4.4.32).
+enum class MessageStatus { SENDING, SENT, ACCEPTED, DELIVERED, FAILED }
 
 data class ChatMessage(
     val id: Long,

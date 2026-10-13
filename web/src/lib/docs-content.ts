@@ -379,6 +379,24 @@ python3 -m venv .venv
 3. Над полем ввода появится **Кому: [имя]**
 4. Сообщение получит только адресат
 
+Рядом со временем у адресного сообщения стоит отметка:
+
+| Отметка | Что значит |
+|---|---|
+| ⏳ | ждём ответа от рации адресата |
+| ✓ (зелёная) | доставлено: сообщение уже на телефоне адресата |
+| ✓ принято нодой | рация адресата приняла, но его телефон сейчас не подключён — сообщение ждёт на рации и появится у человека, когда он подключится |
+| ↑ | ушло в эфир, ответа нет — сообщение могло дойти, а потеряться мог сам ответ |
+| ✗ | не ушло даже на свою рацию — нажмите на сообщение, чтобы отправить снова |
+
+### Если телефон был отключён от рации
+
+Рация хранит входящие сообщения, пока к ней не подключён телефон, и отдаёт их
+при подключении — с тем временем, когда они пришли. Место ограничено: на V3
+около двухсот обычных сообщений, на V4 — несколько тысяч. Когда место кончается,
+вытесняются самые старые. Буфер живёт в памяти и при выключении рации
+пропадает. Работает с прошивки 4.4.32.
+
 ### Уведомления
 
 Когда приложение свёрнуто, о входящем сообщении приходит системное уведомление.
@@ -596,7 +614,7 @@ python3 -m venv .venv
 
 **Слышать и открытый эфир.** Если вам нужен и общий незашифрованный чат, и
 разговор со своими под ключом, включите этот переключатель рядом с кодовым
-словом. Открытые сообщения снова станут видны и будут помечены замком — чтобы
+словом. Открытые сообщения снова станут видны и будут помечены красными словами «без шифра» — чтобы
 защищённое и незащищённое не выглядели одинаково. По умолчанию переключатель
 выключен, и вот почему:
 
@@ -1222,6 +1240,24 @@ At the bottom of the PTT screen there is a scrollable list of recent calls:
 3. **To: [name]** appears above the input field
 4. Only the addressee receives the message
 
+An addressed message carries a mark next to its time:
+
+| Mark | Meaning |
+|---|---|
+| ⏳ | waiting for the addressee's radio to answer |
+| ✓ (green) | delivered: the message is on the addressee's phone |
+| ✓ accepted by node | the addressee's radio took it, but their phone is not connected right now — the message waits on the radio and shows up once they connect |
+| ↑ | sent over the air, no answer — the message may have arrived and the answer got lost |
+| ✗ | did not even reach your own radio — tap the message to send it again |
+
+### If the phone was disconnected from the radio
+
+The radio keeps incoming messages while no phone is connected and hands them
+over on connect, with the time they actually arrived. Space is limited: about
+two hundred ordinary messages on a V3, several thousand on a V4. When it runs
+out, the oldest are dropped first. The buffer lives in memory and is lost when
+the radio is switched off. Requires firmware 4.4.32.
+
 ### Notifications
 
 When the app is in the background, an incoming message raises a system
@@ -1419,7 +1455,7 @@ matches.
 
 **Also hear unencrypted traffic.** If you need both the open shared chat and
 encrypted conversations with your own group, switch this on next to the
-passphrase. Unencrypted messages become visible again and are marked with a lock
+passphrase. Unencrypted messages become visible again and are marked with the words "unencrypted" in red
 so that protected and unprotected do not look alike. It is off by default, and
 here is why:
 
