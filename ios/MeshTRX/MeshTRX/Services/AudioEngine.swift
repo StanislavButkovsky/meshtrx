@@ -85,7 +85,9 @@ class AudioEngine {
     private func configureAudioSession() {
         let session = AVAudioSession.sharedInstance()
         do {
-            try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetooth])
+            // Режим .default, а не .voiceChat: в «голосовом звонке» iOS глушит
+            // громкий динамик, и на полной громкости рацию было еле слышно
+            try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth])
             try session.setPreferredSampleRate(AudioEngine.sampleRate)
             try session.setPreferredIOBufferDuration(0.02) // 20ms
             try session.setActive(true)
@@ -378,7 +380,7 @@ class AudioEngine {
     func routeToSpeaker() {
         let session = AVAudioSession.sharedInstance()
         do {
-            try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetooth])
+            try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth])
             try session.overrideOutputAudioPort(.speaker)
             log.info("Routed to speaker")
         } catch {
@@ -389,7 +391,7 @@ class AudioEngine {
     func routeToEarpiece() {
         let session = AVAudioSession.sharedInstance()
         do {
-            try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetooth])
+            try session.setCategory(.playAndRecord, mode: .default, options: [.allowBluetooth])
             try session.overrideOutputAudioPort(.none)
             log.info("Routed to earpiece")
         } catch {
