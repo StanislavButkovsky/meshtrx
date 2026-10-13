@@ -336,6 +336,7 @@ class MeshTRXController: ObservableObject {
         pttTailTask = Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(Self.pttTailSeconds * 1_000_000_000))
             guard let self = self, !Task.isCancelled else { return }
+            self.pttTailTask = nil      // хвост дописан — следующему нажатию закрывать нечего
             self.audioEngine.stopRecording()
             if let target = target {
                 self.sendAddressedVoice(to: target)
