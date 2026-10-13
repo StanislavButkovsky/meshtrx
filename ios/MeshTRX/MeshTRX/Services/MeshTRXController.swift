@@ -144,8 +144,14 @@ class MeshTRXController: ObservableObject {
             Task { @MainActor in
                 guard let self = self else { return }
                 if self.appState.bleState == .scanning {
-                    self.appState.bleState = .disconnected
-                    self.appState.statusMessage = "Не найдено"
+                    // Как в Android: одна рация — подключаемся сразу; ни одной — так и говорим
+                    if self.appState.scanResults.count == 1, let only = self.appState.scanResults.first {
+                        self.connect(only.peripheral)
+                    } else {
+                        self.appState.bleState = .disconnected
+                        self.appState.statusMessage = self.appState.scanResults.isEmpty
+                            ? "Устройства не найдены" : "Выберите устройство"
+                    }
                 }
             }
         }
@@ -552,6 +558,13 @@ class MeshTRXController: ObservableObject {
             self.appState.fileTransfers[i].status = .failed
             self.markVoiceStatus(fileType: fileType, ok: false)
         }
+    }
+
+    /// «Повторить отправку» из подробностей файла — тому же адресату
+    func resendFile(_ t: FileTransfer) {
+        guard let data = t.loadData(), let dest = t.destMac else { return }
+        appState.fileTransfers.removeAll { $0.uid == t.uid }
+        sendFile(fileName: t.fileName, fileType: t.fileType, data: data, destMac: dest, destName: t.destName)
     }
 
     /// Итог отправки от рации: [0x32, статус, сессия]. 0 принят, 1 занята,

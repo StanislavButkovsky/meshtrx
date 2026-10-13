@@ -15,6 +15,7 @@ struct FilesView: View {
     @State private var pendingSend: (name: String, type: Int, data: Data)? = nil
     @State private var showRecipientPicker: Bool = false
     @State private var errorText: String? = nil
+    @State private var detailsFor: FileTransfer? = nil
 
     private var isConnected: Bool { appState.bleState == .connected }
 
@@ -47,6 +48,12 @@ struct FilesView: View {
                     showPreview = true
                 }
             }
+        }
+        .sheet(item: $detailsFor) { t in
+            FileDetailsView(transfer: t,
+                            onRetry: { controller.resendFile(t); detailsFor = nil },
+                            onDelete: { appState.fileTransfers.removeAll { $0.uid == t.uid }; detailsFor = nil },
+                            onClose: { detailsFor = nil })
         }
         .confirmationDialog("Отправить кому?", isPresented: $showRecipientPicker,
                             titleVisibility: .visible) {
@@ -143,6 +150,8 @@ struct FilesView: View {
                 // Голосовые (0x04) и адресный PTT (0x05) живут в чате и в динамике
                 ForEach(appState.fileTransfers.filter { $0.fileType != 0x04 && $0.fileType != 0x05 }) { transfer in
                     FileTransferRow(transfer: transfer)
+                        .contentShape(Rectangle())
+                        .onTapGesture { detailsFor = transfer }   // подробности, как в Android
                 }
             }
             .padding(.horizontal, 12)
@@ -303,4 +312,88 @@ struct FileTransferRow: View {
         fmt.dateFormat = "dd.MM HH:mm"
         return fmt.string(from: date)
     }
+}
+
+
+// MARK: - Подробности файла (как в Android: превью, сведения, Повторить / Поделиться / Удалить)
+
+struct FileDetailsView: View {
+    let transfer: FileTransfer
+    var onRetry: () -> Void
+    var onDelete: () -> Void
+    var onClose: () -> Void
+    @State private var showShare = false
+
+    var body: some View {
+        ZStack {
+            AppColors.bgPrimary.ignoresSafeArea()
+            VStack(alignment: .leading, spacing: 12) {
+                if transfer.fileType == 0x01, let d = transfer.loadData(), let img = UIImage(data: d) {
+                    Image(uiImage: img).resizable().scaledToFit()
+                        .frame(maxWidth: .infinity, maxHeight: 280)
+                        .cornerRadius(8)
+                }
+                Text(transfer.fileName)
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundColor(AppColors.textPrimary)
+                Group {
+                    row("Направление", transfer.isOutgoing ? "отправлен" : "получен")
+                    row("Тип", transfer.fileType == 0x01 ? "Фото" : transfer.fileType == 0x02 ? "Текст" : "Файл")
+                    row("Размер", "\(transfer.totalSize / 1024) КБ (\(transfer.totalSize) Б)")
+                    row("Дата", Self.dateText(transfer.timeMs))
+                    if let who = transfer.destName { row(transfer.isOutgoing ? "Кому" : "От", who) }
+                    row("Состояние", transfer.status == .done ? "доставлен" : transfer.status == .failed ? "не доставлен" : "передаётся")
+                }
+                Spacer()
+                HStack(spacing: 12) {
+                    if transfer.isOutgoing && transfer.destMac != nil {
+                        Button("Повторить отправку", action: onRetry).foregroundColor(AppColors.greenAccent)
+                    }
+                    Button("Поделиться") { showShare = true }
+                        .foregroundColor(AppColors.blueAccent)
+                        .disabled(transfer.loadData() == nil)
+                    Spacer()
+                    Button("Удалить", action: onDelete).foregroundColor(AppColors.redAccent)
+                }
+                Button("Закрыть", action: onClose)
+                    .frame(maxWidth: .infinity)
+                    .foregroundColor(AppColors.textMuted)
+            }
+            .padding(20)
+        }
+        .sheet(isPresented: $showShare) {
+            if let d = transfer.loadData() {
+                ShareSheet(items: [Self.tempFile(name: transfer.fileName, data: d)])
+            }
+        }
+    }
+
+    private func row(_ k: String, _ v: String) -> some View {
+        HStack {
+            Text(k).foregroundColor(AppColors.textMuted)
+            Spacer()
+            Text(v).foregroundColor(AppColors.textSecondary)
+        }
+        .font(.system(size: 14))
+    }
+
+    static func dateText(_ ms: Int64) -> String {
+        let f = DateFormatter(); f.dateFormat = "dd.MM.yyyy HH:mm"
+        return f.string(from: Date(timeIntervalSince1970: Double(ms) / 1000))
+    }
+
+    /// Поделиться файлом, а не байтами: тогда у получателя будет имя и тип
+    static func tempFile(name: String, data: Data) -> URL {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(name)
+        try? data.write(to: url, options: .atomic)
+        return url
+    }
+}
+
+struct ShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+    func updateUIViewController(_ vc: UIActivityViewController, context: Context) {}
 }
