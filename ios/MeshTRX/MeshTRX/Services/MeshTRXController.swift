@@ -514,6 +514,25 @@ class MeshTRXController: ObservableObject {
 
     // MARK: - Settings
 
+    /// Настройки с рации. Позывной — как в Android: приоритет у сохранённого в
+    /// телефоне (и он досылается на рацию, если там другой), иначе берём с рации.
+    private func handleSettingsResp(_ data: Data) {
+        guard data.count > 1,
+              let obj = try? JSONSerialization.jsonObject(with: data.dropFirst()) as? [String: Any]
+        else { return }
+        let deviceCs = obj["callsign"] as? String ?? ""
+        let saved = UserDefaults.standard.string(forKey: "my_callsign") ?? ""
+        if !saved.isEmpty {
+            appState.callSign = saved
+            if deviceCs != saved {
+                bleManager.sendSettings(json: "{\"callsign\":\"\(saved)\"}")
+            }
+        } else if !deviceCs.isEmpty && !deviceCs.hasPrefix("TX-") {
+            appState.callSign = deviceCs
+            UserDefaults.standard.set(deviceCs, forKey: "my_callsign")
+        }
+    }
+
     func setRepeater(enable: Bool, ssid: String = "", password: String = "", ip: String = "") {
         bleManager.sendRepeaterConfig(enable: enable, ssid: ssid, password: password, ip: ip)
     }
@@ -695,8 +714,7 @@ class MeshTRXController: ObservableObject {
         case BLECmd.getLocation:
             sendGpsToDevice()
         case BLECmd.settingsResp:
-            let json = String(data: data.dropFirst(), encoding: .utf8) ?? ""
-            log.info("Settings: \(json)")
+            handleSettingsResp(data)
         case BLECmd.pinResult:
             handlePinResult(data)
         case BLECmd.fileUploadStatus:
