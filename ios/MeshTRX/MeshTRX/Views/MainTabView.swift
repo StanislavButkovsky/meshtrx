@@ -56,6 +56,14 @@ struct MainTabView: View {
                     .tag(4)
             }
             .accentColor(.green)
+            // Счётчик непрочитанных обнуляется, когда чат на экране. Раньше —
+            // только при отправке сообщения или очистке, и цифра висела.
+            .onChange(of: selectedTab) { tab in
+                if tab == 1 { appState.unreadMessages = 0 }
+            }
+            .onChange(of: appState.unreadMessages) { n in
+                if selectedTab == 1 && n > 0 { appState.unreadMessages = 0 }
+            }
         }
     }
 

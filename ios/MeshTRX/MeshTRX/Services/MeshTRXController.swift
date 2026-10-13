@@ -12,6 +12,10 @@ class MeshTRXController: ObservableObject {
 
     let bleManager = BLEManager()
     let audioEngine = AudioEngine()
+    // GPS живёт с приложением, как в Android: раньше включался только на
+    // вкладке «Карта», и рация получала координаты лишь при подключении.
+    let locationManager = LocationManager()
+    private var lastGpsSentAt: Date = .distantPast
     var cancellables = Set<AnyCancellable>()
     let voxEngine = VoxEngine()
     let appState: AppState
@@ -46,6 +50,25 @@ class MeshTRXController: ObservableObject {
         AVAudioSession.sharedInstance().requestRecordPermission { _ in }
         setupPersistence()
         checkForUpdatesIfDue()
+        setupLocation()
+    }
+
+    private func setupLocation() {
+        locationManager.requestPermission()
+        locationManager.$latitude.combineLatest(locationManager.$longitude)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] lat, lon in
+                guard let self = self, let lat = lat, let lon = lon else { return }
+                self.appState.myLat = lat
+                self.appState.myLon = lon
+                // На рацию — при изменении, но не чаще раза в 10 с
+                if self.appState.bleState == .connected,
+                   Date().timeIntervalSince(self.lastGpsSentAt) >= 10 {
+                    self.lastGpsSentAt = Date()
+                    self.sendGpsToDevice()
+                }
+            }
+            .store(in: &cancellables)
     }
 
     // MARK: - Предел передачи
