@@ -510,6 +510,10 @@ class MeshTRXController: ObservableObject {
 
     // MARK: - Settings
 
+    func setRepeater(enable: Bool, ssid: String = "", password: String = "", ip: String = "") {
+        bleManager.sendRepeaterConfig(enable: enable, ssid: ssid, password: password, ip: ip)
+    }
+
     func setCallSign(_ cs: String) {
         appState.callSign = cs
         UserDefaults.standard.set(cs, forKey: "my_callsign")

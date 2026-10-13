@@ -52,7 +52,8 @@ struct SettingsView: View {
                     voxSection
                     notificationSection
                     historySection
-                    languageSection
+                    // Выбор языка спрятан: английского перевода у iOS-версии пока
+                    // нет, и переключатель ничего не менял. Вернуть вместе с переводом.
                     repeaterSection
                     aboutSection
                 }
@@ -467,7 +468,7 @@ struct SettingsView: View {
                 Spacer()
 
                 Button("Выключить") {
-                    // Send repeater off
+                    controller.setRepeater(enable: false)
                 }
                 .foregroundColor(AppColors.redAccent)
                 .disabled(!isConnected)
@@ -476,12 +477,16 @@ struct SettingsView: View {
             Text("Ретранслятор")
         }
         .alert("Ретранслятор", isPresented: $showRepeaterConfirm) {
-            Button("Активировать", role: .destructive) {
-                // Send repeater config
+            // Раньше обе кнопки ретранслятора были пустыми и ничего не отправляли
+            Button("Включить", role: .destructive) {
+                controller.setRepeater(enable: true,
+                                       ssid: repeaterSsid.trimmingCharacters(in: .whitespaces),
+                                       password: repeaterPass.trimmingCharacters(in: .whitespaces),
+                                       ip: repeaterIp.trimmingCharacters(in: .whitespaces))
             }
             Button("Отмена", role: .cancel) {}
         } message: {
-            Text("Устройство перейдёт в режим ретранслятора. Для возврата потребуется перезагрузка.")
+            Text("Устройство перезагрузится в режиме ретранслятора. Подключитесь к WiFi для мониторинга.")
         }
     }
 
@@ -493,7 +498,7 @@ struct SettingsView: View {
                 Text("Приложение")
                     .foregroundColor(AppColors.textPrimary)
                 Spacer()
-                Text("1.0.0")
+                Text(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "")
                     .foregroundColor(AppColors.textDim)
             }
             HStack {
