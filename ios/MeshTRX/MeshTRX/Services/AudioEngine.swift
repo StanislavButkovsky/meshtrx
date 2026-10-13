@@ -122,6 +122,13 @@ class AudioEngine {
     }
 
     func stopRecording() {
+        // Недобранный последний пакет — дополнить тишиной и отправить, а не
+        // выбросить: иначе с фразы срезалось до 80 мс конца
+        if sendAudio && packetOffset > 0 && !isBuffering {
+            for i in packetOffset..<AudioEngine.packetSamples { packetBuffer[i] = 0 }
+            onAudioEncoded?(codec2.encodePacket(pcm: packetBuffer))
+            packetOffset = 0
+        }
         sendAudio = false
         isBuffering = false
         if !isMonitoring {

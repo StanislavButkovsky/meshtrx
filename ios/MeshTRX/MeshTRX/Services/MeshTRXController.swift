@@ -109,7 +109,10 @@ class MeshTRXController: ObservableObject {
         stopPttLimit()
         appState.isPttActive = false
         audioEngine.sendAudio = false
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+        // «Конец» — после хвоста речи: рация шлёт его в эфир сразу, а кадры
+        // речи у неё в очереди. Пришёл раньше них — сигнал конца на той
+        // стороне терялся, а конец фразы обрывался. 0,1 с не хватало.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
             self.bleManager.sendPttEnd()
         }
     }
@@ -159,8 +162,11 @@ class MeshTRXController: ObservableObject {
         audioEngine.onAudioEncoded = { [weak self] encoded in
             guard let self = self else { return }
             Task { @MainActor in
-                // При адресате голос не идёт в эфир сразу: копится и уходит файлом
-                if self.appState.isPttActive && self.bleManager.isConnected && self.appState.pttTargetId == nil {
+                // При адресате голос не идёт в эфир сразу: копится и уходит файлом.
+                // Флаг «передача» здесь не проверяем: кадр закодирован, пока
+                // кнопка была нажата, а сюда доходит позже — и хвост фразы
+                // отбрасывался, когда кнопку уже отпустили.
+                if self.bleManager.isConnected && self.appState.pttTargetId == nil {
                     self.bleManager.sendAudioData(encoded)
                 }
             }
