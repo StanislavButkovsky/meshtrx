@@ -629,7 +629,7 @@ class MeshTRXController: ObservableObject {
     /// Проиграть запись Codec2 (голосовое из чата, адресный PTT): кусками по 32 байта
     func playVoice(_ data: Data) {
         #if DEBUG
-        NSLog("MTXDBG playVoice bytes=%d nonzero=%d", data.count, data.filter { $0 != 0 }.count)
+        print("MTXDBG playVoice bytes=\(data.count) nonzero=\(data.filter { $0 != 0 }.count)")
         #endif
         audioEngine.startPlayback()
         audioEngine.rogerBeep = appState.rogerBeep
@@ -873,6 +873,9 @@ class MeshTRXController: ObservableObject {
 
     private func handleBleData(_ data: Data) {
         guard !data.isEmpty else { return }
+        #if DEBUG
+        if data[0] != 0x17 { print(String(format: "MTXDBG ble cmd=0x%02X len=%d", data[0], data.count)) }
+        #endif
         let cmd = data[0]
 
         switch cmd {
