@@ -327,11 +327,16 @@ class AudioEngine {
         schedulePlayback(samples: applyVolumeBoost(pcm))
     }
 
+    /// Громкость приёма — мягкое насыщение, как в Android: тихие места громче,
+    /// громкие плавно сжаты, без обрезания о потолок (оно давало хрип).
     private func applyVolumeBoost(_ samples: [Int16]) -> [Int16] {
-        guard volumeBoost != 1.0 else { return samples }
-        return samples.map { sample in
-            let amplified = Int(Float(sample) * volumeBoost)
-            return Int16(clamping: amplified)
+        guard volumeBoost > 1.0 else {
+            return volumeBoost == 1.0 ? samples : samples.map { Int16(Float($0) * volumeBoost) }
+        }
+        let k = volumeBoost * 1.5
+        let norm = 0.95 / tanh(k)
+        return samples.map { s in
+            Int16(clamping: Int(tanh(k * Float(s) / 32768) * norm * 32767))
         }
     }
 
