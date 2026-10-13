@@ -291,6 +291,12 @@ class MeshTRXController: ObservableObject {
 
     func pttDown() {
         guard appState.txMode == .ptt, !appState.isPttActive else { return }
+        // Нажали снова, пока дописывался хвост прошлой фразы — сначала закрыть её
+        if let tail = pttTailTask {
+            tail.cancel(); pttTailTask = nil
+            audioEngine.stopRecording()
+            endTransmission()
+        }
         // Без доступа к микрофону передача ушла бы пустой — говорим об этом прямо
         if AVAudioSession.sharedInstance().recordPermission != .granted {
             AVAudioSession.sharedInstance().requestRecordPermission { _ in }
@@ -314,16 +320,28 @@ class MeshTRXController: ObservableObject {
         startPttLimit()
     }
 
+    /// Сколько микрофон пишет после отпускания кнопки. У iPhone вход звука с
+    /// задержкой: последние 100–200 мс фразы ещё не дошли до приложения, когда
+    /// кнопку отпустили, и выключение микрофона сразу срезало конец фразы.
+    static let pttTailSeconds = 0.25
+    private var pttTailTask: Task<Void, Never>?
+
     /// force — передачу погасил предел времени, а кнопка ещё нажата.
     func pttUp(force: Bool = false) {
         guard appState.txMode == .ptt, appState.isPttActive || force else { return }
-        audioEngine.stopRecording()
-        if let target = appState.pttTargetId {
-            stopPttLimit()
-            appState.isPttActive = false
-            sendAddressedVoice(to: target)
-        } else {
-            endTransmission()
+        stopPttLimit()
+        appState.isPttActive = false
+        let target = appState.pttTargetId
+        pttTailTask?.cancel()
+        pttTailTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(Self.pttTailSeconds * 1_000_000_000))
+            guard let self = self, !Task.isCancelled else { return }
+            self.audioEngine.stopRecording()
+            if let target = target {
+                self.sendAddressedVoice(to: target)
+            } else {
+                self.endTransmission()
+            }
         }
     }
 
