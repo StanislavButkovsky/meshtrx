@@ -1309,8 +1309,18 @@ static void pttStop(bool byTimeout) {
   pkt.flags = PKT_FLAG_PTT_END;
   pkt.ttl = TTL_DEFAULT;
   memcpy(pkt.sender, senderMac, 2);
-  loraSend((uint8_t*)&pkt, sizeof(pkt));
-  loraStartReceive();
+  // «Конец передачи» — через ту же очередь, что и речь. Раньше он уходил в
+  // эфир напрямую и без шифра: рация с ключом и выключенным «слышать открытый
+  // эфир» его законно выбрасывала, и сигнал конца на той стороне не звучал.
+  // К тому же он обгонял кадры речи, ещё лежащие в очереди. Очередь шифрует
+  // и сохраняет порядок; если она вдруг полна — шлём сами, но запечатанным.
+  if (!txAudioQueue || xQueueSend(txAudioQueue, &pkt, pdMS_TO_TICKS(200)) != pdTRUE) {
+    uint8_t out[sizeof(pkt) + CRYPTO_OVERHEAD];
+    memcpy(out, &pkt, sizeof(pkt));
+    int outLen = cryptoSeal(pkt.type, pkt.channel, pkt.sender, pkt.seq, out, sizeof(pkt), 7);
+    loraSend(out, outLen);
+    loraStartReceive();
+  }
 
   if (byTimeout) {
     uint8_t note[2] = {BLE_CMD_PTT_END, 1};   // 1 — остановлено по времени
