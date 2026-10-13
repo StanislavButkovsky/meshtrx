@@ -36,6 +36,23 @@ android {
         }
     }
 
+    // Два установочных файла из одного кода: для сайта и для RuStore. Отличие
+    // одно — куда ведёт «Скачать» при новой версии. RuStore требует, чтобы
+    // установленное из магазина обновлялось через магазин; с сайта — с сайта.
+    // Версия, код и ключ подписи общие: люди переходят между ними без
+    // переустановки.
+    flavorDimensions "store"
+    productFlavors {
+        site {
+            dimension "store"
+            buildConfigField "String", "STORE_URL", "\"\""
+        }
+        rustore {
+            dimension "store"
+            buildConfigField "String", "STORE_URL", "\"https://www.rustore.ru/catalog/app/com.meshtrx.app\""
+        }
+    }
+
     buildTypes {
         release {
             signingConfig signingConfigs.release

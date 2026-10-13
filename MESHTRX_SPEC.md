@@ -1514,7 +1514,7 @@ target_link_libraries(codec2jni android log)
   1. cd android/MeshTRX
   2. ./gradlew assembleDebug
   3. Если подключён телефон (adb devices): предложить установить APK
-     adb install app/build/outputs/apk/debug/app-debug.apk
+     adb install app/build/outputs/apk/site/debug/app-site-debug.apk
   4. Вывести путь к APK файлу
 ```
 
