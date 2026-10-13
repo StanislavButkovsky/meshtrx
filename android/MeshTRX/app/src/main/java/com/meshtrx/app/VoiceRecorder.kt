@@ -11,6 +11,8 @@ import kotlin.math.sqrt
  */
 class VoiceRecorder(private val maxDurationSec: Int = 10) {
     companion object {
+        private const val TARGET_RMS = 8000f   // как agcTargetRms в AudioEngine
+        private const val MAX_GAIN = 10f
         private const val TAG = "VoiceRecorder"
         const val SAMPLE_RATE = 8000
     }
@@ -103,6 +105,21 @@ class VoiceRecorder(private val maxDurationSec: Int = 10) {
         if (avgRms < 200) {
             Log.d(TAG, "Too quiet (RMS=$avgRms), discarding")
             return null
+        }
+
+        // Выровнять громкость, как AGC живой передачи: без этого личная запись
+        // шла в 5–7 раз тише обычной речи (RMS ~1500 против ~9000 у живой),
+        // и на той стороне её было еле слышно даже на полной громкости.
+        // Запись уже целиком в памяти, поэтому усиление общее на всю фразу и
+        // ограничено пиком — чтобы не перегрузить.
+        var peak = 1
+        for (i in 0 until pcmOffset) peak = maxOf(peak, kotlin.math.abs(pcmBuffer[i].toInt()))
+        val gain = minOf(TARGET_RMS / avgRms, MAX_GAIN, 30000f / peak).coerceAtLeast(1f)
+        if (gain > 1.05f) {
+            for (i in 0 until pcmOffset) {
+                pcmBuffer[i] = (pcmBuffer[i] * gain).toInt().coerceIn(-32768, 32767).toShort()
+            }
+            Log.d(TAG, "Level: RMS $avgRms, peak $peak, gain ${"%.1f".format(gain)}")
         }
 
         // Кодировать Codec2

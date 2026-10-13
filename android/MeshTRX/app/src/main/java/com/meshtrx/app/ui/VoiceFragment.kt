@@ -167,6 +167,9 @@ class VoiceFragment : Fragment() {
         }
 
         // Авто-отправка при достижении лимита записи
+        // Волны вокруг кнопки и при личной записи: она идёт мимо AudioEngine,
+        // и раньше уровень никто не показывал — казалось, что запись не идёт
+        voiceRecorder.onRmsLevel = { rms -> ServiceState.rmsLevel.postValue(rms) }
         voiceRecorder.onMaxReached = {
             android.os.Handler(android.os.Looper.getMainLooper()).post {
                 sendBufferedVoice(tvStatusLine, tvDeliveryStatus, pttButton)
