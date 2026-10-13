@@ -218,14 +218,27 @@ class AudioEngine {
             return
         }
         val pcm = codec2.decodePacket(codec2Data)
-        // Усиление громкости
-        if (volumeBoost != 1.0f) {
-            for (i in pcm.indices) {
-                val amplified = (pcm[i] * volumeBoost).toInt().coerceIn(-32768, 32767)
-                pcm[i] = amplified.toShort()
-            }
-        }
+        loudness(pcm, volumeBoost)
         playbackQueue.offer(pcm)
+    }
+
+    /**
+     * Громкость приёма: мягкое насыщение вместо умножения. Раньше отсчёты
+     * умножались на усиление и обрезались о потолок — громче почти не
+     * становилось, зато появлялся хрип. tanh поднимает тихие места и плавно
+     * сжимает громкие, пик остаётся ниже потолка: на слух громче и без треска.
+     */
+    private fun loudness(pcm: ShortArray, boost: Float) {
+        if (boost <= 1.0f) {
+            if (boost < 1.0f) for (i in pcm.indices) pcm[i] = (pcm[i] * boost).toInt().toShort()
+            return
+        }
+        val k = boost * 1.5f
+        val norm = 0.95f / kotlin.math.tanh(k)
+        for (i in pcm.indices) {
+            val x = pcm[i] / 32768f
+            pcm[i] = (kotlin.math.tanh(k * x) * norm * 32767f).toInt().coerceIn(-32768, 32767).toShort()
+        }
     }
 
     private fun playRogerBeep() {
