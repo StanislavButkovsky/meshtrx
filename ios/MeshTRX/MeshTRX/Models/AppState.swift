@@ -21,6 +21,11 @@ class AppState: ObservableObject {
     @Published var pttSecondsLeft: Int? = nil
     // Идёт приём: кто говорит. Гаснет с последним пакетом фразы или через 5 с тишины.
     @Published var rxCallSign: String? = nil
+    // Адресат голоса (последние 4 знака id) — как «@» в Android. nil — общий канал.
+    @Published var pttTargetId: String? = nil
+    @Published var pttTargetName: String? = nil
+    // Судьба адресной передачи: «отправка...», «доставлено», «не доставлено»
+    @Published var pttDeliveryText: String? = nil
     @Published var txMode: TxMode = .ptt
     @Published var listenMode: ListenMode = .all
     @Published var voxState: VoxState = .idle

@@ -4,7 +4,6 @@ struct VoiceView: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var controller: MeshTRXController
     @State private var speakerOn = true
-    @State private var showCallPicker = false
     @State private var isPttPressed = false
 
     private var isConnected: Bool { appState.bleState == .connected }
@@ -114,9 +113,6 @@ struct VoiceView: View {
                 .padding(.top, 4)
                 .padding(.bottom, 12)
             }
-        }
-        .sheet(isPresented: $showCallPicker) {
-            callPickerSheet
         }
     }
 
@@ -246,6 +242,7 @@ struct VoiceView: View {
             return "передача..."
         }
         if let who = appState.rxCallSign { return "приём: \(who)" }
+        if let d = appState.pttDeliveryText { return d }
         return "ожидание"
     }
 
@@ -270,96 +267,53 @@ struct VoiceView: View {
 
     // MARK: - Call Buttons
 
+    // Строка адресата, как в Android: «@», кому говорим, и одна кнопка вызова.
+    // Раньше были «ОБЩИЙ» и «ВЫЗВАТЬ» с листом и кнопкой SOS, а адресата не было.
+    @State private var showTargetPicker = false
+
     private var callButtonsRow: some View {
-        HStack(spacing: 8) {
-            Button { controller.callAll() } label: {
-                Text("ОБЩИЙ")
-                    .font(.system(size: 13, weight: .medium))
+        HStack(spacing: 10) {
+            Button { showTargetPicker = true } label: {
+                Image(systemName: "at")
+                    .font(.system(size: 18, weight: .bold))
                     .foregroundColor(AppColors.blueAccent)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 44)
+                    .frame(width: 48, height: 48)
                     .background(AppColors.blueBg)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(AppColors.blueBorder, lineWidth: 1)
-                    )
-                    .cornerRadius(6)
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(AppColors.blueBorder, lineWidth: 1))
+                    .cornerRadius(8)
             }
             .disabled(!isConnected)
-
-            Button { showCallPicker = true } label: {
-                Text("ВЫЗВАТЬ")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(AppColors.greenAccent)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 44)
-                    .background(AppColors.greenBg)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(AppColors.greenBorder, lineWidth: 1)
-                    )
-                    .cornerRadius(6)
-            }
-            .disabled(!isConnected)
-        }
-    }
-
-    // MARK: - Call Picker Sheet
-
-    private var callPickerSheet: some View {
-        ZStack {
-            AppColors.bgPrimary.ignoresSafeArea()
-
-            VStack(spacing: 12) {
-                Text("Выбор вызова")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(AppColors.textPrimary)
-                    .padding(.top, 20)
-
-                // Private calls to peers
-                if appState.peers.isEmpty {
-                    Text("Нет пиров в сети")
-                        .foregroundColor(AppColors.textDim)
-                        .padding()
-                } else {
-                    ScrollView {
-                        LazyVStack(spacing: 4) {
-                            ForEach(appState.peers) { peer in
-                                Button {
-                                    let macBytes = stride(from: 0, to: peer.deviceId.count, by: 2).compactMap {
-                                        let start = peer.deviceId.index(peer.deviceId.startIndex, offsetBy: $0)
-                                        let end = peer.deviceId.index(start, offsetBy: min(2, peer.deviceId.distance(from: start, to: peer.deviceId.endIndex)))
-                                        return UInt8(peer.deviceId[start..<end], radix: 16)
-                                    }
-                                    controller.callPrivate(macSuffix: Data(macBytes), callSign: peer.callSign)
-                                    showCallPicker = false
-                                } label: {
-                                    HStack {
-                                        Text(peer.callSign)
-                                            .foregroundColor(AppColors.textPrimary)
-                                        Spacer()
-                                        Text("\(peer.rssi) dBm")
-                                            .font(.system(size: 12, design: .monospaced))
-                                            .foregroundColor(AppColors.textDim)
-                                    }
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 12)
-                                    .background(AppColors.bgElevated)
-                                    .cornerRadius(8)
-                                }
-                            }
-                        }
-                        .padding(.horizontal, 16)
-                    }
+            .confirmationDialog("Выбрать абонента", isPresented: $showTargetPicker, titleVisibility: .visible) {
+                Button("Общий канал") { appState.pttTargetId = nil; appState.pttTargetName = nil }
+                ForEach(appState.directRecipients, id: \.id) { r in
+                    Button(r.name) { appState.pttTargetId = r.id; appState.pttTargetName = r.name }
                 }
-
-                // Кнопки SOS здесь больше нет: прошивка эту команду не исполняет
-                // (в Android её убрали), и человек думал бы, что позвал на помощь.
-
-                Button("Отмена") { showCallPicker = false }
-                    .foregroundColor(AppColors.textMuted)
-                    .padding(.bottom, 16)
+                Button("Отмена", role: .cancel) {}
             }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(appState.pttTargetName ?? "Общий канал")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(appState.pttTargetId == nil ? AppColors.blueAccent : AppColors.greenAccent)
+                if let id = appState.pttTargetId,
+                   let p = appState.peers.first(where: { $0.deviceId.hasSuffix(id) }) {
+                    Text("\(p.rssi) dBm · SNR \(p.snr)")
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundColor(AppColors.textDim)
+                }
+            }
+
+            Spacer()
+
+            Button { controller.callTarget() } label: {
+                Image(systemName: "bell.fill")
+                    .font(.system(size: 18))
+                    .foregroundColor(AppColors.greenAccent)
+                    .frame(width: 48, height: 48)
+                    .background(AppColors.greenBg)
+                    .clipShape(Circle())
+            }
+            .disabled(!isConnected)
         }
     }
 

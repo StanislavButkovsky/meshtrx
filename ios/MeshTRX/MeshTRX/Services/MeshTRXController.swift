@@ -152,7 +152,8 @@ class MeshTRXController: ObservableObject {
         audioEngine.onAudioEncoded = { [weak self] encoded in
             guard let self = self else { return }
             Task { @MainActor in
-                if self.appState.isPttActive && self.bleManager.isConnected {
+                // При адресате голос не идёт в эфир сразу: копится и уходит файлом
+                if self.appState.isPttActive && self.bleManager.isConnected && self.appState.pttTargetId == nil {
                     self.bleManager.sendAudioData(encoded)
                 }
             }
@@ -279,8 +280,14 @@ class MeshTRXController: ObservableObject {
         guard appState.txMode == .ptt, !appState.isPttActive else { return }
         appState.isPttActive = true
         audioEngine.rogerBeep = appState.rogerBeep
-        bleManager.sendPttStart()
-        audioEngine.startRecording()
+        if appState.pttTargetId != nil {
+            // Адресная передача, как в Android: запись до 10 с, потом файлом 0x05
+            appState.pttDeliveryText = nil
+            audioEngine.startBufferedRecording()
+        } else {
+            bleManager.sendPttStart()
+            audioEngine.startRecording()
+        }
         startPttLimit()
     }
 
@@ -288,7 +295,53 @@ class MeshTRXController: ObservableObject {
     func pttUp(force: Bool = false) {
         guard appState.txMode == .ptt, appState.isPttActive || force else { return }
         audioEngine.stopRecording()
-        endTransmission()
+        if let target = appState.pttTargetId {
+            stopPttLimit()
+            appState.isPttActive = false
+            sendAddressedVoice(to: target)
+        } else {
+            endTransmission()
+        }
+    }
+
+    private func sendAddressedVoice(to target: String) {
+        guard let data = audioEngine.getRecordedCodec2Data(),
+              let b0 = UInt8(target.prefix(2), radix: 16),
+              let b1 = UInt8(target.suffix(2), radix: 16) else { return }
+        let name = "ptt_\(Int(Date().timeIntervalSince1970)).c2"
+        appState.pttDeliveryText = "отправка..."
+        sendFile(fileName: name, fileType: 0x05, data: data,
+                 destMac: Data([b0, b1]), destName: appState.pttTargetName)
+        Task { @MainActor [weak self] in
+            for _ in 0..<30 {     // 15 с, как в Android
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                guard let self = self else { return }
+                if let t = self.appState.fileTransfers.first(where: { $0.isOutgoing && $0.fileName == name }),
+                   t.status != .transferring {
+                    self.appState.pttDeliveryText = t.status == .done ? "доставлено" : "не доставлено"
+                    break
+                }
+            }
+            if self?.appState.pttDeliveryText == "отправка..." { self?.appState.pttDeliveryText = "не доставлено" }
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            self?.appState.pttDeliveryText = nil
+        }
+    }
+
+    /// Вызов из строки «@»: общий — всем, иначе личный выбранному абоненту.
+    /// Прошивке нужен полный 4-байтный id — достраиваем по списку абонентов.
+    func callTarget() {
+        guard let short = appState.pttTargetId else { callAll(); return }
+        guard let peer = appState.peers.first(where: { $0.deviceId.hasSuffix(short) }),
+              peer.deviceId.count == 8 else {
+            appState.statusMessage = "Нет полного адреса абонента — дождитесь его маяка"
+            return
+        }
+        let bytes = stride(from: 0, to: 8, by: 2).compactMap { i -> UInt8? in
+            let s = peer.deviceId.index(peer.deviceId.startIndex, offsetBy: i)
+            return UInt8(peer.deviceId[s..<peer.deviceId.index(s, offsetBy: 2)], radix: 16)
+        }
+        callPrivate(macSuffix: Data(bytes), callSign: appState.pttTargetName ?? peer.callSign)
     }
 
     // MARK: - TX Mode
@@ -1047,6 +1100,11 @@ class MeshTRXController: ObservableObject {
             callSeq: callSeq, rssi: appState.rssi
         )
         appState.incomingCall = call
+        // Личный вызов сам выбирает адресата — отвечать будем ему, как в Android
+        if callType == .`private` {
+            appState.pttTargetId = String(senderId.suffix(4))
+            appState.pttTargetName = callSign
+        }
         addRecentCall(deviceId: senderId, callSign: callSign, isOutgoing: false,
                       callType: call.callType == .emergency ? "SOS" : call.callType == .`private` ? "PRIVATE" : "ALL")
         postCallNotification(call: call)
