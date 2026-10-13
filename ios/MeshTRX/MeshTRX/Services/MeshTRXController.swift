@@ -98,6 +98,14 @@ class MeshTRXController: ObservableObject {
         bleManager.onDisconnected = { [weak self] in
             Task { @MainActor in self?.handleDisconnected() }
         }
+        bleManager.onConnecting = { [weak self] name in
+            Task { @MainActor in
+                guard let self = self else { return }
+                self.appState.bleState = .connecting
+                self.appState.deviceName = name
+                self.appState.statusMessage = "Подключение к \(name)..."
+            }
+        }
         bleManager.onScanResult = { [weak self] peripheral, rssi in
             Task { @MainActor in self?.handleScanResult(peripheral, rssi: rssi) }
         }
@@ -226,10 +234,15 @@ class MeshTRXController: ObservableObject {
         appState.bleState = .disconnected
     }
 
+    /// «Новое устройство», как в Android: забыть рацию и её PIN и сразу искать.
+    /// Раньше адрес забывался, а PIN оставались, и поиск не начинался.
     func forgetDevice() {
         disconnect()
         bleManager.forgetDevice()
+        authorizedDevices.removeAll()
+        UserDefaults.standard.removeObject(forKey: "authorized_devices")
         appState.deviceName = ""
+        startScan()
     }
 
     func submitPin(_ pin: Int) {

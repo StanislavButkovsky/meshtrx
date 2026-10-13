@@ -12,6 +12,9 @@ class BLEManager: NSObject, ObservableObject {
     var onScanResult: ((CBPeripheral, Int) -> Void)?
     var onNeedPin: (() -> Void)?
     var onScanStopped: (() -> Void)?
+    // Началось подключение — и ручное, и автоматическое. Раньше автоподключение
+    // шло мимо контроллера: имя рации в шапке оставалось «—», статус не менялся.
+    var onConnecting: ((String) -> Void)?
 
     // MARK: - State
 
@@ -26,8 +29,9 @@ class BLEManager: NSObject, ObservableObject {
     // Reconnect
     private var lastPeripheralIdentifier: UUID?
     private var reconnectAttempts = 0
-    private let maxReconnectAttempts = 10
-    private let reconnectDelays: [TimeInterval] = [3, 5, 7, 10, 10, 10, 10, 10, 10, 10]
+    // Попытки не прекращаем никогда, как в Android: раньше после десяти неудач
+    // приложение замолкало, даже когда рация снова появлялась рядом.
+    private let reconnectDelays: [TimeInterval] = [3, 5, 7, 10, 10, 10, 20, 20, 20, 20, 30]
     private var reconnectTimer: Timer?
     private var wasConnected = false
 
@@ -97,6 +101,7 @@ class BLEManager: NSObject, ObservableObject {
 
         centralManager.connect(peripheral, options: nil)
         log.info("Connecting to \(peripheral.name ?? "unknown")")
+        onConnecting?(peripheral.name ?? UserDefaults.standard.string(forKey: "lastBLEDeviceName") ?? "MeshTRX")
 
         connectTimer = Timer.scheduledTimer(withTimeInterval: connectTimeout, repeats: false) { [weak self] _ in
             guard let self = self else { return }
@@ -158,11 +163,8 @@ class BLEManager: NSObject, ObservableObject {
     }
 
     private func scheduleReconnect() {
-        guard reconnectAttempts < maxReconnectAttempts else {
-            log.info("Max reconnect attempts reached")
-            return
-        }
-        let delay = reconnectDelays[min(reconnectAttempts, reconnectDelays.count - 1)]
+        let delay: TimeInterval = reconnectAttempts < reconnectDelays.count
+            ? reconnectDelays[reconnectAttempts] : 60
         reconnectAttempts += 1
         log.info("Reconnect attempt \(self.reconnectAttempts) in \(delay)s")
 
@@ -254,7 +256,18 @@ extension BLEManager: CBCentralManagerDelegate {
         log.info("BLE state: \(central.state.rawValue)")
         if central.state == .poweredOn {
             // Try auto-connect on power on
+            reconnectAttempts = 0
             autoConnect()
+        } else if central.state == .poweredOff {
+            // Bluetooth выключили: соединения нет, говорим об этом сразу. Включат —
+            // сработает ветка выше и подключит к своей рации.
+            reconnectTimer?.invalidate()
+            connectTimer?.invalidate()
+            stopKeepalive()
+            if connectedPeripheral != nil || wasConnected {
+                cleanup()
+                onDisconnected?()
+            }
         }
     }
 

@@ -34,6 +34,9 @@ struct MeshTRXApp: App {
                             appState.showPinDialog = false
                         }
                     )
+                    // Смахнуть окно PIN нельзя: иначе «Отмена» не срабатывала,
+                    // и приложение навсегда оставалось в «соединении».
+                    .interactiveDismissDisabled()
                 }
         }
     }

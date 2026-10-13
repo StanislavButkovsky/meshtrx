@@ -100,7 +100,7 @@ struct SettingsView: View {
                 }
             }
 
-            Button("Забыть устройство") {
+            Button("Новое устройство") {
                 controller.forgetDevice()
             }
             .foregroundColor(AppColors.redAccent)
