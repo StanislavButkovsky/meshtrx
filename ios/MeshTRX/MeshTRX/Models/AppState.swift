@@ -14,6 +14,11 @@ class AppState: ObservableObject {
 
     // PTT / Audio
     @Published var isPttActive: Bool = false
+    // Сколько секунд передачи осталось (nil — не передаём). Предел 10 с, как в
+    // Android и прошивке: в полудуплексе говорящий занимает канал целиком.
+    @Published var pttSecondsLeft: Int? = nil
+    // Идёт приём: кто говорит. Гаснет с последним пакетом фразы или через 5 с тишины.
+    @Published var rxCallSign: String? = nil
     @Published var txMode: TxMode = .ptt
     @Published var listenMode: ListenMode = .all
     @Published var voxState: VoxState = .idle

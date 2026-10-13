@@ -13,6 +13,8 @@ struct VoiceView: View {
     private var pttState: PttState {
         if appState.isPttActive {
             return isVox ? .voxTx : .tx
+        } else if appState.rxCallSign != nil {
+            return .rx      // «ПРИЁМ»: состояние было описано, но не включалось никогда
         } else {
             return isVox ? .voxIdle : .idle
         }
@@ -224,6 +226,7 @@ struct VoiceView: View {
 
     private var statusDotColor: Color {
         if appState.isPttActive { return AppColors.redTx }
+        if appState.rxCallSign != nil { return AppColors.greenAccent }
         if isConnected { return AppColors.greenDim }
         return AppColors.textDim
     }
@@ -235,7 +238,14 @@ struct VoiceView: View {
 
     private var statusText: String {
         if !isConnected { return "не подключено" }
-        if appState.isPttActive { return "передача..." }
+        if appState.isPttActive {
+            if let left = appState.pttSecondsLeft, left <= 3 {
+                return left == 0 ? "предел \(MeshTRXController.pttMaxSeconds) с — отпустите кнопку"
+                                 : "передача · осталось \(left) с"
+            }
+            return "передача..."
+        }
+        if let who = appState.rxCallSign { return "приём: \(who)" }
         return "ожидание"
     }
 

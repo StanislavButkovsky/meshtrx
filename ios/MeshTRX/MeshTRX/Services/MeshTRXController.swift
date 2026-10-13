@@ -38,6 +38,51 @@ class MeshTRXController: ObservableObject {
         setupCallbacks()
         audioEngine.setup()
         startPeerCleanup()
+        // Доступ к микрофону спрашиваем сразу, как Android: иначе первое
+        // нажатие PTT уходит в тишину, пока система показывает свой вопрос.
+        AVAudioSession.sharedInstance().requestRecordPermission { _ in }
+    }
+
+    // MARK: - Предел передачи
+
+    static let pttMaxSeconds = 10
+    private var pttLimitTask: Task<Void, Never>?
+
+    /// Отсчёт речи — и для кнопки, и для голосовой активации. По истечении
+    /// передача гасится сама.
+    private func startPttLimit() {
+        pttLimitTask?.cancel()
+        appState.pttSecondsLeft = Self.pttMaxSeconds
+        pttLimitTask = Task { @MainActor [weak self] in
+            for left in stride(from: Self.pttMaxSeconds - 1, through: 0, by: -1) {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                guard let self = self, !Task.isCancelled, self.appState.isPttActive else { return }
+                self.appState.pttSecondsLeft = left
+            }
+            guard let self = self, !Task.isCancelled, self.appState.isPttActive else { return }
+            self.appState.statusMessage = "Достигнут предел \(Self.pttMaxSeconds) с — передача завершена"
+            if self.appState.txMode == .vox {
+                self.voxEngine.reset()
+                self.endTransmission()
+            } else {
+                self.pttUp(force: true)
+            }
+        }
+    }
+
+    private func stopPttLimit() {
+        pttLimitTask?.cancel()
+        pttLimitTask = nil
+        appState.pttSecondsLeft = nil
+    }
+
+    private func endTransmission() {
+        stopPttLimit()
+        appState.isPttActive = false
+        audioEngine.sendAudio = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            self.bleManager.sendPttEnd()
+        }
     }
 
     // MARK: - Setup callbacks
@@ -92,16 +137,13 @@ class MeshTRXController: ObservableObject {
                 self.appState.isPttActive = true
                 self.audioEngine.sendAudio = true
                 self.bleManager.sendPttStart()
+                self.startPttLimit()
             }
         }
         voxEngine.onTxDeactivated = { [weak self] in
             Task { @MainActor in
-                guard let self = self else { return }
-                self.appState.isPttActive = false
-                self.audioEngine.sendAudio = false
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    self.bleManager.sendPttEnd()
-                }
+                guard let self = self, self.appState.isPttActive else { return }
+                self.endTransmission()
             }
         }
         voxEngine.onStateChanged = { [weak self] state in
@@ -185,19 +227,19 @@ class MeshTRXController: ObservableObject {
     // MARK: - PTT
 
     func pttDown() {
-        guard appState.txMode == .ptt else { return }
+        guard appState.txMode == .ptt, !appState.isPttActive else { return }
         appState.isPttActive = true
+        audioEngine.rogerBeep = appState.rogerBeep
         bleManager.sendPttStart()
         audioEngine.startRecording()
+        startPttLimit()
     }
 
-    func pttUp() {
-        guard appState.txMode == .ptt else { return }
-        appState.isPttActive = false
+    /// force — передачу погасил предел времени, а кнопка ещё нажата.
+    func pttUp(force: Bool = false) {
+        guard appState.txMode == .ptt, appState.isPttActive || force else { return }
         audioEngine.stopRecording()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            self.bleManager.sendPttEnd()
-        }
+        endTransmission()
     }
 
     // MARK: - TX Mode
@@ -210,6 +252,7 @@ class MeshTRXController: ObservableObject {
         if prev == .vox && mode == .ptt {
             audioEngine.stopVoxMonitoring()
             voxEngine.reset()
+            stopPttLimit()
             appState.isPttActive = false
             appState.voxState = .idle
         }
@@ -620,26 +663,34 @@ class MeshTRXController: ObservableObject {
 
     // MARK: - Audio RX
 
-    private func handleAudioRx(_ data: Data) {
-        if data.count >= 68 {
-            let flags = Int(data[1])
-            let audio = Data(data[4..<68])
-            let isLast = (flags & 0x02) != 0
+    private var rxIdleTask: Task<Void, Never>?
 
-            let listen = appState.listenMode == .all
-            let active = appState.callActive
-            if listen || active {
-                audioEngine.playEncodedPacket(audio, isLastPacket: isLast)
-            }
-        } else if data.count >= 66 {
-            // Old firmware compat
-            let flags = Int(data[1])
-            let audio = Data(data[2..<66])
-            let isLast = (flags & 0x02) != 0
-            let listen = appState.listenMode == .all
-            let active = appState.callActive
-            if listen || active {
-                audioEngine.playEncodedPacket(audio, isLastPacket: isLast)
+    /// Голос с рации: [0x02, флаги, отправитель(2), Codec2 32 байта] — 36 байт.
+    /// Раньше iPhone ждал 68 (или 66) и всё принятое выбрасывал.
+    private func handleAudioRx(_ data: Data) {
+        guard data.count >= 36 else { return }
+        let flags = Int(data[1])
+        let senderId = String(format: "%02X%02X", data[2], data[3])
+        let audio = Data(data[4..<36])
+        let isLast = (flags & 0x02) != 0   // PKT_FLAG_PTT_END
+
+        let listen = appState.listenMode == .all
+        let active = appState.callActive
+        if listen || active {
+            audioEngine.rogerBeep = appState.rogerBeep
+            audioEngine.playEncodedPacket(audio, isLastPacket: isLast)
+        }
+
+        // Кто говорит — для строки статуса. Гаснет с концом фразы или через 5 с.
+        if senderId != "0000" {
+            let name = appState.peers.first { $0.deviceId.hasSuffix(senderId) }?.callSign
+            appState.rxCallSign = isLast ? nil : (name?.isEmpty == false ? name : "TX-\(senderId)")
+            rxIdleTask?.cancel()
+            if !isLast {
+                rxIdleTask = Task { @MainActor [weak self] in
+                    try? await Task.sleep(nanoseconds: 5_000_000_000)
+                    if !Task.isCancelled { self?.appState.rxCallSign = nil }
+                }
             }
         }
     }

@@ -4,7 +4,10 @@ class Codec2Wrapper {
     private var codec: OpaquePointer?
     let samplesPerFrame: Int = 160   // 20ms @ 8kHz
     let bytesPerFrame: Int = 8       // 3200 bps mode
-    let framesPerPacket: Int = 8     // 8 frames = 64 bytes = 1280 samples
+    // 4 кадра = 32 байта = 80 мс — ровно столько прошивка кладёт в один
+    // LoRa-пакет (CODEC2_FRAMES_PER_PKT). Было 8: рация брала первую половину
+    // пакета, а принятые 32 байта iPhone не узнавал и выбрасывал.
+    let framesPerPacket: Int = 4
 
     init(mode: Int32 = 3200) {  // CODEC2_MODE_3200
         codec = codec2_create(mode)

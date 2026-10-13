@@ -6,8 +6,8 @@ class AudioEngine {
 
     static let sampleRate: Double = 8000
     static let frameSamples: Int = 160       // 20ms (Codec2 3200)
-    static let framesPerPacket: Int = 8
-    static let packetSamples: Int = frameSamples * framesPerPacket  // 1280
+    static let framesPerPacket: Int = 4      // как в прошивке: 32 байта на пакет
+    static let packetSamples: Int = frameSamples * framesPerPacket  // 640
 
     // MARK: - Callbacks
 
@@ -19,6 +19,7 @@ class AudioEngine {
     var volumeBoost: Float = 2.0     // 1.0=normal, 3.0=max
     var squelchThreshold: Int = 0    // RMS threshold, 0=disabled
     var agcEnabled: Bool = true      // automatic gain control
+    var rogerBeep: Bool = true       // сигнал в конце чужой передачи
 
     // MARK: - State
 
@@ -32,7 +33,11 @@ class AudioEngine {
     // MARK: - Audio components
 
     private let codec2 = Codec2Wrapper()
+    // Микрофон и динамик — два отдельных движка. Раньше узел воспроизведения
+    // жил в движке микрофона и создавался только вместе с ним: в режиме PTT,
+    // пока кнопка не нажата, принятому голосу было некуда звучать.
     private var engine: AVAudioEngine?
+    private var playbackEngine: AVAudioEngine?
     private var playerNode: AVAudioPlayerNode?
     private var inputConverter: AVAudioConverter?
 
@@ -174,15 +179,8 @@ class AudioEngine {
             self?.processInputBuffer(buffer)
         }
 
-        // Setup playback node on same engine
-        let player = AVAudioPlayerNode()
-        self.playerNode = player
-        engine.attach(player)
-        engine.connect(player, to: engine.mainMixerNode, format: playerFormat)
-
         do {
             try engine.start()
-            if isPlaying { player.play() }
         } catch {
             log.error("Engine start failed: \(error.localizedDescription)")
         }
@@ -191,10 +189,8 @@ class AudioEngine {
     private func stopMicCapture() {
         isRecording = false
         engine?.inputNode.removeTap(onBus: 0)
-        playerNode?.stop()
         engine?.stop()
         engine = nil
-        playerNode = nil
         inputConverter = nil
         packetOffset = 0
     }
@@ -272,8 +268,19 @@ class AudioEngine {
 
     func startPlayback() {
         isPlaying = true
-        if let player = playerNode, engine?.isRunning == true {
-            player.play()
+        if playbackEngine == nil {
+            let pe = AVAudioEngine()
+            let player = AVAudioPlayerNode()
+            pe.attach(player)
+            pe.connect(player, to: pe.mainMixerNode, format: playerFormat)
+            playbackEngine = pe
+            playerNode = player
+        }
+        do {
+            if playbackEngine?.isRunning != true { try playbackEngine?.start() }
+            playerNode?.play()
+        } catch {
+            log.error("Playback engine start failed: \(error.localizedDescription)")
         }
         log.info("Playback started")
     }
@@ -281,6 +288,9 @@ class AudioEngine {
     func stopPlayback() {
         isPlaying = false
         playerNode?.stop()
+        playbackEngine?.stop()
+        playbackEngine = nil
+        playerNode = nil
         playbackLock.lock()
         playbackQueue.removeAll()
         playbackLock.unlock()
@@ -289,7 +299,8 @@ class AudioEngine {
 
     func playEncodedPacket(_ codec2Data: Data, isLastPacket: Bool = false) {
         if isLastPacket {
-            playRogerBeep()
+            // В последнем пакете фразы нагрузки нет — только сигнал, как в Android
+            if rogerBeep { playRogerBeep() }
             return
         }
 
@@ -333,6 +344,11 @@ class AudioEngine {
 
     private func schedulePlayback(samples: [Int16]) {
         guard let player = playerNode, isPlaying else { return }
+        // Движок мог остановиться (смена маршрута звука, прерывание) — поднимаем
+        if playbackEngine?.isRunning != true {
+            try? playbackEngine?.start()
+            player.play()
+        }
 
         let frameCount = AVAudioFrameCount(samples.count)
         guard let buffer = AVAudioPCMBuffer(pcmFormat: playerFormat, frameCapacity: frameCount) else { return }
@@ -384,6 +400,10 @@ class AudioEngine {
         case .ended:
             log.info("Audio interruption ended")
             try? AVAudioSession.sharedInstance().setActive(true)
+            if isPlaying {
+                try? playbackEngine?.start()
+                playerNode?.play()
+            }
             if isRecording {
                 // Restart engine after interruption
                 stopMicCapture()
