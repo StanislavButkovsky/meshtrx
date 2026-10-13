@@ -20,6 +20,10 @@ class AudioEngine {
     var squelchThreshold: Int = 0    // RMS threshold, 0=disabled
     var agcEnabled: Bool = true      // automatic gain control
     var rogerBeep: Bool = true       // сигнал в конце чужой передачи
+    // Громкая связь, как в Android: по умолчанию включена. Режим «вход и
+    // выход» по умолчанию шлёт звук в разговорный динамик, и рацию было еле
+    // слышно даже на полной громкости — переключаем на громкий явно.
+    var speakerOn: Bool = true
 
     // MARK: - State
 
@@ -91,6 +95,7 @@ class AudioEngine {
             try session.setPreferredSampleRate(AudioEngine.sampleRate)
             try session.setPreferredIOBufferDuration(0.02) // 20ms
             try session.setActive(true)
+            if speakerOn { try session.overrideOutputAudioPort(.speaker) }
         } catch {
             log.error("Audio session setup failed: \(error.localizedDescription)")
         }
@@ -200,6 +205,7 @@ class AudioEngine {
         engine?.stop()
         engine = nil
         inputConverter = nil
+        applySpeakerRoute()     // после микрофона iOS может вернуть звук в разговорный
         packetOffset = 0
     }
 
@@ -287,6 +293,7 @@ class AudioEngine {
         do {
             if playbackEngine?.isRunning != true { try playbackEngine?.start() }
             playerNode?.play()
+            applySpeakerRoute()
         } catch {
             log.error("Playback engine start failed: \(error.localizedDescription)")
         }
@@ -377,7 +384,12 @@ class AudioEngine {
 
     // MARK: - Route
 
+    private func applySpeakerRoute() {
+        try? AVAudioSession.sharedInstance().overrideOutputAudioPort(speakerOn ? .speaker : .none)
+    }
+
     func routeToSpeaker() {
+        speakerOn = true
         let session = AVAudioSession.sharedInstance()
         do {
             try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth])
@@ -389,6 +401,7 @@ class AudioEngine {
     }
 
     func routeToEarpiece() {
+        speakerOn = false
         let session = AVAudioSession.sharedInstance()
         do {
             try session.setCategory(.playAndRecord, mode: .default, options: [.allowBluetooth])
