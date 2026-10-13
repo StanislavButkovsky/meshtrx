@@ -55,8 +55,9 @@ struct SettingsView: View {
                     encryptionSection
                     audioSection
                     voxSection
-                    notificationSection
+                    // Порядок — как в Android: история файлов, потом уведомления
                     historySection
+                    notificationSection
                     // Выбор языка спрятан: английского перевода у iOS-версии пока
                     // нет, и переключатель ничего не менял. Вернуть вместе с переводом.
                     repeaterSection
