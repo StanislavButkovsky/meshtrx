@@ -45,6 +45,7 @@ class MeshTRXController: ObservableObject {
         // нажатие PTT уходит в тишину, пока система показывает свой вопрос.
         AVAudioSession.sharedInstance().requestRecordPermission { _ in }
         setupPersistence()
+        checkForUpdatesIfDue()
     }
 
     // MARK: - Предел передачи
@@ -659,38 +660,60 @@ class MeshTRXController: ObservableObject {
 
     // MARK: - Updates
 
-    func checkForUpdates() {
-        appState.updateStatus = "Проверяю..."
+    /// Тот же файл, что у Android: https://meshtrx.ru/latest.json, где есть
+    /// {app, firmware, ios}. Раньше iPhone спрашивал несуществующий адрес
+    /// /api/latest.json с другими ключами и обновлений не видел никогда.
+    func checkForUpdates(silent: Bool = false) {
+        if !silent { appState.updateStatus = "Проверяю..." }
         Task {
             do {
-                let url = URL(string: "https://meshtrx.ru/api/latest.json")!
+                let url = URL(string: "https://meshtrx.ru/latest.json")!
                 let (data, _) = try await URLSession.shared.data(from: url)
-                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                    let latestFw = json["firmware_version"] as? String ?? "?"
-                    let latestApp = json["app_version"] as? String ?? "?"
-                    let currentApp = "1.0.0"
-                    let currentFw = appState.firmwareVersion
+                guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
+                let latestApp = (json["ios"] as? [String: Any])?["version"] as? String ?? ""
+                let latestFw = (json["firmware"] as? [String: Any])?["version"] as? String ?? ""
+                let currentApp = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+                let currentFw = appState.firmwareVersion
+                UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "last_update_check")
 
-                    var lines: [String] = []
-                    if currentApp != latestApp {
-                        lines.append("Приложение: \(currentApp) → \(latestApp)")
-                        appState.updateAvailable = true
-                    } else {
-                        lines.append("Приложение \(currentApp) — последняя")
-                    }
-                    if !currentFw.isEmpty && currentFw != latestFw {
-                        lines.append("Прошивка: \(currentFw) → \(latestFw)")
-                        appState.updateAvailable = true
-                    } else if !currentFw.isEmpty {
-                        lines.append("Прошивка \(currentFw) — последняя")
-                    }
-                    appState.updateStatus = lines.joined(separator: "\n")
+                var lines: [String] = []
+                var available = false
+                if !latestApp.isEmpty && Self.isNewer(latestApp, than: currentApp) {
+                    lines.append("Приложение: \(currentApp) → \(latestApp)")
+                    available = true
+                } else {
+                    lines.append("Приложение \(currentApp) — последняя")
                 }
+                if !currentFw.isEmpty && !latestFw.isEmpty && Self.isNewer(latestFw, than: currentFw) {
+                    lines.append("Прошивка: \(currentFw) → \(latestFw)")
+                    available = true
+                } else if !currentFw.isEmpty {
+                    lines.append("Прошивка \(currentFw) — последняя")
+                }
+                appState.updateAvailable = available
+                appState.updateStatus = lines.joined(separator: "\n")
             } catch {
-                appState.updateStatus = "Нет подключения к интернету"
+                if !silent { appState.updateStatus = "Нет подключения к интернету" }
                 appState.updateAvailable = false
             }
         }
+    }
+
+    /// Раз в сутки — сама, как в Android
+    func checkForUpdatesIfDue() {
+        let last = UserDefaults.standard.double(forKey: "last_update_check")
+        if Date().timeIntervalSince1970 - last > 24 * 3600 { checkForUpdates(silent: true) }
+    }
+
+    /// «4.4.10» новее «4.4.9»: сравниваем по числам, а не строкой
+    static func isNewer(_ a: String, than b: String) -> Bool {
+        let pa = a.split(separator: ".").map { Int($0) ?? 0 }
+        let pb = b.split(separator: ".").map { Int($0) ?? 0 }
+        for i in 0..<max(pa.count, pb.count) {
+            let x = i < pa.count ? pa[i] : 0, y = i < pb.count ? pb[i] : 0
+            if x != y { return x > y }
+        }
+        return false
     }
 
     // MARK: - GPS

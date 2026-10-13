@@ -525,6 +525,13 @@ struct SettingsView: View {
                     .font(.system(size: 12))
                     .foregroundColor(appState.updateAvailable ? AppColors.greenAccent : AppColors.textDim)
             }
+
+            // «Скачать», как в Android: страница с IPA и прошивками
+            if appState.updateAvailable {
+                Link("Скачать", destination: URL(string: "https://meshtrx.ru/ios/")!)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(AppColors.greenAccent)
+            }
         } header: {
             Text("О приложении")
         }

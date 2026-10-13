@@ -23,6 +23,10 @@ const codeMatch = gradle.match(/versionCode\s+(\d+)/);
 if (!codeMatch) throw new Error('не нашёл versionCode в build.gradle');
 
 const app = pick('app');
+// iOS нумеруется отдельно: своя строка VERSION_IOS в constants.ts
+const iosMatch = constants.match(/VERSION_IOS\s*=\s*\{\s*app:\s*'([^']+)'/);
+if (!iosMatch) throw new Error('не нашёл VERSION_IOS.app в constants.ts');
+const iosApp = iosMatch[1];
 const firmware = pick('firmware');
 
 // Версия прошивки записана в двух местах: в самой прошивке (её рация сообщает
@@ -50,6 +54,10 @@ const latest = {
     v3: `https://meshtrx.ru/downloads/firmware-v3-${firmware}.bin`,
     v4: `https://meshtrx.ru/downloads/firmware-v4-${firmware}.bin`,
     v43: `https://meshtrx.ru/downloads/firmware-v4.3-${firmware}.bin`,
+  },
+  ios: {
+    version: iosApp,
+    url: 'https://meshtrx.ru/ios/',
   },
   date: pick('date'),
   changelog: 'https://meshtrx.ru/download/',

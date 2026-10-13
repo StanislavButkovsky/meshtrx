@@ -10,6 +10,10 @@
     "v4": "https://meshtrx.ru/downloads/firmware-v4-4.4.32.bin",
     "v43": "https://meshtrx.ru/downloads/firmware-v4.3-4.4.32.bin"
   },
+  "ios": {
+    "version": "1.0.1",
+    "url": "https://meshtrx.ru/ios/"
+  },
   "date": "2026-10-13",
   "changelog": "https://meshtrx.ru/download/"
 }
