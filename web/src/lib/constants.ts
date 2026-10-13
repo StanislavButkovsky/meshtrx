@@ -94,8 +94,8 @@ export const NAV_LINKS = [
 ];
 
 export const VERSION_IOS = {
-  app: '1.0.0',
-  date: '2026-09-23',
+  app: '1.0.1',
+  date: '2026-10-13',
 };
 
 export const DOWNLOAD_LINKS = {
