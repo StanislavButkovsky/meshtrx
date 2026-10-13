@@ -2,7 +2,9 @@ import SwiftUI
 
 struct MainTabView: View {
     @EnvironmentObject var appState: AppState
-    @State private var selectedTab = 0
+    // Стартовая вкладка из аргумента запуска (-startTab N): нужна для снимков
+    // экрана с симулятора, где нажимать некому. Без аргумента — первая вкладка.
+    @State private var selectedTab = UserDefaults.standard.integer(forKey: "startTab")
 
     private var isConnected: Bool { appState.bleState == .connected }
 
