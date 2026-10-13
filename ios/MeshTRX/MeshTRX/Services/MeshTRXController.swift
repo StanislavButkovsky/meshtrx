@@ -697,8 +697,10 @@ class MeshTRXController: ObservableObject {
 
     // MARK: - Peers
 
+    /// Вместе с абонентами — и последние вызовы, как в Android
     func clearPeers() {
         appState.peers.removeAll()
+        appState.recentCalls.removeAll()
     }
 
     // MARK: - Clear chat

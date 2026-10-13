@@ -8,7 +8,7 @@ struct SettingsView: View {
     @State private var callSign: String = ""
     @State private var selectedChannel: Int = 0
     @State private var txPower: Double = 14
-    @State private var dutyCycle: Bool = true
+    @State private var dutyCycle: Bool = false   // как в Android: по умолчанию выключен
     @State private var beaconIndex: Int = 3
     /// Ползунок поверх целой настройки в AppState: меняется сразу, без «Применить»
     private func intBinding(_ kp: ReferenceWritableKeyPath<AppState, Int>) -> Binding<Double> {
@@ -19,6 +19,12 @@ struct SettingsView: View {
 
     // Encryption
     @State private var passphrase: String = ""
+    // Подтверждения опасных действий, как в Android
+    @State private var showChannelAllPicker = false
+    @State private var channelAllTarget: Int? = nil
+    @State private var confirmClearKey = false
+    @State private var confirmClearPeers = false
+    @State private var settingsInfo: String? = nil
 
     // Repeater
     @State private var repeaterSsid: String = ""
@@ -31,7 +37,7 @@ struct SettingsView: View {
     private let channelList: [String] = (0...22).map {
         String(format: "CH %d — %.2f MHz", $0, 863.150 + Double($0) * 0.300)
     }
-    private let beaconOptions = ["Выкл", "1 мин", "3 мин", "5 мин", "15 мин", "30 мин", "1 час"]
+    private let beaconOptions = ["Никогда", "1 мин", "3 мин", "5 мин", "15 мин", "30 мин", "1 час"]
     private let beaconSeconds = [0, 60, 180, 300, 900, 1800, 3600]
     private let timeoutOptions = ["15 мин", "30 мин", "1 час", "2 часа", "6 часов", "24 часа"]
     private let timeoutValues = [15, 30, 60, 120, 360, 1440]
@@ -171,12 +177,18 @@ struct SettingsView: View {
             HStack {
                 Text("Позывной")
                     .foregroundColor(AppColors.textPrimary)
-                TextField("Callsign", text: $callSign)
+                TextField("Макс 8 символов", text: $callSign)
                     .multilineTextAlignment(.trailing)
                     .foregroundColor(AppColors.textSecondary)
+                    .onChange(of: callSign) { v in
+                        if v.count > 8 { callSign = String(v.prefix(8)) }   // как в Android
+                    }
             }
 
-            Picker("Канал", selection: $selectedChannel) {
+            // Канал меняется сразу, как в Android, без «Применить»
+            Picker("Канал", selection: Binding(
+                get: { selectedChannel },
+                set: { selectedChannel = $0; if isConnected { controller.setChannel($0) } })) {
                 ForEach(0..<channelList.count, id: \.self) { i in
                     Text(channelList[i])
                         .font(.system(size: 13, design: .monospaced))
@@ -194,12 +206,12 @@ struct SettingsView: View {
                         .foregroundColor(AppColors.textSecondary)
                         .font(.system(size: 13, design: .monospaced))
                     if txPower > 14 {
-                        Text("EU!")
+                        Text("⚠️EU")
                             .font(.system(size: 11, weight: .bold))
                             .foregroundColor(AppColors.amberAccent)
                     }
                 }
-                Slider(value: $txPower, in: 2...30, step: 1)
+                Slider(value: $txPower, in: 1...30, step: 1)
                     .tint(AppColors.greenAccent)
             }
 
@@ -226,8 +238,10 @@ struct SettingsView: View {
             .foregroundColor(AppColors.textPrimary)
 
             HStack {
-                Button("Сменить у всех") {
-                    controller.setChannelAll(selectedChannel)
+                // Свой список каналов и подтверждение, как в Android: раньше
+                // кнопка сразу рассылала канал из поля выше
+                Button("Сменить канал у всех") {
+                    showChannelAllPicker = true
                 }
                 .font(.system(size: 13))
                 .disabled(!isConnected)
@@ -235,7 +249,8 @@ struct SettingsView: View {
 
                 Spacer()
 
-                Button("Сканировать каналы") {
+                Button("Найти свободный канал") {
+                    appState.scanResultText = "Слушаю эфир…"
                     controller.scanChannels()
                 }
                 .font(.system(size: 13))
@@ -249,13 +264,40 @@ struct SettingsView: View {
                     .foregroundColor(AppColors.textDim)
             }
 
-            Button("Применить") {
+            Button("Применить и сохранить") {
                 applySettings()
+                settingsInfo = "Настройки применены"
             }
             .disabled(!isConnected)
             .foregroundColor(isConnected ? AppColors.greenAccent : AppColors.textDim)
         } header: {
             Text("Радио")
+        }
+        .confirmationDialog("На какой канал перевести всех?", isPresented: $showChannelAllPicker,
+                            titleVisibility: .visible) {
+            ForEach(0..<channelList.count, id: \.self) { i in
+                Button(channelList[i] + (i == appState.currentChannel ? " (сейчас)" : "")) {
+                    channelAllTarget = i
+                }
+            }
+            Button("Отмена", role: .cancel) {}
+        }
+        .alert("Сменить канал у всех", isPresented: Binding(
+            get: { channelAllTarget != nil }, set: { if !$0 { channelAllTarget = nil } })) {
+            Button("Сменить") {
+                if let ch = channelAllTarget {
+                    controller.setChannelAll(ch)
+                    settingsInfo = "Команда отправлена"
+                }
+                channelAllTarget = nil
+            }
+            Button("Отмена", role: .cancel) { channelAllTarget = nil }
+        } message: {
+            Text("Все рации, которые сейчас слышат эфир, перейдут на CH \(channelAllTarget ?? 0) через 10 секунд. Те, кто не услышит команду, останутся на прежнем канале.")
+        }
+        .alert(settingsInfo ?? "", isPresented: Binding(
+            get: { settingsInfo != nil }, set: { if !$0 { settingsInfo = nil } })) {
+            Button("OK", role: .cancel) {}
         }
     }
 
@@ -263,6 +305,13 @@ struct SettingsView: View {
 
     private var encryptionSection: some View {
         Section {
+            // Строка состояния, как в Android: что сейчас с эфиром и что делать
+            Text(appState.keyFingerprint.isEmpty
+                 ? "Эфир открыт: без ключа вас слышит любой с такой же рацией"
+                 : "Ключ установлен, отпечаток \(appState.keyFingerprint). Введите то же слово на всех рациях группы — отпечаток должен совпасть")
+                .font(.system(size: 13))
+                .foregroundColor(appState.keyFingerprint.isEmpty ? AppColors.amberAccent : AppColors.greenAccent)
+
             HStack {
                 Text("Кодовое слово")
                     .foregroundColor(AppColors.textPrimary)
@@ -272,17 +321,18 @@ struct SettingsView: View {
             }
 
             HStack {
-                Button("Установить ключ") {
+                Button("Применить ключ") {
                     controller.setEncryptionKey(passphrase)
                     passphrase = ""
+                    settingsInfo = "Рация выводит ключ из слова — несколько секунд"
                 }
                 .disabled(!isConnected || passphrase.count < 8)
                 .foregroundColor(isConnected && passphrase.count >= 8 ? AppColors.greenAccent : AppColors.textDim)
 
                 Spacer()
 
-                Button("Убрать ключ") {
-                    controller.clearEncryptionKey()
+                Button("Убрать") {
+                    confirmClearKey = true
                 }
                 .disabled(!isConnected)
                 .foregroundColor(AppColors.redAccent)
@@ -303,7 +353,7 @@ struct SettingsView: View {
                 HStack {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundColor(AppColors.amberAccent)
-                    Text("Рядом говорят другим ключом: \(appState.alienPackets) пакетов")
+                    Text("Рядом говорят, но другим ключом: \(appState.alienPackets) пакетов не разобрано. Сверьте отпечаток на всех рациях")
                         .font(.system(size: 13))
                         .foregroundColor(AppColors.amberAccent)
                 }
@@ -311,14 +361,26 @@ struct SettingsView: View {
 
             Toggle(isOn: Binding(
                 get: { appState.hearPlaintext },
-                set: { controller.setHearPlaintext($0) }
+                set: {
+                    controller.setHearPlaintext($0)
+                    settingsInfo = $0
+                        ? "Открытые сообщения снова видны и помечены «без шифра». Помните: их слышит кто угодно"
+                        : "Открытый эфир не слушаем — только свои, под ключом"
+                }
             )) {
-                Text("Слышать открытый эфир")
+                Text("Слышать и открытый эфир")
                     .foregroundColor(AppColors.textPrimary)
             }
             .tint(AppColors.greenAccent)
+            .disabled(!isConnected)    // без связи переключатель ничего бы не изменил
         } header: {
-            Text("Шифрование")
+            Text("Шифрование эфира")
+        }
+        .alert("Убрать ключ?", isPresented: $confirmClearKey) {
+            Button("Убрать", role: .destructive) { controller.clearEncryptionKey() }
+            Button("Отмена", role: .cancel) {}
+        } message: {
+            Text("Эфир станет открытым: вас услышит любой с такой же рацией.")
         }
     }
 
@@ -427,10 +489,14 @@ struct SettingsView: View {
             }
             .foregroundColor(AppColors.textPrimary)
 
-            Button("Очистить список пиров") {
-                controller.clearPeers()
+            Button("Очистить список абонентов") {
+                confirmClearPeers = true
             }
             .foregroundColor(AppColors.redAccent)
+            .alert("Очистить всех абонентов и последние вызовы?", isPresented: $confirmClearPeers) {
+                Button("Очистить", role: .destructive) { controller.clearPeers() }
+                Button("Отмена", role: .cancel) {}
+            }
         } header: {
             Text("Хранение")
         }
