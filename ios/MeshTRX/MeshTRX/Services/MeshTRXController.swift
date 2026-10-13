@@ -549,6 +549,33 @@ class MeshTRXController: ObservableObject {
         }
     }
 
+    /// Проиграть запись Codec2 (голосовое из чата, адресный PTT): кусками по 32 байта
+    func playVoice(_ data: Data) {
+        audioEngine.startPlayback()
+        audioEngine.rogerBeep = appState.rogerBeep
+        var off = 0
+        while off + 32 <= data.count {
+            audioEngine.playEncodedPacket(data[off..<off + 32])
+            off += 32
+        }
+        audioEngine.playEncodedPacket(Data(), isLastPacket: true)
+    }
+
+    /// Повтор по ✗: текст — заново, голосовое — заново файлом
+    func retry(_ msg: ChatMessage) {
+        appState.messages.removeAll { $0.id == msg.id }
+        if msg.isVoice, let data = msg.voiceData,
+           let d = msg.destId, let b0 = UInt8(d.prefix(2), radix: 16), let b1 = UInt8(d.suffix(2), radix: 16) {
+            sendFile(fileName: "voice_retry.c2", fileType: 0x04, data: data,
+                     destMac: Data([b0, b1]), destName: msg.destName)
+            var again = msg
+            again.status = .sending
+            appState.messages.append(again)
+        } else if !msg.isVoice {
+            sendTextMessage(msg.text, destId: msg.destId, destName: msg.destName)
+        }
+    }
+
     // MARK: - Settings
 
     /// Настройки с рации. Позывной — как в Android: приоритет у сохранённого в
@@ -1093,13 +1120,7 @@ class MeshTRXController: ObservableObject {
             switch incomingFileType {
             case 0x05:
                 // Адресная PTT-передача: проигрываем сразу, в «Файлы» не кладём
-                audioEngine.rogerBeep = appState.rogerBeep
-                var off = 0
-                while off + 32 <= fileData.count {
-                    audioEngine.playEncodedPacket(fileData[off..<off + 32])
-                    off += 32
-                }
-                audioEngine.playEncodedPacket(Data(), isLastPacket: true)
+                playVoice(fileData)
             case 0x04:
                 // Голосовое сообщение — в чат, как в Android
                 let secs = fileData.count / 400      // 3200 бит/с = 400 байт в секунду
