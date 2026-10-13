@@ -118,36 +118,47 @@ struct VoiceView: View {
 
     // MARK: - Network Summary
 
+    // Сводка, как в Android: слышимые станции (по сроку списка), ретранслятор по
+    // признаку маяка, последнее движение в эфире. Пересчёт раз в 15 с: «минуту
+    // назад» стареет само, без новых событий.
     private var networkSummary: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            let count = appState.peers.count
-            let repeater = appState.peers.first { $0.callSign.uppercased().contains("RPT") || $0.callSign.uppercased().contains("REP") }
-            Text(count == 0 ? "Нет станций в эфире" : "\(count) \(stationsWord(count)) в эфире\(repeater != nil ? " · Ретр: \(repeater!.callSign) \(repeater!.rssi)dBm" : "")")
-                .font(.system(size: 12))
-                .foregroundColor(Color(hex: 0xaaaaaa))
-                .lineLimit(1)
-
-            if let last = appState.peers.sorted(by: { $0.lastSeenMs > $1.lastSeenMs }).first {
-                let ago = Int((Date().timeIntervalSince1970 * 1000 - Double(last.lastSeenMs)) / 1000)
-                Text("Последний: \(last.callSign) \(formatAgo(ago)) \(last.rssi)dBm/\(last.snr)dB")
+        TimelineView(.periodic(from: .now, by: 15)) { _ in
+            let now = Int64(Date().timeIntervalSince1970 * 1000)
+            let live = appState.peers.filter { now - $0.lastSeenMs < Int64(appState.peerTimeoutMin) * 60_000 }
+            let repeater = live.first { $0.isRepeater }
+            VStack(alignment: .leading, spacing: 2) {
+                Text("слышно \(live.count) \(stationsWord(live.count)) · " +
+                     (repeater.map { "ретранслятор \($0.callSign) (\($0.rssi) dBm)" } ?? "ретранслятора не слышно"))
                     .font(.system(size: 12))
-                    .foregroundColor(AppColors.textDim)
+                    .foregroundColor(Color(hex: 0xaaaaaa))
                     .lineLimit(1)
+                if let last = live.max(by: { $0.lastSeenMs < $1.lastSeenMs }) {
+                    Text("последний: \(last.callSign), \(formatAgo(Int((now - last.lastSeenMs) / 1000))) · \(last.rssi)dBm, SNR \(last.snr)")
+                        .font(.system(size: 12))
+                        .foregroundColor(AppColors.textDim)
+                        .lineLimit(1)
+                } else {
+                    Text("в эфире тихо")
+                        .font(.system(size: 12))
+                        .foregroundColor(AppColors.textDim)
+                }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
     private func stationsWord(_ n: Int) -> String {
         let mod10 = n % 10; let mod100 = n % 100
         if mod100 >= 11 && mod100 <= 19 { return "станций" }
-        if mod10 == 1 { return "станция" }
+        if mod10 == 1 { return "станцию" }
         if mod10 >= 2 && mod10 <= 4 { return "станции" }
         return "станций"
     }
 
     private func formatAgo(_ sec: Int) -> String {
-        if sec < 60 { return "\(sec)с назад" }
-        return "\(sec / 60)мин назад"
+        if sec < 60 { return "\(sec) с назад" }
+        if sec < 3600 { return "\(sec / 60) мин назад" }
+        return "\(sec / 3600) ч назад"
     }
 
     // MARK: - Control Bar
@@ -326,7 +337,7 @@ struct VoiceView: View {
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {
-                        ForEach(appState.recentCalls.prefix(5)) { call in
+                        ForEach(appState.recentCalls.prefix(20)) { call in
                             recentCallRow(call)
                         }
                     }
@@ -347,9 +358,15 @@ struct VoiceView: View {
 
             // Content
             VStack(alignment: .leading, spacing: 2) {
-                Text(callDisplayName(call))
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundColor(AppColors.textSecondary)
+                // ✗ — абонент молчит дольше 15 минут: дозвониться вряд ли выйдет
+                HStack(spacing: 4) {
+                    Text(callDisplayName(call))
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundColor(AppColors.textSecondary)
+                    if isSilent(call) {
+                        Text("✗").font(.system(size: 13, weight: .bold)).foregroundColor(AppColors.redAccent)
+                    }
+                }
 
                 HStack(spacing: 4) {
                     Text(formatCallTime(call.timeMs))
@@ -375,6 +392,15 @@ struct VoiceView: View {
             }
         }
         .padding(6)
+        .contentShape(Rectangle())
+        .onTapGesture { redial(call) }     // нажатие на строку — повторный вызов, как в Android
+    }
+
+    private func isSilent(_ call: RecentCall) -> Bool {
+        guard call.callType == "PRIVATE" else { return false }
+        let short = String(call.deviceId.suffix(4))
+        guard let p = appState.peers.first(where: { $0.deviceId.hasSuffix(short) }) else { return true }
+        return Int64(Date().timeIntervalSince1970 * 1000) - p.lastSeenMs > 15 * 60_000
     }
 
     // MARK: - Helpers

@@ -83,6 +83,9 @@ struct Peer: Identifiable, Codable {
     let lastSeenMs: Int64
     var lat: Double? = nil
     var lon: Double? = nil
+    // Признак ретранслятора из маяка (BEACON_FLAG_REPEATER), как в Android.
+    // Раньше ретранслятор угадывался по «RPT/REP» в позывном.
+    var isRepeater: Bool = false
 }
 
 struct RecentCall: Identifiable, Codable {

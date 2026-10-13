@@ -1041,7 +1041,9 @@ class MeshTRXController: ObservableObject {
         guard data.count >= 28 else { return }
         let id = String(format: "%02X%02X%02X%02X", data[1], data[2], data[3], data[4])
         let csData = data[5..<14]
-        let cs = String(data: csData, encoding: .utf8)?.trimmingCharacters(in: CharacterSet(charactersIn: "\0")) ?? ""
+        var cs = String(data: csData, encoding: .utf8)?.trimmingCharacters(in: CharacterSet(charactersIn: "\0")) ?? ""
+        if cs.isEmpty { cs = "TX-\(id.suffix(4))" }      // запасной позывной, как в Android
+        let isRepeater = (data[27] & 0x08) != 0
 
         let latE7 = data.getInt32LE(at: 14)
         let lonE7 = data.getInt32LE(at: 18)
@@ -1057,7 +1059,7 @@ class MeshTRXController: ObservableObject {
             deviceId: id, callSign: cs, rssi: pRssi, snr: pSnr, txPower: txPwr,
             batteryPct: batt == 0xFF ? nil : batt,
             lastSeenMs: Int64(Date().timeIntervalSince1970 * 1000),
-            lat: lat, lon: lon
+            lat: lat, lon: lon, isRepeater: isRepeater
         )
 
         appState.peers.removeAll { $0.deviceId == id }
