@@ -51,7 +51,8 @@ class AudioEngine {
 
     // AGC state
     private var agcGain: Float = 1.0
-    private let agcTargetRms: Float = 8000   // target RMS level
+    // 4000, как в Android: при 8000 пики речи обрезались о потолок до кодека
+    private let agcTargetRms: Float = 4000
     private let agcMinGain: Float = 0.5
     private let agcMaxGain: Float = 10.0
     private let agcAttackRate: Float = 0.05  // fast attack
@@ -333,7 +334,7 @@ class AudioEngine {
         guard volumeBoost > 1.0 else {
             return volumeBoost == 1.0 ? samples : samples.map { Int16(Float($0) * volumeBoost) }
         }
-        let k = volumeBoost * 1.5
+        let k = volumeBoost * 0.8
         let norm = 0.95 / tanh(k)
         return samples.map { s in
             Int16(clamping: Int(tanh(k * Float(s) / 32768) * norm * 32767))
