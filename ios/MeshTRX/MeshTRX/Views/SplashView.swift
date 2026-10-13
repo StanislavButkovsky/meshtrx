@@ -5,32 +5,42 @@ struct SplashView: View {
     @State private var logoOpacity: Double = 0
     @State private var versionOpacity: Double = 0
 
+    private var appVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+    }
+
     var body: some View {
         if isActive {
             MainTabView()
         } else {
+            // Как в Android: камуфляжный фон, логотип по центру с отступами,
+            // версия зелёным внизу. Раньше здесь была системная картинка антенны
+            // и вписанная руками «v1.0.0».
             ZStack {
-                Color.black.ignoresSafeArea()
+                Image("SplashLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .padding(24)
+                    .opacity(logoOpacity)
 
-                VStack(spacing: 20) {
-                    Image(systemName: "antenna.radiowaves.left.and.right")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 100, height: 100)
-                        .foregroundColor(.green)
-                        .opacity(logoOpacity)
-
-                    Text("MeshTRX")
-                        .font(.system(size: 36, weight: .bold))
-                        .foregroundColor(.white)
-                        .opacity(logoOpacity)
-
-                    Text("v1.0.0")
-                        .font(.subheadline)
-                        .foregroundColor(.gray)
+                VStack {
+                    Spacer()
+                    Text("v\(appVersion)")
+                        .font(.system(size: 14))
+                        .foregroundColor(AppColors.greenAccent)
                         .opacity(versionOpacity)
+                        .padding(.bottom, 48)
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // Фон — фоном, а не слоем: растянутая на весь экран картинка в слое
+            // раздвигает раскладку, и логотип съезжает в сторону.
+            .background(
+                Image("CamoBg")
+                    .resizable()
+                    .scaledToFill()
+                    .ignoresSafeArea()
+            )
             .onAppear {
                 withAnimation(.easeIn(duration: 0.8)) {
                     logoOpacity = 1
