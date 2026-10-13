@@ -34,7 +34,10 @@ class AudioEngine {
 
     // AGC state
     private var agcGain = 1.0f
-    private val agcTargetRms = 8000f
+    // 4000, а не 8000: у речи пики в 4–5 раз выше среднего, и при 8000 громкие
+    // звуки обрезались о потолок ещё до кодека — на приёме это слышно как хрип.
+    // Громкость на той стороне добирает мягкое насыщение приёма.
+    private val agcTargetRms = 4000f
     private val agcMinGain = 0.5f
     private val agcMaxGain = 10.0f
     private val agcAttackRate = 0.05f  // быстрая атака
@@ -218,17 +221,34 @@ class AudioEngine {
             return
         }
         val pcm = codec2.decodePacket(codec2Data)
-        // Усиление громкости
-        if (volumeBoost != 1.0f) {
-            for (i in pcm.indices) {
-                val amplified = (pcm[i] * volumeBoost).toInt().coerceIn(-32768, 32767)
-                pcm[i] = amplified.toShort()
-            }
-        }
+        loudness(pcm, volumeBoost)
         playbackQueue.offer(pcm)
     }
 
+    /**
+     * Громкость приёма: мягкое насыщение вместо умножения. Раньше отсчёты
+     * умножались на усиление и обрезались о потолок — громче почти не
+     * становилось, зато появлялся хрип. tanh поднимает тихие места и плавно
+     * сжимает громкие, пик остаётся ниже потолка: на слух громче и без треска.
+     */
+    private fun loudness(pcm: ShortArray, boost: Float) {
+        if (boost <= 1.0f) {
+            if (boost < 1.0f) for (i in pcm.indices) pcm[i] = (pcm[i] * boost).toInt().toShort()
+            return
+        }
+        val k = boost * 0.8f    // мягче: при 1.5 сжатие само звучало как перегруз
+        val norm = 0.95f / kotlin.math.tanh(k)
+        for (i in pcm.indices) {
+            val x = pcm[i] / 32768f
+            pcm[i] = (kotlin.math.tanh(k * x) * norm * 32767f).toInt().coerceIn(-32768, 32767).toShort()
+        }
+    }
+
     private fun playRogerBeep() {
+        playbackQueue.offer(rogerBeepSamples())
+    }
+
+    private fun rogerBeepSamples(): ShortArray {
         val duration = 0.08 // 80мс
         val samples = (SAMPLE_RATE * duration).toInt()
         val beep = ShortArray(samples)
@@ -243,11 +263,17 @@ class AudioEngine {
                          Math.sin(2 * Math.PI * freq2 * t) * 0.5) * envelope * 16000 * volumeBoost
             beep[i] = sample.toInt().coerceIn(-32768, 32767).toShort()
         }
-        playbackQueue.offer(beep)
+        return beep
     }
 
-    /** Воспроизвести PCM напрямую (для голосовых сообщений) */
-    fun playPcmDirect(pcm: ShortArray) {
+    /** Воспроизвести PCM напрямую (голосовые сообщения, личные PTT-записи).
+     *  withBeep — дописать сигнал конца передачи, как у живой речи (личная PTT-запись). */
+    fun playPcmDirect(pcm: ShortArray, withBeep: Boolean = false) {
+        // Та же мягкая громкость, что у живого приёма: умножение с обрезанием
+        // давало хрип и в голосовых, и в личных записях
+        val loud = pcm.copyOf()
+        loudness(loud, volumeBoost)
+        val full = if (withBeep && rogerBeep) loud + rogerBeepSamples() else loud
         val at = android.media.AudioTrack.Builder()
             .setAudioAttributes(android.media.AudioAttributes.Builder()
                 .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
@@ -258,16 +284,10 @@ class AudioEngine {
                 .setChannelMask(android.media.AudioFormat.CHANNEL_OUT_MONO)
                 .setEncoding(android.media.AudioFormat.ENCODING_PCM_16BIT)
                 .build())
-            .setBufferSizeInBytes(pcm.size * 2)
+            .setBufferSizeInBytes(full.size * 2)
             .setTransferMode(android.media.AudioTrack.MODE_STATIC)
             .build()
-        // Усиление
-        val amplified = if (volumeBoost != 1.0f) {
-            ShortArray(pcm.size) { i ->
-                (pcm[i] * volumeBoost).toInt().coerceIn(-32768, 32767).toShort()
-            }
-        } else pcm
-        at.write(amplified, 0, amplified.size)
+        at.write(full, 0, full.size)
         at.play()
         // Освободить после воспроизведения
         Thread {
