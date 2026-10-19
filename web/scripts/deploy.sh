@@ -98,7 +98,10 @@ fi
 STAMP=$(date +%Y%m%d-%H%M)
 ARCHIVE="$MESHTRX_BACKUP_DIR/meshtrx-backup-$STAMP.tar.gz"
 echo "==> Архив прежней версии: $ARCHIVE"
-$SSH "$TARGET" "cd /var/www && tar czf '$ARCHIVE' \$(ls -d meshtrx meshtrx-ru meshtrx-en 2>/dev/null)"
+# Архив на каждую выкладку и без удаления — к 19.10.2026 их набралось 18 по
+# ~600 МБ, диск сервера заполнился на 100%, а на нём живёт и chek-avto.
+# Держим три последних; недописанный архив (кончилось место) не оставляем.
+$SSH "$TARGET" "cd /var/www && { tar czf '$ARCHIVE' \$(ls -d meshtrx meshtrx-ru meshtrx-en 2>/dev/null) || { rm -f '$ARCHIVE'; echo 'Архив не записан — места на сервере: ' \$(df -h / | awk 'NR==2{print \$4}') >&2; exit 1; }; } && ls -1 $MESHTRX_BACKUP_DIR/meshtrx-backup-*.tar.gz | sort | head -n -3 | xargs -r rm -f"
 
 for loc in ru en; do
   echo "==> Выгрузка $loc → $MESHTRX_DEPLOY_PATH-$loc"
