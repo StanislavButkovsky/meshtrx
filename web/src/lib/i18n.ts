@@ -221,7 +221,7 @@ export const translations = {
   'about.diff.r5.x': { ru: '23 канала: 863,15–869,75 МГц с шагом 300 кГц', en: '23 channels: 863.15–869.75 MHz, 300 kHz apart' },
   'about.diff.r6.a': { ru: 'Шифрование', en: 'Encryption' },
   'about.diff.r6.m': { ru: 'AES-256', en: 'AES-256' },
-  'about.diff.r6.x': { ru: 'Пока нет: эфир открыт, общий ключ на канал в планах', en: 'Not yet: the air is open, a shared per-channel key is planned' },
+  'about.diff.r6.x': { ru: 'AES-256 по кодовому слову группы: эфир открыт, пока слово не задано; ключ сверяют по отпечатку из четырёх знаков', en: 'AES-256 from a shared group passphrase: the air is open until one is set; keys are checked by a four-character fingerprint' },
   'about.compare.note': { ru: 'Совместимости между прошивками нет — это разные протоколы, и устройства друг друга не слышат. Зато железо одно и то же: если MeshTRX не подойдёт, модуль всегда можно прошить обратно. Meshtastic® — зарегистрированный товарный знак; наш проект с ним никак не связан.', en: 'The two firmwares are not compatible — different protocols, and the devices do not hear each other. The hardware, though, is the same: if MeshTRX does not suit you, the module can always be flashed back. Meshtastic® is a registered trademark; this project is not affiliated with it.' },
 
   'about.usage': { ru: 'Применение', en: 'Use cases' },

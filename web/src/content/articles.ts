@@ -139,11 +139,13 @@ What the radio can do today is in the [documentation](/docs/). What is in progre
       en: 'Encryption in 39 bytes',
     },
     summary: {
-      ru: 'Сейчас эфир MeshTRX открыт, и мы говорим об этом прямо. Разбираем, почему «просто включить AES» не работает в пакете на 39 байт, сколько стоит подпись пакета в миллисекундах эфира и что реально даёт общий ключ на канал.',
-      en: 'MeshTRX traffic is unencrypted today, and we say so plainly. Here is why "just turn on AES" does not work in a 39-byte packet, what an authentication tag costs in milliseconds of air time, and what a shared channel key actually buys you.',
+      ru: 'На момент статьи эфир MeshTRX был открыт (шифрование появилось в 4.4.19). Разбираем, почему «просто включить AES» не работает в пакете на 39 байт, сколько стоит подпись пакета в миллисекундах эфира и что реально даёт общий ключ на канал.',
+      en: 'At the time of writing MeshTRX traffic was unencrypted (encryption arrived in 4.4.19). Here is why "just turn on AES" does not work in a 39-byte packet, what an authentication tag costs in milliseconds of air time, and what a shared channel key actually buys you.',
     },
     body: {
-      ru: `Сначала прямо: **сегодня в MeshTRX ничего не шифруется**. Ни голос, ни сообщения, ни файлы, ни координаты в маяках. Любой человек с такой же рацией на том же канале слышит разговор целиком. Соединение телефона с рацией по Bluetooth тоже открыто — PIN там защищает от случайного чужого подключения, а не от прослушивания.
+      ru: `> **Обновление.** С прошивки 4.4.19 и приложения 4.4.12 шифрование работает: AES-256 по кодовому слову группы, ключ сверяют по отпечатку. Как включить — в [документации](/docs/#шифрование-эфира). Ниже — статья в том виде, в каком она вышла.
+
+Сначала прямо: **сегодня в MeshTRX ничего не шифруется**. Ни голос, ни сообщения, ни файлы, ни координаты в маяках. Любой человек с такой же рацией на том же канале слышит разговор целиком. Соединение телефона с рацией по Bluetooth тоже открыто — PIN там защищает от случайного чужого подключения, а не от прослушивания.
 
 Это стоит знать до того, как вы решите, для чего использовать такую связь. А дальше — почему так вышло и что мы собираемся с этим делать.
 
@@ -233,7 +235,9 @@ What the radio can do today is in the [documentation](/docs/). What is in progre
 Сроков не называем: проект делается по вечерам, и обещать даты было бы враньём. Но пока шифрования нет, мы будем писать об этом прямо — в документации, на странице проекта и здесь.
 
 Как устроена сеть, где всё это будет жить, — в [статье про ретранслятор](/articles/repeater-math/). Что уже умеет продукт — в [документации](/docs/). Спорить о том, каким должен быть обмен ключами, лучше всего в [группе](https://t.me/MeshTRX): эта статья написана во многом по её вопросам.`,
-      en: `First, plainly: **nothing in MeshTRX is encrypted today**. Not voice, not messages, not files, not the coordinates in beacons. Anyone with the same radio on the same channel hears the whole conversation. The Bluetooth link between phone and radio is open too — the PIN there protects against someone connecting by accident, not against eavesdropping.
+      en: `> **Update.** Since firmware 4.4.19 and app 4.4.12 encryption works: AES-256 from a shared group passphrase, keys checked by a fingerprint. How to turn it on is in the [documentation](/docs/). The article below is as originally published.
+
+First, plainly: **nothing in MeshTRX is encrypted today**. Not voice, not messages, not files, not the coordinates in beacons. Anyone with the same radio on the same channel hears the whole conversation. The Bluetooth link between phone and radio is open too — the PIN there protects against someone connecting by accident, not against eavesdropping.
 
 That is worth knowing before you decide what to use this kind of link for. Now, why it turned out this way and what we intend to do about it.
 
@@ -920,7 +924,7 @@ MeshTRX использует режим 3200 — 3200 бит в секунду. 
 
 **Только речь.** Модель рассчитана на одного говорящего. Музыка, шум ветра, второй голос на фоне не передаются в принципе — на выходе будет невнятица.
 
-**Эфир открыт.** Шифрования в MeshTRX пока нет, пакеты идут открытым текстом, и принять их может кто угодно с таким же модулем. Общий ключ на канал — в планах, но сегодня это так.
+**Эфир открыт, пока не задан ключ.** Без кодового слова пакеты идут открытым текстом, и принять их может кто угодно с таким же модулем. Когда статья выходила, шифрования не было вовсе; с прошивки 4.4.19 его включают кодовым словом группы (AES-256).
 
 **Дальность честная, а не рекламная.** Пять километров, которые заявлены у MeshTRX, — это прямая видимость. В городе, в лесу, между этажами будет меньше, иногда сильно меньше. Ретранслятор помогает, но он же занимает канал.
 
@@ -998,7 +1002,7 @@ The honest part.
 
 **Speech only.** The model assumes a single speaker. Music, wind noise, a second voice in the background simply do not survive the trip — what comes out is mush.
 
-**The air is open.** MeshTRX has no encryption yet, packets travel in the clear, and anyone with the same module can receive them. A shared per-channel key is planned, but that is how it stands today.
+**The air is open until a key is set.** Without a passphrase packets travel in the clear, and anyone with the same module can receive them. When this article came out there was no encryption at all; since firmware 4.4.19 it is turned on with a shared group passphrase (AES-256).
 
 **The range figure is honest, not promotional.** The five kilometres claimed for MeshTRX mean line of sight. In a city, in a forest, between floors it will be less, sometimes much less. A repeater helps, but it also occupies the channel.
 
