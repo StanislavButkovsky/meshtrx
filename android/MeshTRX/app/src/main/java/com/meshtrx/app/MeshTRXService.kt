@@ -8,6 +8,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.*
 import android.util.Log
@@ -64,12 +65,7 @@ class MeshTRXService : Service() {
         Log.d(TAG, "Service created")
 
         createNotificationChannel()
-        val notif = buildNotification("Запуск...")
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(NOTIF_ID, notif, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
-        } else {
-            startForeground(NOTIF_ID, notif)
-        }
+        goForeground()
 
         bleManager = BleManager(applicationContext)
         audioEngine = AudioEngine()
@@ -197,6 +193,11 @@ class MeshTRXService : Service() {
     // === Public commands (called by fragments via binding) ===
 
     fun startScan(showPicker: Boolean = false) {
+        if (!hasBlePermission()) {
+            ServiceState.connectionState.value = BleState.DISCONNECTED
+            ServiceState.statusMessage.value = "Нет доступа к Bluetooth — разрешите его в настройках телефона"
+            return
+        }
         ServiceState.scanResults.value = emptyList()
         ServiceState.connectionState.value = BleState.SCANNING
         if (showPicker) {
@@ -312,6 +313,7 @@ class MeshTRXService : Service() {
 
     @SuppressLint("MissingPermission")
     fun autoConnect() {
+        if (!hasBlePermission()) return
         val addr = prefs.getString("last_device_addr", null) ?: return
         val name = prefs.getString("last_device_name", "") ?: ""
         if (!isDeviceAuthorized(addr)) return
@@ -1689,6 +1691,38 @@ class MeshTRXService : Service() {
     }
 
     override fun onBind(intent: Intent): IBinder = binder
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        goForeground()
+        return super.onStartCommand(intent, flags, startId)
+    }
+
+    /** Есть ли разрешение на Bluetooth. До Android 12 оно выдаётся при установке. */
+    fun hasBlePermission(): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+            checkSelfPermission(android.Manifest.permission.BLUETOOTH_CONNECT) ==
+                PackageManager.PERMISSION_GRANTED
+
+    // Фоновая служба «связь с устройством». Android 14+ закрывает приложение,
+    // если включить её до того, как человек разрешил Bluetooth, — так RuStore
+    // и отклонил 4.4.25: при первом запуске окно разрешений ещё открыто, а
+    // служба уже стартовала. Без разрешения служба живёт просто привязанной к
+    // экрану; MainActivity запустит её заново, когда разрешение дадут.
+    private var inForeground = false
+    private fun goForeground() {
+        if (inForeground || !hasBlePermission()) return
+        val notif = buildNotification("Запуск...")
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(NOTIF_ID, notif, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
+            } else {
+                startForeground(NOTIF_ID, notif)
+            }
+            inForeground = true
+        } catch (e: Exception) {
+            Log.w(TAG, "фоновая служба не включена: ${e.message}")
+        }
+    }
 
     override fun onDestroy() {
         stopReconnect()

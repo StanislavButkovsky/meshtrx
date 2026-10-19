@@ -53,14 +53,9 @@ class MainActivity : AppCompatActivity() {
 
         requestPermissions()
 
-        // Запустить foreground service
-        val serviceIntent = Intent(this, MeshTRXService::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(serviceIntent)
-        } else {
-            startService(serviceIntent)
-        }
-        bindService(serviceIntent, connection, Context.BIND_AUTO_CREATE)
+        // Служба: привязка сразу, фоновый режим — только с разрешением Bluetooth
+        startServiceIfAllowed()
+        bindService(Intent(this, MeshTRXService::class.java), connection, Context.BIND_AUTO_CREATE)
 
         // Fragments
         supportFragmentManager.beginTransaction()
@@ -198,6 +193,24 @@ class MainActivity : AppCompatActivity() {
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         tryStartLocation()
+        startServiceIfAllowed()
+        if (bound) service?.autoConnect()
+    }
+
+    // Фоновую службу «связь с устройством» Android 14+ разрешает включать
+    // только после разрешения на Bluetooth, иначе закрывает приложение. При
+    // первом запуске окно разрешений ещё открыто — тогда служба стартует из
+    // onRequestPermissionsResult.
+    private fun startServiceIfAllowed() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT)
+                != PackageManager.PERMISSION_GRANTED) return
+        val serviceIntent = Intent(this, MeshTRXService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(serviceIntent)
+        } else {
+            startService(serviceIntent)
+        }
     }
 
     override fun onDestroy() {
