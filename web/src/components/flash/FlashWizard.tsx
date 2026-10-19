@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { isWebSerialSupported, requestPort, flashFirmware, type FlashProgress as FlashProgressType } from '@/lib/flash-utils';
-import Link from 'next/link';
+import { isWebSerialSupported, requestPort, flashFirmware, flashBoards, type FlashBoard, type FlashProgress as FlashProgressType } from '@/lib/flash-utils';
 import { DOWNLOAD_LINKS, VERSION } from '@/lib/constants';
 import { useLanguage } from '@/components/LanguageProvider';
 import type { TranslationKey } from '@/lib/i18n';
@@ -14,6 +13,10 @@ const STEP_KEYS: TranslationKey[] = ['flash.step1', 'flash.step2', 'flash.step3'
 export default function FlashWizard() {
   const { t } = useLanguage();
   const [port, setPort] = useState<SerialPort | null>(null);
+  // Плату человек выбирает сам и явно: прошивка чужой ревизии запустится,
+  // но усилителем будет управлять не тот вывод. Угадывать по умолчанию нельзя.
+  const boards = flashBoards(DOWNLOAD_LINKS);
+  const [board, setBoard] = useState<FlashBoard | null>(null);
   const [progress, setProgress] = useState<FlashProgressType>({
     stage: 'idle',
     percent: 0,
@@ -45,11 +48,11 @@ export default function FlashWizard() {
   };
 
   const handleFlash = async () => {
-    if (!port) return;
+    if (!port || !board) return;
     setFlashing(true);
     setLogs([]);
     try {
-      await flashFirmware(port, DOWNLOAD_LINKS.firmware, setProgress, addLog);
+      await flashFirmware(port, board, setProgress, addLog);
     } catch {
       // Error handled in flashFirmware
     } finally {
@@ -83,25 +86,32 @@ export default function FlashWizard() {
         ))}
       </div>
 
-      {/* Мастер заливает образ V3 — единственный, для которого здесь лежат
-          загрузчик и таблица разделов. Владелец V4, не заметив этого, получит
-          плату, которая управляет усилителем не тем выводом: слышно хуже или
-          эфира нет вовсе. Поэтому предупреждение стоит до кнопок, а не после. */}
-      <div className="mb-4 p-4 rounded-xl bg-amber-500/5 border border-amber-500/30">
-        <h4 className="text-sm font-semibold text-amber-400 mb-1">{t('flash.v4.title')}</h4>
-        <p className="text-sm text-text-secondary leading-relaxed">
-          {t('flash.v4.desc')}{' '}
-          <Link href="/download/" className="text-accent hover:underline">
-            {t('nav.download')}
-          </Link>
-        </p>
+      <div className="p-4 rounded-xl bg-bg-card border border-border">
+        <h4 className="text-sm font-semibold text-text-primary mb-1">{t('flash.board.title')}</h4>
+        <p className="text-sm text-text-secondary leading-relaxed mb-3">{t('flash.board.hint')}</p>
+        <div className="flex flex-wrap gap-2">
+          {boards.map((b) => (
+            <button
+              key={b.id}
+              onClick={() => setBoard(b)}
+              disabled={flashing}
+              className={`px-4 py-2 rounded-lg border text-sm font-semibold transition-colors disabled:opacity-50 ${
+                board?.id === b.id
+                  ? 'border-accent bg-accent/15 text-accent'
+                  : 'border-border text-text-secondary hover:border-accent/40 hover:text-accent'
+              }`}
+            >
+              {b.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="p-6 rounded-xl bg-bg-card border border-border space-y-4">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="font-semibold text-text-primary">Firmware v{VERSION.firmware}</h3>
-            <p className="text-sm text-text-secondary">Heltec WiFi LoRa 32 V3 (ESP32-S3)</p>
+            <p className="text-sm text-text-secondary">{board ? board.label : t('flash.board.none')}</p>
           </div>
           <div className="flex gap-3">
             {!port && (
@@ -116,7 +126,7 @@ export default function FlashWizard() {
             {port && (
               <button
                 onClick={handleFlash}
-                disabled={flashing}
+                disabled={flashing || !board}
                 className="px-4 py-2 bg-accent text-bg font-semibold rounded-lg hover:bg-accent-dim transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {flashing ? t('flash.btn.busy') : t('flash.btn')}
