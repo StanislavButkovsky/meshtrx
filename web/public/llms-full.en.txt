@@ -100,7 +100,7 @@ pio run -e heltec_wifi_lora_32_V43 --target upload --upload-port /dev/ttyUSB0   
 
 After updating the firmware, **update the app as well**: the two agree on a shared protocol, and the pair "new firmware + old app" may fail to find each other over Bluetooth.
 
-**Flashing by hand, with esptool.** You will need this for a V4: the wizard on the site only writes the V3 image. The firmware file alone is not enough — after a full erase the board has neither a bootloader nor a partition table left, and it goes into an endless reboot loop. Four files are needed, each at its own address:
+**Flashing by hand, with esptool.** You will need this if the browser wizard does not suit you (no Chrome or Edge, flashing from another computer). The firmware file alone is not enough — after a full erase the board has neither a bootloader nor a partition table left, and it goes into an endless reboot loop. Four files are needed, each at its own address:
 
 ```bash
 # esptool 5.x — the command and flags use dashes

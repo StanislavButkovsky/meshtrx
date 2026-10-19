@@ -43,21 +43,51 @@ export async function requestPort(): Promise<SerialPort | null> {
   }
 }
 
+// Что заливать на каждую плату. Раньше мастер умел только V3, а владельцам
+// V4 предлагал esptool. У V4 своя прошивка (другой усилитель — другой вывод
+// управления) и своя таблица разделов: памяти 16 МБ, а не 8. В заголовке
+// загрузчика записан размер памяти; esptool.py правит его при записи
+// (--flash-size 16MB), а esptool-js 0.5.7 этот шаг молча пропускает — читает
+// двоичную строку через parseInt и решает, что это не образ. С загрузчиком
+// «на 8 МБ» плата пишет «partition exceeds flash chip size» и не стартует.
+// Поэтому для V4 лежит отдельный загрузчик, уже исправленный на 16 МБ
+// (esptool merge_bin --flash_size 16MB, контрольная сумма пересчитана).
+export interface FlashBoard {
+  id: 'v3' | 'v4' | 'v43';
+  label: string;
+  firmware: string;
+  bootloader: string;
+  partitions: string;
+  flash16MB: boolean;
+}
+
+export function flashBoards(links: { firmware: string; firmwareV4: string; firmwareV43: string }): FlashBoard[] {
+  return [
+    { id: 'v3', label: 'Heltec V3', firmware: links.firmware,
+      bootloader: '/downloads/bootloader.bin', partitions: '/downloads/partitions.bin', flash16MB: false },
+    { id: 'v4', label: 'Heltec V4 (rev 4.2)', firmware: links.firmwareV4,
+      bootloader: '/downloads/bootloader-v4-16mb.bin', partitions: '/downloads/partitions-v4.bin', flash16MB: true },
+    { id: 'v43', label: 'Heltec V4.3', firmware: links.firmwareV43,
+      bootloader: '/downloads/bootloader-v4-16mb.bin', partitions: '/downloads/partitions-v4.bin', flash16MB: true },
+  ];
+}
+
 export async function flashFirmware(
   port: SerialPort,
-  firmwareUrl: string,
+  board: FlashBoard,
   onProgress: (progress: FlashProgress) => void,
-  onLog: (line: string) => void
+  onLog: (line: string) => void,
+  base = ''
 ): Promise<void> {
   onProgress({ stage: 'connecting', percent: 0, message: 'Загрузка файлов прошивки...' });
 
   try {
-    const basePath = firmwareUrl.replace(/\/[^/]+$/, '');
+    onLog(`> Плата: ${board.label}`);
     const [bootloaderRes, partitionsRes, bootApp0Res, firmwareRes] = await Promise.all([
-      fetch(`${basePath}/bootloader.bin`),
-      fetch(`${basePath}/partitions.bin`),
-      fetch(`${basePath}/boot_app0.bin`),
-      fetch(firmwareUrl),
+      fetch(base + board.bootloader),
+      fetch(base + board.partitions),
+      fetch(base + '/downloads/boot_app0.bin'),
+      fetch(base + board.firmware),
     ]);
     if (!bootloaderRes.ok) throw new Error(`Не удалось загрузить bootloader: ${bootloaderRes.status}`);
     if (!partitionsRes.ok) throw new Error(`Не удалось загрузить partitions: ${partitionsRes.status}`);
@@ -75,7 +105,7 @@ export async function flashFirmware(
     onLog('> Загрузка esptool...');
     const { ESPLoader, Transport } = await import('esptool-js');
 
-    // 1200-baud reset trick — переводит ESP32-S3 (USB-CDC) в download mode
+    // 1200-baud reset trick — переводит ESP32-S3 (USB-CDC) в download mode.
     onProgress({ stage: 'connecting', percent: 5, message: 'Сброс в режим загрузки (1200 baud)...' });
     onLog('> 1200-baud reset для входа в download mode...');
     await baud1200Reset(port);
@@ -96,6 +126,15 @@ export async function flashFirmware(
     onLog('> Подключение к ESP32...');
     const chipInfo = await esploader.main();
     onLog(`> Чип: ${chipInfo}`);
+    if (board.flash16MB) {
+      // Прошивка V4 на плату с 8 МБ не поместится — лучше сказать сразу,
+      // чем залить и получить плату, которая не стартует
+      const size = await esploader.getFlashSize();
+      onLog(`> Память: ${size / 1024} МБ`);
+      if (size > 0 && size < 16 * 1024) {
+        throw new Error(`На плате ${size / 1024} МБ памяти, а у V4 — 16 МБ. Похоже, это V3: выберите V3 и прошейте снова.`);
+      }
+    }
 
     onProgress({ stage: 'flashing', percent: 20, message: 'Запись прошивки...' });
     onLog('> Запись прошивки...');
@@ -120,9 +159,11 @@ export async function flashFirmware(
     });
 
     onLog('> Перезагрузка устройства...');
-    await transport.setRTS(true);
-    await new Promise(r => setTimeout(r, 100));
-    await transport.setRTS(false);
+    // DTR держит GPIO0 «внизу» с момента входа в загрузчик. Если не отпустить
+    // его до сброса, плата с USB-JTAG (V4) перезагрузится обратно в режим
+    // прошивки и будет молчать, хотя на экране «Готово».
+    await transport.setDTR(false);
+    await esploader.after('hard_reset');
 
     onProgress({ stage: 'done', percent: 100, message: 'Прошивка завершена!' });
     onLog('> Готово! Устройство перезагружается.');

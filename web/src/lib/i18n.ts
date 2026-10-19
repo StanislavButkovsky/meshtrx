@@ -144,7 +144,7 @@ export const translations = {
 
   // Flash page
   'flash.title': { ru: 'Прошивка модуля', en: 'Flash Firmware' },
-  'flash.desc': { ru: 'Прошейте Heltec V3 прямо из браузера через Web Serial API.', en: 'Flash Heltec V3 directly from the browser via Web Serial API.' },
+  'flash.desc': { ru: 'Прошейте Heltec V3 или V4 прямо из браузера через Web Serial API.', en: 'Flash Heltec V3 or V4 directly from the browser via Web Serial API.' },
   'flash.supported': { ru: 'Web Serial поддерживается', en: 'Web Serial supported' },
   'flash.unsupported': { ru: 'Web Serial не поддерживается', en: 'Web Serial not supported' },
   'flash.unsupported.desc': { ru: 'Для прошивки используйте Chrome или Edge на десктопе.', en: 'Use Chrome or Edge on desktop for flashing.' },
@@ -154,9 +154,10 @@ export const translations = {
   'flash.select': { ru: 'Выбрать порт', en: 'Select port' },
   'flash.btn': { ru: 'Прошить', en: 'Flash' },
   'flash.btn.busy': { ru: 'Прошивка...', en: 'Flashing...' },
-  'flash.v4.title': { ru: 'У вас V4?', en: 'Got a V4?' },
-  'flash.v4.desc': { ru: 'Мастер в браузере заливает образ для V3. У ревизий V4 другие усилители, и этот образ на них управляет усилителем не тем выводом. Файл для своей ревизии возьмите на странице загрузки и прошейте через esptool.', en: 'The in-browser wizard writes the V3 image. The V4 revisions use different front-end chips, and this image drives the amplifier from the wrong pin on them. Take the file for your revision from the download page and flash it with esptool.' },
-  'flash.idle': { ru: 'Подключите Heltec V3 по USB и нажмите "Выбрать порт"', en: 'Connect Heltec V3 via USB and click "Select port"' },
+  'flash.board.title': { ru: 'Какая у вас плата?', en: 'Which board do you have?' },
+  'flash.board.hint': { ru: 'Ревизия напечатана мелким шрифтом на плате рядом с разъёмом антенны. Прошивка чужой ревизии запустится, но усилитель будет управляться не тем выводом — плата станет хуже слышать или не выйдет в эфир.', en: 'The revision is printed in small type next to the antenna connector. Firmware for the wrong revision boots, but drives the amplifier from the wrong pin — the board hears worse or does not transmit.' },
+  'flash.board.none': { ru: 'Сначала выберите плату', en: 'Pick a board first' },
+  'flash.idle': { ru: 'Выберите плату, подключите её по USB и нажмите "Выбрать порт"', en: 'Pick your board, connect it via USB and click "Select port"' },
   'flash.port.ok': { ru: 'Порт выбран. Зажмите BOOT на модуле, нажмите RST, отпустите BOOT — затем нажмите "Прошить".', en: 'Port selected. Hold BOOT on module, press RST, release BOOT — then click "Flash".' },
   'flash.connecting': { ru: 'Подключение к устройству...', en: 'Connecting to device...' },
   'flash.erasing': { ru: 'Стирание flash...', en: 'Erasing flash...' },
@@ -175,8 +176,8 @@ export const translations = {
   'flash.unavailable.desc': { ru: 'Веб-прошивка находится в доработке. Используйте PlatformIO для прошивки модуля.', en: 'Web flashing is being reworked. Use PlatformIO to flash the module.' },
 
   // About page
-  'dl.manual.title': { ru: 'Ручная прошивка V4', en: 'Flashing a V4 by hand' },
-  'dl.manual.desc': { ru: 'Мастер в браузере заливает только образ V3. Для V4 нужен esptool, а к нему — ещё три файла, каждый по своему адресу. Порядок и команда —', en: 'The browser wizard only writes the V3 image. A V4 needs esptool, and three more files besides the firmware, each at its own address. The steps and the command are in the' },
+  'dl.manual.title': { ru: 'Ручная прошивка через esptool', en: 'Flashing by hand with esptool' },
+  'dl.manual.desc': { ru: 'Обычно хватает мастера в браузере — он умеет все три платы. Если прошиваете своими средствами, для V4 к файлу прошивки нужны ещё три, каждый по своему адресу. Порядок и команда —', en: 'The browser wizard handles all three boards. If you flash with your own tools, a V4 needs three more files besides the firmware, each at its own address. Order and command —' },
   'dl.manual.docs': { ru: 'в документации', en: 'documentation' },
 
   'about.title': { ru: 'О проекте', en: 'About' },

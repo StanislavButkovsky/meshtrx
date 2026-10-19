@@ -108,8 +108,8 @@ pio run -e heltec_wifi_lora_32_V43 --target upload --upload-port /dev/ttyUSB0   
 общему протоколу, и старая пара «новая прошивка + старое приложение» может
 не найти друг друга по Bluetooth.
 
-**Прошивка вручную, через esptool.** Понадобится, если прошиваете V4: мастер на
-сайте заливает только образ V3. Одного файла прошивки мало — после полного
+**Прошивка вручную, через esptool.** Понадобится, если браузерный мастер не
+подходит (нет Chrome или Edge, прошиваете с другого компьютера). Одного файла прошивки мало — после полного
 стирания на плате не остаётся ни загрузчика, ни таблицы разделов, и она уходит
 в бесконечную перезагрузку. Нужны четыре файла, каждый по своему адресу:
 
@@ -158,7 +158,7 @@ esptool.py --chip esp32s3 --port COM3 --baud 921600 \\
 \`\`\`bash
 cd android/MeshTRX
 ./gradlew assembleDebug
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb install -r app/build/outputs/apk/site/debug/app-site-debug.apk
 \`\`\`
 
 ### 3. Подключение по BLE
@@ -995,7 +995,7 @@ pio run -e heltec_wifi_lora_32_V43 --target upload --upload-port /dev/ttyUSB0   
 
 After updating the firmware, **update the app as well**: the two agree on a shared protocol, and the pair "new firmware + old app" may fail to find each other over Bluetooth.
 
-**Flashing by hand, with esptool.** You will need this for a V4: the wizard on the site only writes the V3 image. The firmware file alone is not enough — after a full erase the board has neither a bootloader nor a partition table left, and it goes into an endless reboot loop. Four files are needed, each at its own address:
+**Flashing by hand, with esptool.** You will need this if the browser wizard does not suit you (no Chrome or Edge, flashing from another computer). The firmware file alone is not enough — after a full erase the board has neither a bootloader nor a partition table left, and it goes into an endless reboot loop. Four files are needed, each at its own address:
 
 \`\`\`bash
 # esptool 5.x — the command and flags use dashes
@@ -1034,7 +1034,7 @@ From source:
 \`\`\`bash
 cd android/MeshTRX
 ./gradlew assembleDebug
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb install -r app/build/outputs/apk/site/debug/app-site-debug.apk
 \`\`\`
 
 ### 3. Connecting over BLE
