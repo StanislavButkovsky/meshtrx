@@ -9,7 +9,8 @@ import { useLanguage } from '@/components/LanguageProvider';
  * рассказать о результате не выглядит навязчивой.
  */
 export default function Feedback() {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
+  const community = locale === 'ru' ? SITE.telegram : SITE.discussions;
 
   return (
     <div className="p-6 rounded-xl bg-bg-card border border-accent/40">
@@ -30,14 +31,14 @@ export default function Feedback() {
       </ul>
       <div className="flex flex-wrap items-center gap-3">
         <a
-          href={SITE.telegram}
+          href={community}
           target="_blank"
           rel="noopener noreferrer"
           className="px-4 py-2 rounded-lg bg-accent text-bg font-bold text-sm hover:opacity-90 transition"
         >
           {t('dl.feedback.tg')}
         </a>
-        <span className="text-sm text-text-secondary">t.me/MeshTRX</span>
+        <span className="text-sm text-text-secondary">{locale === 'ru' ? 't.me/MeshTRX' : 'GitHub Discussions'}</span>
       </div>
     </div>
   );

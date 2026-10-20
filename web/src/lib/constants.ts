@@ -8,6 +8,9 @@ export const SITE = {
   licenseUrl: 'https://github.com/StanislavButkovsky/meshtrx/blob/master/LICENSE',
   license: 'CC BY-NC 4.0',
   telegram: 'https://t.me/MeshTRX',
+  // Русская группа живёт в Telegram; англоязычным — обсуждения на GitHub:
+  // их находит поиск, и отдельной площадки вести не нужно.
+  discussions: 'https://github.com/StanislavButkovsky/meshtrx/discussions',
 };
 
 export const VERSION = {

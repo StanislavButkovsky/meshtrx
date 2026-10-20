@@ -24,6 +24,10 @@ export default function Footer() {
             Telegram
           </a>
           <span>•</span>
+          <a href={SITE.discussions} target="_blank" rel="noopener noreferrer" className="hover:text-accent transition-colors">
+            {locale === 'ru' ? 'Обсуждения (EN)' : 'Discussions'}
+          </a>
+          <span>•</span>
           <a href={SITE.licenseUrl} target="_blank" rel="noopener noreferrer" className="hover:text-accent transition-colors">
             {SITE.license}
           </a>
