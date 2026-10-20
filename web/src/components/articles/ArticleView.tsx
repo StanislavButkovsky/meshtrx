@@ -80,7 +80,7 @@ export default function ArticleView({ article }: { article: Article }) {
         <h2 className="text-lg font-bold mb-2">{t('articles.join.title')}</h2>
         <p className="text-sm text-text-secondary mb-4">{t('articles.join.text')}</p>
         <a
-          href={SITE.telegram}
+          href={locale === 'ru' ? SITE.telegram : SITE.discussions}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-block px-4 py-2 rounded-lg bg-accent text-bg font-medium text-sm hover:opacity-90 transition-opacity"

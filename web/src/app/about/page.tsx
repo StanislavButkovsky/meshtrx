@@ -144,6 +144,15 @@ export default function AboutPage() {
               <span className="text-text-secondary text-sm">{SITE.telegram}</span>
             </a>
             <a
+              href={SITE.discussions}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-between p-3 rounded-lg bg-bg hover:bg-bg-hover border border-border transition-colors"
+            >
+              <span className="text-text-primary">{t('about.discussions')}</span>
+              <span className="text-text-secondary text-sm">github.com/…/meshtrx/discussions</span>
+            </a>
+            <a
               href={MESHTASTIC}
               target="_blank"
               rel="noopener noreferrer"
