@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Только отладочная сборка: приёмник заполняет экраны примерами для
+     снимков и роликов (adb shell am broadcast -a com.meshtrx.app.DEMO
+     -n com.meshtrx.app/.DemoReceiver). В выпуск не попадает. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <receiver android:name=".DemoReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="com.meshtrx.app.DEMO" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>
