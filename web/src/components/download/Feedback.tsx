@@ -10,7 +10,7 @@ import { useLanguage } from '@/components/LanguageProvider';
  */
 export default function Feedback() {
   const { t, locale } = useLanguage();
-  const community = locale === 'ru' ? SITE.telegram : SITE.discussions;
+  const community = locale === 'ru' ? SITE.telegram : SITE.telegramEn;
 
   return (
     <div className="p-6 rounded-xl bg-bg-card border border-accent/40">
@@ -38,7 +38,7 @@ export default function Feedback() {
         >
           {t('dl.feedback.tg')}
         </a>
-        <span className="text-sm text-text-secondary">{locale === 'ru' ? 't.me/MeshTRX' : 'GitHub Discussions'}</span>
+        <span className="text-sm text-text-secondary">{locale === 'ru' ? 't.me/MeshTRX' : 't.me/MeshTRX_en'}</span>
       </div>
     </div>
   );

@@ -20,7 +20,7 @@ export default function Footer() {
             GitHub
           </a>
           <span>•</span>
-          <a href={SITE.telegram} target="_blank" rel="noopener noreferrer" className="hover:text-accent transition-colors">
+          <a href={locale === 'ru' ? SITE.telegram : SITE.telegramEn} target="_blank" rel="noopener noreferrer" className="hover:text-accent transition-colors">
             Telegram
           </a>
           <span>•</span>
