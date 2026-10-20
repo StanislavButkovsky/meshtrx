@@ -4,7 +4,7 @@ import { SITE } from '@/lib/constants';
 import { useLanguage } from '@/components/LanguageProvider';
 
 export default function AboutPage() {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
 
   const usageKeys = ['about.usage1', 'about.usage2', 'about.usage3', 'about.usage4', 'about.usage5'] as const;
   const storyKeys = ['about.story1', 'about.story2', 'about.story3', 'about.story4', 'about.story5', 'about.story6'] as const;
@@ -121,6 +121,25 @@ export default function AboutPage() {
             {t('about.license.terms')}
           </p>
         </section>
+
+        {locale === 'ru' && (
+          <section className="p-6 rounded-xl bg-bg-card border border-accent/40">
+            <h2 className="text-xl font-bold text-text-primary mb-3">Поддержать проект</h2>
+            <p className="text-text-secondary leading-relaxed mb-4">
+              MeshTRX бесплатный и некоммерческий: прошивка, приложения и сайт делаются по вечерам для
+              радиолюбителей. Если рация вам пригодилась, можно поддержать проект — деньги пойдут на платы,
+              антенны и полевые испытания. Картой или по СБП, любая сумма.
+            </p>
+            <a
+              href={SITE.donate}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block px-5 py-2.5 rounded-lg bg-accent text-bg font-semibold hover:opacity-90 transition-opacity"
+            >
+              Поддержать через CloudTips
+            </a>
+          </section>
+        )}
 
         <section className="p-6 rounded-xl bg-bg-card border border-border">
           <h2 className="text-xl font-bold text-text-primary mb-3">{t('about.links')}</h2>
