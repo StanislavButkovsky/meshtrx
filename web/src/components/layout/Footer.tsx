@@ -28,6 +28,14 @@ export default function Footer() {
             {locale === 'ru' ? 'Обсуждения (EN)' : 'Discussions'}
           </a>
           <span>•</span>
+          {locale === 'ru' && (
+            <>
+              <a href={SITE.donate} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">
+                Поддержать проект
+              </a>
+              <span>•</span>
+            </>
+          )}
           <a href={SITE.licenseUrl} target="_blank" rel="noopener noreferrer" className="hover:text-accent transition-colors">
             {SITE.license}
           </a>
