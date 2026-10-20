@@ -140,8 +140,17 @@ export default function AboutPage() {
               rel="noopener noreferrer"
               className="flex items-center justify-between p-3 rounded-lg bg-bg hover:bg-bg-hover border border-border transition-colors"
             >
-              <span className="text-text-primary">Telegram</span>
+              <span className="text-text-primary">{t('about.telegramRu')}</span>
               <span className="text-text-secondary text-sm">{SITE.telegram}</span>
+            </a>
+            <a
+              href={SITE.telegramEn}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-between p-3 rounded-lg bg-bg hover:bg-bg-hover border border-border transition-colors"
+            >
+              <span className="text-text-primary">{t('about.telegramEn')}</span>
+              <span className="text-text-secondary text-sm">{SITE.telegramEn}</span>
             </a>
             <a
               href={SITE.discussions}

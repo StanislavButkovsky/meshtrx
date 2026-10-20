@@ -118,7 +118,7 @@ export const translations = {
   'dl.feedback.title': { ru: 'Помогите проверить новую сборку', en: 'Help us test the new build' },
   'dl.feedback.desc': {
     ru: 'В этой версии переработано главное — связь между устройством и телефоном. Проверено на стенде из двух плат, но живой эфир, чужие стены и реальные телефоны всегда богаче любого стенда. Расскажите в Telegram, как повело себя ваше устройство.',
-    en: 'This release reworks the core of the link between the device and the phone. It passed the two-board bench, but real air, real walls and real phones are always richer than any bench. Tell us in the discussions how your device behaved.',
+    en: 'This release reworks the core of the link between the device and the phone. It passed the two-board bench, but real air, real walls and real phones are always richer than any bench. Tell us on Telegram how your device behaved.',
   },
   'dl.feedback.p1': {
     ru: 'Держится ли связь с телефоном и восстанавливается ли она сама после разрыва',
@@ -132,7 +132,7 @@ export const translations = {
     ru: 'Разборчивость голоса и дальность в ваших условиях — с версией устройства (V3 или V4)',
     en: 'Voice clarity and range in your conditions — mention your board version (V3 or V4)',
   },
-  'dl.feedback.tg': { ru: 'Написать отзыв в Telegram', en: 'Send feedback in Discussions' },
+  'dl.feedback.tg': { ru: 'Написать отзыв в Telegram', en: 'Send feedback on Telegram' },
   'dl.step3.desc': { ru: 'Откройте скачанный файл и следуйте инструкции установки.', en: 'Open the downloaded file and follow the installation instructions.' },
   'dl.step4.title': { ru: 'Подключите модуль', en: 'Connect the module' },
   'dl.step4.desc': { ru: 'Включите Bluetooth, откройте MeshTRX и подключитесь к устройству.', en: 'Enable Bluetooth, open MeshTRX and connect to the device.' },
@@ -234,6 +234,8 @@ export const translations = {
   'about.license.desc': { ru: 'Проект распространяется под лицензией', en: 'The project is licensed under' },
   'about.license.terms': { ru: 'Вы можете свободно использовать, копировать и распространять материалы проекта с указанием авторства. Коммерческое использование без разрешения запрещено.', en: 'You are free to use, copy and distribute the project materials with attribution. Commercial use without permission is prohibited.' },
   'about.links': { ru: 'Ссылки', en: 'Links' },
+  'about.telegramRu': { ru: 'Telegram', en: 'Telegram (Russian)' },
+  'about.telegramEn': { ru: 'Telegram на английском', en: 'Telegram (English)' },
   'about.discussions': { ru: 'Обсуждения на английском (GitHub)', en: 'Discussions (GitHub)' },
   'about.site': { ru: 'Сайт', en: 'Website' },
 
@@ -252,7 +254,7 @@ export const translations = {
     ru: 'Почти всё, о чём здесь написано, началось с чьего-то замера или жалобы в группе: там делятся дальностью из поля, ловят ошибки и спорят о том, что делать дальше. Расскажите, докуда добивают ваши рации, — или просто посмотрите, как это устроено изнутри.',
     en: 'Almost everything written here started with someone\'s measurement or complaint from the community: people share field range figures, catch bugs and argue about what to build next. Tell us how far your radios reach — or just watch how it all works from the inside.',
   },
-  'articles.join.button': { ru: 'Присоединиться к группе в Telegram', en: 'Join the discussions' },
+  'articles.join.button': { ru: 'Присоединиться к группе в Telegram', en: 'Join the Telegram group' },
 
   // iOS download page
   'ios.title': { ru: 'MeshTRX для iPhone', en: 'MeshTRX for iPhone' },
