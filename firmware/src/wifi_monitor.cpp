@@ -86,8 +86,8 @@ static void handleRoot() {
   // Chrome этого и так не происходит, но поведение зависит от браузера).
   html += "<div class='ch-form'><form method='GET' action='/channel' autocomplete='off'>";
   html += "<select name='ch' autocomplete='off'>";
-  for (int i = 0; i < 23; i++) {
-    float f = 863.15f + i * 0.3f;
+  for (int i = 0; i < NUM_CHANNELS; i++) {
+    float f = loraGetFrequency(i);
     html += "<option value='" + String(i) + "'";
     if (i == ch) html += " selected";
     html += ">CH " + String(i) + " &mdash; " + String(f, 2) + " MHz" +
@@ -137,7 +137,7 @@ static void handleRoot() {
 static void handleSetChannel() {
   if (server.hasArg("ch")) {
     int ch = server.arg("ch").toInt();
-    if (ch >= 0 && ch < 23) {
+    if (ch >= 0 && ch < NUM_CHANNELS) {
       currentChannel = ch;
       loraSetChannel(ch);
       loraStartReceive();
@@ -160,7 +160,7 @@ static void handleSetChannel() {
 static void handleSetChannelAll() {
   if (server.hasArg("ch")) {
     int ch = server.arg("ch").toInt();
-    if (ch >= 0 && ch < 23) {
+    if (ch >= 0 && ch < NUM_CHANNELS) {
       repeaterBroadcastChannel((uint8_t)ch);
       Serial.printf("[WiFi] Channel %d broadcast to all nodes\n", ch);
     }

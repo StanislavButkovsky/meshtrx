@@ -53,7 +53,7 @@ export async function requestPort(): Promise<SerialPort | null> {
 // Поэтому для V4 лежит отдельный загрузчик, уже исправленный на 16 МБ
 // (esptool merge_bin --flash_size 16MB, контрольная сумма пересчитана).
 export interface FlashBoard {
-  id: 'v3' | 'v4' | 'v43';
+  id: 'v3' | 'v3_433' | 'v4' | 'v43';
   label: string;
   firmware: string;
   bootloader: string;
@@ -61,9 +61,11 @@ export interface FlashBoard {
   flash16MB: boolean;
 }
 
-export function flashBoards(links: { firmware: string; firmwareV4: string; firmwareV43: string }): FlashBoard[] {
+export function flashBoards(links: { firmware: string; firmwareV3_433: string; firmwareV4: string; firmwareV43: string }): FlashBoard[] {
   return [
     { id: 'v3', label: 'Heltec V3', firmware: links.firmware,
+      bootloader: '/downloads/bootloader.bin', partitions: '/downloads/partitions.bin', flash16MB: false },
+    { id: 'v3_433', label: 'Heltec V3 · 433 MHz', firmware: links.firmwareV3_433,
       bootloader: '/downloads/bootloader.bin', partitions: '/downloads/partitions.bin', flash16MB: false },
     { id: 'v4', label: 'Heltec V4 (rev 4.2)', firmware: links.firmwareV4,
       bootloader: '/downloads/bootloader-v4-16mb.bin', partitions: '/downloads/partitions-v4.bin', flash16MB: true },

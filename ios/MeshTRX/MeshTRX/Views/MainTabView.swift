@@ -106,7 +106,7 @@ struct MainTabView: View {
                             .foregroundColor(batteryColor)
                     }
                 }
-                Text(String(format: "CH %d · %.2f MHz", appState.currentChannel, 863.15 + Double(appState.currentChannel) * 0.3))
+                Text("CH \(appState.currentChannel) · \(appState.band.mhzText(appState.currentChannel)) MHz")
                     .font(.system(size: 12, design: .monospaced))
                     .foregroundColor(AppColors.greenAccent)
             }

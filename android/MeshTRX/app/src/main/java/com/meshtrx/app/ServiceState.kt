@@ -68,8 +68,25 @@ object ServiceState {
     val alienPackets = MutableLiveData(0)
     // Слушает ли рация открытый эфир при заданном ключе
     val hearPlaintext = MutableLiveData(false)
+    // Сетка частот рации: прошивка сообщает её после версии (с 4.4.34).
+    // Пока не сообщила — считаем 868, как у всех прошивок до этого.
+    val band = MutableLiveData(Band.EU868)
 
     // Events (one-shot) — UI подписывается
     val showPinDialog = MutableLiveData(false)
     val showDevicePicker = MutableLiveData(false)
+}
+
+/** Сетка каналов рации: частота канала n = base + n*step. */
+data class Band(val baseKhz: Int, val stepKhz: Int, val count: Int,
+                val maxDbm: Int, val minDbm: Int) {
+    fun freqMhz(ch: Int): Double = (baseKhz + ch.toLong() * stepKhz) / 1000.0
+    val is433: Boolean get() = baseKhz < 500_000
+    // У 868 сетка кратна 10 кГц — хватает двух знаков; у 433 (433,225) нужно три.
+    fun mhz(ch: Int): String = (if (is433) "%.3f" else "%.2f").format(freqMhz(ch))
+    fun label(ch: Int): String = "CH $ch — ${mhz(ch)} MHz"
+
+    companion object {
+        val EU868 = Band(863_150, 300, 23, 22, -9)
+    }
 }

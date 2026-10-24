@@ -1658,6 +1658,19 @@ static void sendFirmwareVersion() {
   bleSendNotify(msg, 1 + n);
 }
 
+static void sendBandInfo() {
+  uint8_t msg[10];
+  uint32_t base = BAND_BASE_KHZ;
+  uint16_t step = BAND_STEP_KHZ;
+  msg[0] = BLE_CMD_BAND_INFO;
+  memcpy(msg + 1, &base, 4);
+  memcpy(msg + 5, &step, 2);
+  msg[7] = NUM_CHANNELS;
+  msg[8] = (uint8_t)(int8_t)MAX_TX_POWER_DBM;
+  msg[9] = (uint8_t)(int8_t)MIN_TX_POWER_DBM;
+  bleSendNotify(msg, sizeof(msg));
+}
+
 static void sendStatusUpdate() {
   uint8_t data[6];
   data[0] = BLE_CMD_STATUS_UPDATE;
@@ -1926,6 +1939,7 @@ static void handleBleData(uint8_t* data, size_t len) {
 
     case BLE_CMD_GET_FW_VERSION: {
       sendFirmwareVersion();
+      sendBandInfo();
       break;
     }
 

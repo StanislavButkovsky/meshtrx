@@ -26,6 +26,7 @@ class Bridge(QObject):
     ptt_limit = Signal(int)
     mic_level = Signal(float)
     audio_rx = Signal(object)
+    band_changed = Signal(object)
     any_event = Signal(str, object)      # для журнала диагностики
 
     def __init__(self, client: Client):
@@ -55,6 +56,8 @@ class Bridge(QObject):
                 self.file_done.emit(payload)
             case "settings":
                 self.settings_changed.emit(payload)
+            case "band":
+                self.band_changed.emit(payload)
             case "pin":
                 self.pin_result.emit(bool(payload))
             case "ptt":

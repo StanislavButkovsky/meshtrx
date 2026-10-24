@@ -59,6 +59,9 @@ class Cmd(IntEnum):
     FILE_UPLOAD_DATA = 0x31
     FILE_UPLOAD_STATUS = 0x32
     SCAN_PEERS = 0x33
+    GET_FW_VERSION = 0x39
+    FW_VERSION = 0x3A
+    BAND_INFO = 0x3E        # сетка частот прошивки (с 4.4.34), идёт за FW_VERSION
 
 
 class CallType(IntEnum):
@@ -82,6 +85,23 @@ BROADCAST = "0000"
 
 
 # ---------- разобранные уведомления ----------
+
+@dataclass
+class Band:
+    """Сетка каналов рации: канал n = base + n*step."""
+    base_khz: int = 863150
+    step_khz: int = 300
+    count: int = 23
+    max_dbm: int = 22
+    min_dbm: int = -9
+
+    def mhz(self, ch: int) -> float:
+        return (self.base_khz + ch * self.step_khz) / 1000
+
+    @property
+    def is_433(self) -> bool:
+        return self.base_khz < 500000
+
 
 @dataclass
 class Status:
@@ -207,6 +227,10 @@ def send_message(seq: int, text: str, dest_id: str | None = None) -> bytes:
     return bytes([Cmd.SEND_MESSAGE, seq & 0xFF]) + dest_bytes(dest_id) + text.encode()
 
 
+def get_fw_version() -> bytes:
+    return bytes([Cmd.GET_FW_VERSION])
+
+
 def get_settings() -> bytes:
     return bytes([Cmd.GET_SETTINGS])
 
@@ -326,6 +350,14 @@ def parse(data: bytes):
                             seq=data[23],
                             lat=lat_e7 / 1e7 if (lat_e7 or lon_e7) else None,
                             lon=lon_e7 / 1e7 if (lat_e7 or lon_e7) else None)
+
+    if cmd == Cmd.BAND_INFO and len(data) >= 10:
+        base, step, count, mx, mn = struct.unpack_from("<IHBbb", data, 1)
+        if 1 <= count <= 64:
+            return Band(base, step, count, mx, mn)
+
+    if cmd == Cmd.FW_VERSION:
+        return ("fw_version", data[1:17].decode("ascii", "replace").strip())
 
     if cmd == Cmd.SETTINGS_RESP:
         return ("settings", data[1:].decode("utf-8", "replace"))

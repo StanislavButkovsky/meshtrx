@@ -34,10 +34,17 @@ class SettingsFragment : Fragment() {
 
         // Канал
         val spinnerChannel = v.findViewById<Spinner>(R.id.spinnerChannel)
-        val channels = (0..22).map { "CH $it — %.2f MHz".format(863.150 + it * 0.300) }
-        spinnerChannel.adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, channels)
-        spinnerChannel.setSelection(ServiceState.currentChannel.value ?: 0)
         var channelInitDone = false
+        // Список каналов строится по сетке рации (868 или 433) и
+        // перестраивается, когда рация её сообщит.
+        ServiceState.band.observe(viewLifecycleOwner) { band ->
+            val channels = (0 until band.count).map { band.label(it) }
+            channelInitDone = false
+            spinnerChannel.adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, channels)
+            spinnerChannel.setSelection((ServiceState.currentChannel.value ?: 0).coerceIn(0, band.count - 1))
+            seekTxPower.max = band.maxDbm
+            if (seekTxPower.progress > band.maxDbm) seekTxPower.progress = band.maxDbm
+        }
         spinnerChannel.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(p: AdapterView<*>?, v2: View?, pos: Int, id: Long) {
                 if (!channelInitDone) { channelInitDone = true; return }
@@ -46,7 +53,7 @@ class SettingsFragment : Fragment() {
             override fun onNothingSelected(p: AdapterView<*>?) {}
         }
         ServiceState.currentChannel.observe(viewLifecycleOwner) { ch ->
-            spinnerChannel.setSelection(ch)
+            if (ch < spinnerChannel.count) spinnerChannel.setSelection(ch)
         }
 
         // Поиск свободного канала
@@ -74,9 +81,9 @@ class SettingsFragment : Fragment() {
             // с общего канала, и команда «всем перейти» улетает туда, где
             // никого нет. Со стороны это выглядело как «кнопка не работает».
             val current = ServiceState.currentChannel.value ?: 0
-            val items = (0..22).map { i ->
-                "CH %d — %.2f MHz%s".format(i, 863.150 + i * 0.300,
-                    if (i == current) " " + getString(R.string.channel_now) else "")
+            val band = ServiceState.band.value ?: Band.EU868
+            val items = (0 until band.count).map { i ->
+                band.label(i) + if (i == current) " " + getString(R.string.channel_now) else ""
             }.toTypedArray()
             androidx.appcompat.app.AlertDialog.Builder(requireContext())
                 .setTitle(getString(R.string.channel_all))
@@ -324,7 +331,7 @@ class SettingsFragment : Fragment() {
         seekTxPower.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(sb: SeekBar?, value: Int, fromUser: Boolean) {
                 tvTxPower.text = getString(R.string.tx_power, value)
-                if (value > 14) tvTxPower.append(" ⚠️EU")
+                if (value > 14 && ServiceState.band.value?.is433 != true) tvTxPower.append(" ⚠️EU")
             }
             override fun onStartTrackingTouch(sb: SeekBar?) {}
             override fun onStopTrackingTouch(sb: SeekBar?) {}

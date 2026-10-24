@@ -95,6 +95,14 @@ class MeshTRXService : Service() {
             ServiceState.statusMessage.postValue("Подключено")
             audioEngine.startPlayback()
             bleManager.requestSettings()
+            // Рация могла смениться на прошивку другого диапазона: сетку
+            // сбрасываем и спрашиваем заново (ответ BAND_INFO идёт за версией).
+            // Запись без ответа идёт одна за раз: отправленная следом за
+            // requestSettings команда теряется, поэтому — с паузой, а не
+            // дошедший ответ доспрашивает keepalive.
+            ServiceState.band.postValue(Band.EU868)
+            ServiceState.firmwareVersion.postValue("")
+            handler.postDelayed({ bleManager.requestFirmwareVersion() }, 700)
             bleManager.scanPeers()      // список абонентов должен наполниться сразу
             wasConnected = true
             reconnectAttempts = 0
@@ -274,6 +282,11 @@ class MeshTRXService : Service() {
                 // никто не сообщил. Не делаем вид, что всё в порядке.
                 if (!bleManager.requestSettings() && !bleManager.isConnected()) {
                     bleManager.dropLink("keepalive не ушёл")
+                }
+                // Версия и сетка частот приходят вместе; пока их нет — спрашиваем.
+                // Прошивки до 4.4.22 не ответят никогда, это безвредно.
+                if (ServiceState.firmwareVersion.value.isNullOrEmpty()) {
+                    handler.postDelayed({ bleManager.requestFirmwareVersion() }, 700)
                 }
             }
             handler.postDelayed(this, KEEPALIVE_INTERVAL_MS)
@@ -873,6 +886,18 @@ class MeshTRXService : Service() {
                     Log.d(TAG, "Прошивка рации: $v")
                 }
             }
+            BleManager.CMD_BAND_INFO -> {
+                // [cmd, база кГц u32 LE, шаг кГц u16 LE, каналов, макс дБм, мин дБм]
+                if (data.size >= 10) {
+                    val bb = java.nio.ByteBuffer.wrap(data, 1, 9).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+                    val band = Band(bb.int, bb.short.toInt() and 0xFFFF,
+                        bb.get().toInt() and 0xFF, bb.get().toInt(), bb.get().toInt())
+                    if (band.count in 1..64) {
+                        ServiceState.band.postValue(band)
+                        Log.d(TAG, "Сетка рации: $band")
+                    }
+                }
+            }
             BleManager.CMD_KEY_STATE -> {
                 if (data.size >= 6) {
                     val has = data[1].toInt() == 1
@@ -885,7 +910,7 @@ class MeshTRXService : Service() {
                 }
             }
             BleManager.CMD_SCAN_RESULT -> {
-                // [cmd, лучший канал, уровень канала 0..22] — уровни знаковые
+                // [cmd, лучший канал, уровни всех каналов сетки] — уровни знаковые
                 if (data.size >= 3) {
                     val best = data[1].toInt() and 0xFF
                     val levels = (2 until data.size).map { data[it].toInt() }

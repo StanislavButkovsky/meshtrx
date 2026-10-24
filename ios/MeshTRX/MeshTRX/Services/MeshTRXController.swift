@@ -207,6 +207,7 @@ class MeshTRXController: ObservableObject {
         appState.bleState = .connected
         appState.statusMessage = "Подключено"
         audioEngine.startPlayback()
+        appState.band = .eu868      // рация могла смениться — ждём её сетку заново
         bleManager.requestSettings()
         bleManager.scanPeers()      // список абонентов должен наполниться сразу, как в Android
         sendGpsToDevice()
@@ -940,6 +941,8 @@ class MeshTRXController: ObservableObject {
             handleKeyState(data)
         case BLECmd.fwVersion:
             handleFwVersion(data)
+        case BLECmd.bandInfo:
+            handleBandInfo(data)
         case BLECmd.cryptoAlien:
             handleCryptoAlien(data)
         case BLECmd.scanResult:
@@ -1066,6 +1069,19 @@ class MeshTRXController: ObservableObject {
         }
     }
 
+    /// [0x3E, база кГц u32 LE, шаг кГц u16 LE, каналов, макс дБм, мин дБм]
+    private func handleBandInfo(_ data: Data) {
+        let b = [UInt8](data)
+        guard b.count >= 10 else { return }
+        let base = Int(b[1]) | Int(b[2]) << 8 | Int(b[3]) << 16 | Int(b[4]) << 24
+        let step = Int(b[5]) | Int(b[6]) << 8
+        let count = Int(b[7])
+        guard (1...64).contains(count) else { return }
+        appState.band = Band(baseKhz: base, stepKhz: step, count: count,
+                             maxDbm: Int(Int8(bitPattern: b[8])), minDbm: Int(Int8(bitPattern: b[9])))
+        log.info("Band: \(base) kHz + n*\(step), \(count) каналов, до \(b[8]) dBm")
+    }
+
     private func handleCryptoAlien(_ data: Data) {
         if data.count >= 3 {
             let count = Int(data.getUInt16LE(at: 1))
@@ -1073,7 +1089,7 @@ class MeshTRXController: ObservableObject {
         }
     }
 
-    /// [0x35, лучший канал, уровень шума каналов 0..22] — уровни знаковые.
+    /// [0x35, лучший канал, уровень шума всех каналов сетки] — уровни знаковые.
     /// Раньше байты читались парами «канал–шум», и результат был бессмыслен.
     private func handleScanResult(_ data: Data) {
         guard data.count >= 3 else { return }

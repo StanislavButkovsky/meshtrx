@@ -19,13 +19,13 @@ export const SITE = {
 };
 
 export const VERSION = {
-  app: '4.4.26',
+  app: '4.4.27',
   // Приложение и прошивка живут своей жизнью и нумеруются раздельно:
   // подставлять прошивке свежую дату, когда менялось только приложение, —
   // значит гнать людей перепрошивать рации впустую, и наоборот.
-  firmware: '4.4.33',
-  firmwareDate: '2026-10-13',
-  date: '2026-10-13',
+  firmware: '4.4.34',
+  firmwareDate: '2026-10-24',
+  date: '2026-10-24',
 };
 
 export const FEATURES = [
@@ -87,6 +87,7 @@ export const HARDWARE = {
 // ревизию: она напечатана мелким шрифтом у разъёма антенны.
 export const BOARDS = [
   { board: 'V3', chipKey: 'hw.board.v3', file: 'firmware-v3' },
+  { board: 'V3 433 МГц', chipKey: 'hw.board.v3_433', file: 'firmware-v3-433' },
   { board: 'V4 rev 4.2', chipKey: 'hw.board.v42', file: 'firmware-v4' },
   { board: 'V4 rev 4.3', chipKey: 'hw.board.v43', file: 'firmware-v4.3' },
 ] as const;
@@ -115,4 +116,6 @@ export const DOWNLOAD_LINKS = {
   firmware: `/downloads/firmware-v3-${VERSION.firmware}.bin`,
   firmwareV4: `/downloads/firmware-v4-${VERSION.firmware}.bin`,
   firmwareV43: `/downloads/firmware-v4.3-${VERSION.firmware}.bin`,
+  // Платы V3 в исполнении на 433 МГц: своя сетка каналов и предел мощности
+  firmwareV3_433: `/downloads/firmware-v3-433-${VERSION.firmware}.bin`,
 };
