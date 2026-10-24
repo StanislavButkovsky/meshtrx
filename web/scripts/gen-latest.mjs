@@ -52,6 +52,7 @@ const latest = {
   firmware: {
     version: firmware,
     v3: `https://meshtrx.ru/downloads/firmware-v3-${firmware}.bin`,
+    v3_433: `https://meshtrx.ru/downloads/firmware-v3-433-${firmware}.bin`,
     v4: `https://meshtrx.ru/downloads/firmware-v4-${firmware}.bin`,
     v43: `https://meshtrx.ru/downloads/firmware-v4.3-${firmware}.bin`,
   },

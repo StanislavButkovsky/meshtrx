@@ -1,6 +1,6 @@
 # MeshTRX — full documentation
 
-> App 4.4.26, firmware 4.4.33, updated 2026-10-13. Source: https://meshtrx.ru/docs/
+> App 4.4.27, firmware 4.4.34, updated 2026-10-13. Source: https://meshtrx.ru/docs/
 
 ---
 
@@ -48,7 +48,7 @@
 - Stations on a map and on a tactical radar
 - Broadcast, private and group calls
 - Repeater mode with WiFi monitoring
-- 23 channels in the 863–870 MHz band
+- 23 channels in the 863–870 MHz band (5 channels at 433 MHz on 433 MHz V3 boards)
 - Use it from a phone (Android) or a computer (Windows, Linux, macOS)
 
 ---
@@ -62,7 +62,7 @@
 | MCU | ESP32-S3 (WiFi + BLE 5.0) |
 | LoRa | Semtech SX1262 |
 | Display | OLED 128x64 (I2C) |
-| Band | 863–870 MHz (EU868) |
+| Band | 863–870 MHz (EU868); 433 MHz V3 — 433.075–434.79 MHz |
 | Power | USB-C or LiPo battery |
 | TX power | 1–22 dBm (configurable) |
 
@@ -71,17 +71,20 @@ Both board revisions are supported. Their firmware is **different** — take the
 | Board | What is inside | Firmware file |
 |-------|----------------|---------------|
 | V3 | SX1262, no external amplifier | `firmware-v3-<version>.bin` |
+| V3 433 MHz | same, 433 MHz version | `firmware-v3-433-<version>.bin` |
 | V4 rev 4.2 | GC1109 amplifier | `firmware-v4-<version>.bin` |
 | V4 rev 4.3 | KCT8103L amplifier | `firmware-v4.3-<version>.bin` |
 
 The revision is printed on the board itself in small type next to the antenna connector. Firmware for the wrong revision will boot, but the amplifier will be driven from the wrong pin: the device will hear poorly or will not transmit at all.
+
+**433 MHz boards (since 4.4.34, beta).** Heltec V3 also comes in a 433 MHz version, and it has its own firmware, `firmware-v3-433`. It uses the LPD band: 5 channels from 433.225 to 434.425 MHz, 300 kHz apart, at no more than 10 dBm (10 mW). The app asks the radio for its band and shows the matching channels. Radios on 433 and on 868 MHz cannot hear each other, so the whole group needs boards of the same band. Use a 433 MHz antenna.
 
 ### What you need
 
 - 2 or more Heltec WiFi LoRa 32 devices (V3 or V4)
 - for each device — an Android phone (5.0+) **or** a computer with the desktop client
 - a USB-C cable for flashing
-- an 868 MHz antenna, screwed on before power is applied: transmitting without an antenna destroys the output stage
+- an antenna for the board's band (868 or 433 MHz), screwed on before power is applied: transmitting without an antenna destroys the output stage
 
 ---
 

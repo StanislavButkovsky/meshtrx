@@ -46,7 +46,7 @@ export const USER_GUIDE = `# MeshTRX — Руководство пользова
 - Отображение станций на карте и тактическом радаре
 - Общие, личные и групповые вызовы
 - Режим ретранслятора с WiFi-мониторингом
-- 23 канала в диапазоне 863–870 МГц
+- 23 канала в диапазоне 863–870 МГц (на платах V3 433 МГц — 5 каналов 433 МГц)
 - Работа с телефона (Android) или с компьютера (Windows, Linux, macOS)
 
 ---
@@ -60,7 +60,7 @@ export const USER_GUIDE = `# MeshTRX — Руководство пользова
 | MCU | ESP32-S3 (WiFi + BLE 5.0) |
 | LoRa | Semtech SX1262 |
 | Дисплей | OLED 128x64 (I2C) |
-| Диапазон | 863–870 МГц (EU868) |
+| Диапазон | 863–870 МГц (EU868); V3 на 433 МГц — 433,075–434,79 МГц |
 | Питание | USB-C или LiPo аккумулятор |
 | Мощность TX | 1–22 дБм (настраивается) |
 
@@ -70,6 +70,7 @@ export const USER_GUIDE = `# MeshTRX — Руководство пользова
 | Плата | Что внутри | Файл прошивки |
 |-------|-----------|---------------|
 | V3 | SX1262 без внешнего усилителя | \`firmware-v3-<версия>.bin\` |
+| V3 на 433 МГц | то же, исполнение на 433 МГц | \`firmware-v3-433-<версия>.bin\` |
 | V4 rev 4.2 | усилитель GC1109 | \`firmware-v4-<версия>.bin\` |
 | V4 rev 4.3 | усилитель KCT8103L | \`firmware-v4.3-<версия>.bin\` |
 
@@ -77,13 +78,20 @@ export const USER_GUIDE = `# MeshTRX — Руководство пользова
 Прошивка от чужой ревизии запустится, но усилитель будет управляться не тем
 выводом: устройство станет слышать хуже или не выйдет в эфир вовсе.
 
+**Платы на 433 МГц (с версии 4.4.34, пока бета).** Heltec V3 выпускается и в
+исполнении на 433 МГц — у него своя прошивка \`firmware-v3-433\`. Она работает в
+диапазоне LPD: 5 каналов 433,225–434,425 МГц с шагом 300 кГц, мощность не
+больше 10 дБм (10 мВт). Приложение узнаёт диапазон у рации и само показывает
+нужные каналы. Рации на 433 и на 868 МГц друг друга не слышат: у всей группы
+должны быть платы одного диапазона. Антенна нужна на 433 МГц.
+
 ### Что нужно
 
 - 2+ устройства Heltec WiFi LoRa 32 (V3 или V4)
 - на каждое устройство — Android-телефон (5.0+) **или** компьютер с
   настольным клиентом
 - USB-C кабель для прошивки
-- антенна на 868 МГц, прикрученная до подачи питания: передача без антенны
+- антенна на диапазон платы (868 или 433 МГц), прикрученная до подачи питания: передача без антенны
   выводит из строя выходной каскад
 
 ---
@@ -943,7 +951,7 @@ export const USER_GUIDE_EN = `# MeshTRX — User Guide
 - Stations on a map and on a tactical radar
 - Broadcast, private and group calls
 - Repeater mode with WiFi monitoring
-- 23 channels in the 863–870 MHz band
+- 23 channels in the 863–870 MHz band (5 channels at 433 MHz on 433 MHz V3 boards)
 - Use it from a phone (Android) or a computer (Windows, Linux, macOS)
 
 ---
@@ -957,7 +965,7 @@ export const USER_GUIDE_EN = `# MeshTRX — User Guide
 | MCU | ESP32-S3 (WiFi + BLE 5.0) |
 | LoRa | Semtech SX1262 |
 | Display | OLED 128x64 (I2C) |
-| Band | 863–870 MHz (EU868) |
+| Band | 863–870 MHz (EU868); 433 MHz V3 — 433.075–434.79 MHz |
 | Power | USB-C or LiPo battery |
 | TX power | 1–22 dBm (configurable) |
 
@@ -966,17 +974,20 @@ Both board revisions are supported. Their firmware is **different** — take the
 | Board | What is inside | Firmware file |
 |-------|----------------|---------------|
 | V3 | SX1262, no external amplifier | \`firmware-v3-<version>.bin\` |
+| V3 433 MHz | same, 433 MHz version | \`firmware-v3-433-<version>.bin\` |
 | V4 rev 4.2 | GC1109 amplifier | \`firmware-v4-<version>.bin\` |
 | V4 rev 4.3 | KCT8103L amplifier | \`firmware-v4.3-<version>.bin\` |
 
 The revision is printed on the board itself in small type next to the antenna connector. Firmware for the wrong revision will boot, but the amplifier will be driven from the wrong pin: the device will hear poorly or will not transmit at all.
+
+**433 MHz boards (since 4.4.34, beta).** Heltec V3 also comes in a 433 MHz version, and it has its own firmware, \`firmware-v3-433\`. It uses the LPD band: 5 channels from 433.225 to 434.425 MHz, 300 kHz apart, at no more than 10 dBm (10 mW). The app asks the radio for its band and shows the matching channels. Radios on 433 and on 868 MHz cannot hear each other, so the whole group needs boards of the same band. Use a 433 MHz antenna.
 
 ### What you need
 
 - 2 or more Heltec WiFi LoRa 32 devices (V3 or V4)
 - for each device — an Android phone (5.0+) **or** a computer with the desktop client
 - a USB-C cable for flashing
-- an 868 MHz antenna, screwed on before power is applied: transmitting without an antenna destroys the output stage
+- an antenna for the board's band (868 or 433 MHz), screwed on before power is applied: transmitting without an antenna destroys the output stage
 
 ---
 
