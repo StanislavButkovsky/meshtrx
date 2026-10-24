@@ -42,6 +42,17 @@ export default function AboutPage() {
           <h2 className="text-xl font-bold text-text-primary mb-3">{t('about.compare')}</h2>
           <p className="text-text-secondary leading-relaxed mb-6">
             {t('about.compare.intro')}{' '}
+            {locale === 'ru' && (
+              <a
+                href={SITE.habr}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between p-3 rounded-lg bg-bg hover:bg-bg-hover border border-border transition-colors"
+              >
+                <span className="text-text-primary">Статья на Хабре</span>
+                <span className="text-text-secondary text-sm">habr.com/ru/articles/1098348</span>
+              </a>
+            )}
             <a
               href={MESHTASTIC}
               target="_blank"
