@@ -34,8 +34,9 @@ struct SettingsView: View {
 
     private var isConnected: Bool { appState.bleState == .connected }
 
-    private let channelList: [String] = (0...22).map {
-        String(format: "CH %d — %.2f MHz", $0, 863.150 + Double($0) * 0.300)
+    // Список каналов — по сетке рации (868 или 433)
+    private var channelList: [String] {
+        (0..<appState.band.count).map { appState.band.label($0) }
     }
     private let beaconOptions = ["Никогда", "1 мин", "3 мин", "5 мин", "15 мин", "30 мин", "1 час"]
     private let beaconSeconds = [0, 60, 180, 300, 900, 1800, 3600]
@@ -206,14 +207,17 @@ struct SettingsView: View {
                     Text("\(Int(txPower)) dBm")
                         .foregroundColor(AppColors.textSecondary)
                         .font(.system(size: 13, design: .monospaced))
-                    if txPower > 14 {
+                    if txPower > 14 && !appState.band.is433 {
                         Text("⚠️EU")
                             .font(.system(size: 11, weight: .bold))
                             .foregroundColor(AppColors.amberAccent)
                     }
                 }
-                Slider(value: $txPower, in: 1...30, step: 1)
+                Slider(value: $txPower, in: 1...Double(appState.band.maxDbm), step: 1)
                     .tint(AppColors.greenAccent)
+                    .onChange(of: appState.band) { b in
+                        if txPower > Double(b.maxDbm) { txPower = Double(b.maxDbm) }
+                    }
             }
 
             Toggle(isOn: $dutyCycle) {

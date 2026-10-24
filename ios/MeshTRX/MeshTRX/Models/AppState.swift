@@ -75,6 +75,8 @@ class AppState: ObservableObject {
 
     // Firmware
     @Published var firmwareVersion: String = ""
+    // Сетка частот рации; до ответа прошивки (и у прошивок до 4.4.34) — 868
+    @Published var band: Band = .eu868
 
     // Notifications
     // По умолчанию «обо всех», как в Android (было «только личные»)
@@ -113,4 +115,21 @@ extension AppState {
         }
         return out
     }
+}
+
+/// Сетка каналов рации: канал n = base + n*step.
+struct Band: Equatable {
+    var baseKhz: Int
+    var stepKhz: Int
+    var count: Int
+    var maxDbm: Int
+    var minDbm: Int
+
+    static let eu868 = Band(baseKhz: 863_150, stepKhz: 300, count: 23, maxDbm: 22, minDbm: -9)
+
+    var is433: Bool { baseKhz < 500_000 }
+    func mhz(_ ch: Int) -> Double { Double(baseKhz + ch * stepKhz) / 1000 }
+    /// У 868 сетка кратна 10 кГц — два знака; у 433 (433,225) нужно три.
+    func mhzText(_ ch: Int) -> String { String(format: is433 ? "%.3f" : "%.2f", mhz(ch)) }
+    func label(_ ch: Int) -> String { "CH \(ch) — \(mhzText(ch)) MHz" }
 }

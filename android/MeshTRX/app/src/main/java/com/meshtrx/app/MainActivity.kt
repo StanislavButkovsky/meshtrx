@@ -98,9 +98,13 @@ class MainActivity : AppCompatActivity() {
         }
         ServiceState.deviceName.observe(this) { tvDeviceName.text = it }
         val tvChannelInfo = findViewById<android.widget.TextView>(R.id.tvChannelInfo)
-        ServiceState.currentChannel.observe(this) { ch ->
-            tvChannelInfo.text = "CH $ch · ${"%.2f".format(863.15 + ch * 0.3)} MHz"
+        fun showChannel() {
+            val ch = ServiceState.currentChannel.value ?: 0
+            val band = ServiceState.band.value ?: Band.EU868
+            tvChannelInfo.text = "CH $ch · ${band.mhz(ch)} MHz"
         }
+        ServiceState.currentChannel.observe(this) { showChannel() }
+        ServiceState.band.observe(this) { showChannel() }
         ServiceState.connectionState.observe(this) { state ->
             val connected = state == com.meshtrx.app.model.BleState.CONNECTED
             ivBleStatus.setImageResource(

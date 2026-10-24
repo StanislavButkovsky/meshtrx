@@ -10,9 +10,6 @@ from ..audio import list_devices
 from ..client import Client
 from .bridge import Bridge
 
-NUM_CHANNELS = 23
-FREQ_BASE = 863.15          # МГц, канал 0
-FREQ_STEP = 0.30
 
 
 class SettingsTab(QWidget):
@@ -24,8 +21,6 @@ class SettingsTab(QWidget):
         radio = QGroupBox("Радио")
         form = QFormLayout(radio)
         self.channel = QComboBox()
-        for ch in range(NUM_CHANNELS):
-            self.channel.addItem(f"{ch} — {FREQ_BASE + ch * FREQ_STEP:.2f} МГц", ch)
         apply_ch = QPushButton("Применить канал")
         apply_ch.clicked.connect(lambda: client.set_channel(self.channel.currentData()))
         ch_row = QHBoxLayout(); ch_row.addWidget(self.channel); ch_row.addWidget(apply_ch)
@@ -80,6 +75,8 @@ class SettingsTab(QWidget):
         layout.addStretch()
 
         bridge.settings_changed.connect(self.on_settings)
+        bridge.band_changed.connect(self.on_band)
+        self.on_band(client.band)
         bridge.status_changed.connect(self.on_status)
 
     def _apply_audio(self):
@@ -100,6 +97,17 @@ class SettingsTab(QWidget):
             self.beacon.setValue(int(settings["beacon_interval"]))
         if settings.get("callsign"):
             self.call_sign.setText(settings["callsign"])
+
+    def on_band(self, band):
+        """Список каналов и предел мощности — по сетке рации (868 или 433)."""
+        self.channel.clear()
+        digits = 3 if band.is_433 else 2
+        for ch in range(band.count):
+            self.channel.addItem(f"{ch} — {band.mhz(ch):.{digits}f} МГц", ch)
+        idx = self.channel.findData(self.client.channel)
+        if idx >= 0:
+            self.channel.setCurrentIndex(idx)
+        self.power.setRange(band.min_dbm, band.max_dbm)
 
     def on_status(self, status):
         if status is None:

@@ -64,6 +64,7 @@ class Client:
         self.device: Device | None = None
 
         self.channel = 0
+        self.band = proto.Band()
         self.rssi = 0
         self.snr = 0
         self.battery: float | None = None
@@ -298,6 +299,10 @@ class Client:
     def _on_link_state(self, state: str, detail: str):
         self.state, self.state_detail = state, detail
         if state == "connected":
+            # Рация могла смениться: сетку сбрасываем на 868 до её ответа.
+            self.band = proto.Band()
+            self._emit("band", self.band)
+            self.link.send(proto.get_fw_version())
             self.request_settings()
             self.scan_peers()
         if state == "disconnected":
@@ -353,6 +358,10 @@ class Client:
                                          total=event.chunks)
             self.transfers.append(self._rx_file)
             self._emit("transfer", self._rx_file)
+
+        elif isinstance(event, proto.Band):
+            self.band = event
+            self._emit("band", event)
 
         elif isinstance(event, tuple):
             self._handle_named(event[0], event[1])

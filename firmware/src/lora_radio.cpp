@@ -14,9 +14,9 @@ static bool    dutyCycleEnabled = ENFORCE_DUTY_CYCLE;
 static int16_t lastRSSI = 0;
 static int8_t  lastSNR = 0;
 
-// Таблица каналов: 863.150 + i * 0.300 МГц
+// Таблица каналов: BAND_BASE_KHZ + i * BAND_STEP_KHZ (см. lora_radio.h)
 static float channelFreq(uint8_t ch) {
-  return 863.150f + ch * 0.300f;
+  return (BAND_BASE_KHZ + (uint32_t)ch * BAND_STEP_KHZ) / 1000.0f;
 }
 
 // #ifdef REGION_US915

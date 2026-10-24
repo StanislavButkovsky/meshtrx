@@ -11,10 +11,26 @@
 #else
   #define PA_GAIN_DB        0    // V3 — без PA
 #endif
-#define MAX_TX_POWER_DBM    (MAX_RADIO_DBM + PA_GAIN_DB)
 #define MIN_TX_POWER_DBM    (MIN_RADIO_DBM + PA_GAIN_DB)
 #define DUTY_CYCLE_PERCENT  1
-#define NUM_CHANNELS        23
+
+// === Сетка частот ===
+// 868: 863.150 + n*0.300 МГц, 23 канала, мощность до предела платы.
+// 433 (сборка с -DBAND_433, платы V3 433 МГц): диапазон LPD 433.075–434.790,
+// 5 каналов 433.225 + n*0.300 МГц по 250 кГц, разрешено не больше 10 мВт.
+#ifdef BAND_433
+  #define BAND_BASE_KHZ     433225
+  #define BAND_STEP_KHZ     300
+  #define NUM_CHANNELS      5
+  #define MAX_TX_POWER_DBM  10
+  #undef  TX_POWER_DBM
+  #define TX_POWER_DBM      10
+#else
+  #define BAND_BASE_KHZ     863150
+  #define BAND_STEP_KHZ     300
+  #define NUM_CHANNELS      23
+  #define MAX_TX_POWER_DBM  (MAX_RADIO_DBM + PA_GAIN_DB)
+#endif
 #define DEFAULT_CHANNEL     0
 
 // === Пины SX1262 (Heltec WiFi LoRa 32 V3/V4) ===

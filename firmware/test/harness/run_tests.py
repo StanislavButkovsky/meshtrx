@@ -347,7 +347,7 @@ def test_repeater(A: Device, B: Device):
 def test_channels(A: Device, B: Device):
     print("\n[8] Каналы")
     base = A.info().int("ch")
-    new_ch = 5 if base != 5 else 7
+    new_ch = 1 if base != 1 else 2   # есть и в сетке 868 (0–22), и в 433 (0–4)
     A.set_channel(new_ch); B.set_channel(new_ch)
     time.sleep(0.5)
     B.drain()

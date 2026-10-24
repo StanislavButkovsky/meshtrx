@@ -74,6 +74,7 @@ class BleManager(private val context: Context) {
         const val CMD_CRYPTO_ALIEN = 0x3B
         const val CMD_GET_KEY_STATE = 0x3C
         const val CMD_HEAR_PLAINTEXT = 0x3D
+        const val CMD_BAND_INFO = 0x3E
     }
 
     private val bluetoothAdapter: BluetoothAdapter? =
