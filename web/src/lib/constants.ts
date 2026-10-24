@@ -9,6 +9,7 @@ export const SITE = {
   license: 'CC BY-NC 4.0',
   telegram: 'https://t.me/MeshTRX',
   telegramEn: 'https://t.me/MeshTRX_en',
+  habr: 'https://habr.com/ru/articles/1098348/',
   // Донаты: CloudTips принимает российские карты и СБП. Для зарубежных
   // способа пока нет — поэтому на английском сайте блок не показываем.
   donate: 'https://pay.cloudtips.ru/p/67ad019d',

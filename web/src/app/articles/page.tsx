@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { ARTICLES, readingMinutes } from '@/content/articles';
 import { useLanguage } from '@/components/LanguageProvider';
+import { SITE } from '@/lib/constants';
 
 export default function ArticlesPage() {
   const { locale, t } = useLanguage();
@@ -11,6 +12,25 @@ export default function ArticlesPage() {
     <div className="max-w-3xl mx-auto px-4 py-12">
       <h1 className="text-3xl font-bold mb-3">{t('articles.title')}</h1>
       <p className="text-text-secondary leading-relaxed mb-8">{t('articles.subtitle')}</p>
+
+      {/* Обзорная статья на Хабре — русская, поэтому только на meshtrx.ru */}
+      {locale === 'ru' && (
+        <a
+          href={SITE.habr}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group block p-6 mb-4 rounded-xl bg-bg-card border border-accent/40 hover:border-accent transition-colors"
+        >
+          <div className="text-xs text-text-secondary mb-3">Хабр • 2026-10-24</div>
+          <h2 className="text-xl font-bold text-text-primary group-hover:text-accent transition-colors mb-2">
+            Голос по LoRa: как плата для Meshtastic превращается в рацию без интернета
+          </h2>
+          <p className="text-text-secondary leading-relaxed mb-3">
+            Обзор устройства MeshTRX: Codec2 в пакете на 39 байт, ретранслятор, шифрование, каналы и замеры дальности.
+          </p>
+          <span className="text-accent text-sm">Читать на Хабре →</span>
+        </a>
+      )}
 
       {ARTICLES.length === 0 ? (
         <p className="text-text-secondary">{t('articles.empty')}</p>
