@@ -194,8 +194,10 @@ struct MessagesView: View {
                 .foregroundColor(bytesRemaining < 10 ? AppColors.redAccent : AppColors.textDim)
                 .frame(width: 28)
 
-            // Voice message button
-            if destId != nil && isConnected {
+            // Голосовое — в личном чате и (с прошивки 4.4.35) в общем канале:
+            // рация рассылает его всем. Старая прошивка такое отбросит.
+            if isConnected && (destId != nil ||
+                !MeshTRXController.isNewer("4.4.35", than: appState.firmwareVersion)) {
                 Button {
                     if isRecordingVoice {
                         stopVoiceRecording()

@@ -34,6 +34,7 @@
 #define FILE_TYPE_VOICE     0x04
 #define FILE_TYPE_PTT_VOICE 0x05  // адресный PTT — автовоспроизведение, не хранить
 #define CHUNK_SIZE          120
+#define BCAST_DOUBLE_PASS_MAX_CHUNKS 40   // файл всем до 4,8 КБ — двумя проходами
 
 // === TTL ===
 #define TTL_DEFAULT         2

@@ -79,12 +79,13 @@ export async function flashFirmware(
   board: FlashBoard,
   onProgress: (progress: FlashProgress) => void,
   onLog: (line: string) => void,
-  base = ''
+  base = '',
+  eraseAll = false
 ): Promise<void> {
   onProgress({ stage: 'connecting', percent: 0, message: 'Загрузка файлов прошивки...' });
 
   try {
-    onLog(`> Плата: ${board.label}`);
+    onLog(`> Плата: ${board.label}${eraseAll ? ' (с полным стиранием)' : ''}`);
     const [bootloaderRes, partitionsRes, bootApp0Res, firmwareRes] = await Promise.all([
       fetch(base + board.bootloader),
       fetch(base + board.partitions),
@@ -152,7 +153,10 @@ export async function flashFirmware(
       flashSize: 'keep',
       flashMode: 'keep',
       flashFreq: 'keep',
-      eraseAll: false,
+      // Полное стирание убирает и чужие настройки: после Meshtastic в памяти
+      // остаются его ключи Bluetooth, и телефон подключается и сразу рвётся.
+      // По умолчанию не стираем — иначе обновление сбрасывало бы позывной и ключ.
+      eraseAll,
       compress: true,
       reportProgress: (_fileIndex: number, written: number, total: number) => {
         const pct = 20 + Math.round((written / total) * 70);

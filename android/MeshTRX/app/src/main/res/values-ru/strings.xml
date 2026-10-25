@@ -239,4 +239,5 @@ MeshTRX v%2$s</string>
     <string name="notif_chan_all_desc">Сообщения, отправленные всем</string>
     <string name="notif_private_from">%1$s — лично вам</string>
     <string name="notif_all_from">%1$s — в общий чат</string>
+    <string name="voice_all_needs_fw">Голосовое всем: обновите прошивку рации до %1$s или новее</string>
 </resources>

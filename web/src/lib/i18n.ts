@@ -157,6 +157,8 @@ export const translations = {
   'flash.btn.busy': { ru: 'Прошивка...', en: 'Flashing...' },
   'flash.board.title': { ru: 'Какая у вас плата?', en: 'Which board do you have?' },
   'flash.board.hint': { ru: 'Ревизия напечатана мелким шрифтом на плате рядом с разъёмом антенны. Прошивка чужой ревизии запустится, но усилитель будет управляться не тем выводом — плата станет хуже слышать или не выйдет в эфир. Плате V3 на 433 МГц нужна своя прошивка «V3 · 433 MHz»: у неё другие частоты каналов.', en: 'The revision is printed in small type next to the antenna connector. Firmware for the wrong revision boots, but drives the amplifier from the wrong pin — the board hears worse or does not transmit. A 433 MHz V3 board needs its own “V3 · 433 MHz” firmware: its channels are on different frequencies.' },
+  'flash.erase.title': { ru: 'Стереть плату полностью', en: 'Erase the whole board' },
+  'flash.erase.hint': { ru: 'отметьте, если на плате раньше стоял Meshtastic или MeshCore: их остатки в памяти мешают подключиться по Bluetooth. Позывной, ключ и другие настройки MeshTRX при этом тоже сотрутся.', en: 'tick this if the board used to run Meshtastic or MeshCore: their leftovers in memory break the Bluetooth connection. MeshTRX call sign, key and other settings will be erased too.' },
   'flash.board.none': { ru: 'Сначала выберите плату', en: 'Pick a board first' },
   'flash.idle': { ru: 'Выберите плату, подключите её по USB и нажмите "Выбрать порт"', en: 'Pick your board, connect it via USB and click "Select port"' },
   'flash.port.ok': { ru: 'Порт выбран. Зажмите BOOT на модуле, нажмите RST, отпустите BOOT — затем нажмите "Прошить".', en: 'Port selected. Hold BOOT on module, press RST, release BOOT — then click "Flash".' },

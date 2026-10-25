@@ -75,6 +75,9 @@ static char fileRxName[20] = {0};
 static uint8_t fileRxSender[2] = {0};
 static uint32_t fileRxLastChunkMs = 0;
 static volatile bool fileRxComplete = false;
+// Файл всем (dest 0000): подтверждений нет — отвечать стали бы все разом,
+// пакеты столкнулись бы в эфире. Принятое отдаём по FILE_END или таймауту.
+static bool fileRxBroadcast = false;
 static uint8_t fileRxBitmap[128]; // макс 1024 чанков
 static uint16_t fileRxUniqueCount = 0;
 
@@ -1014,12 +1017,18 @@ static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr) 
       if (len < (int)sizeof(LoRaFileHeader)) break;
       LoRaFileHeader* pkt = (LoRaFileHeader*)data;
       if (pkt->channel != currentChannel) break;
-      // Проверить адресат: только наш MAC (broadcast не поддерживается для файлов)
+      // Адресат: наш MAC или все (0000 — голосовое в общем канале)
+      bool bcast;
       {
         uint16_t d = pkt->dest[0] | (pkt->dest[1] << 8);
         uint16_t me = senderMac[0] | (senderMac[1] << 8);
-        if (d != me) break; // не нам
+        if (d != me && d != 0) break; // не нам
+        bcast = (d == 0);
       }
+      // Второй проход той же рассылки — сессия уже идёт, начинать заново нельзя
+      if (bcast && fileState == FILE_STATE_RECEIVING && fileRxBroadcast &&
+          pkt->session_id == fileSessionId &&
+          pkt->sender[0] == fileRxSender[0] && pkt->sender[1] == fileRxSender[1]) break;
 
       // Инициировать приём файла
       fileRxChunksTotal = pkt->total_chunks;
@@ -1035,6 +1044,7 @@ static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr) 
         break;
       }
       fileState = FILE_STATE_RECEIVING;
+      fileRxBroadcast = bcast;
       loraAppBusy = true;
       fileRxLastChunkMs = millis();
       bitmap_clear(fileRxBitmap, sizeof(fileRxBitmap));
@@ -1061,11 +1071,11 @@ static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr) 
       if (len < 8 || !(fileState == FILE_STATE_RECEIVING)) break;
       LoRaFileChunk* pkt = (LoRaFileChunk*)data;
       if (pkt->session_id != fileSessionId) break;
-      // Проверить адресат (только адресные)
+      // Проверить адресат: наш MAC или все, как в FILE_START этой сессии
       {
         uint16_t d = pkt->dest[0] | (pkt->dest[1] << 8);
         uint16_t me = senderMac[0] | (senderMac[1] << 8);
-        if (d != me) break;
+        if (fileRxBroadcast ? d != 0 : d != me) break;
       }
 
       uint16_t idx = pkt->chunk_index;
@@ -1115,6 +1125,27 @@ static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr) 
         pkt->session_id, fileSessionId, (int)fileState,
         fileRxUniqueCount, fileRxChunksTotal, lastFileRespLen);
 #endif
+
+      // Рассылка всем: ответа не шлём, отдаём телефону то, что пришло
+      // (голос — по первую дыру, см. ниже). Повторный FILE_END той же
+      // рассылки приходит, когда приём уже закрыт, и просто отбрасывается.
+      if (fileRxBroadcast) {
+        if (fileState != FILE_STATE_RECEIVING || pkt->session_id != fileSessionId) break;
+        LOG_F("[File] RX broadcast end: %s (%d/%d)\n",
+          fileRxName, fileRxUniqueCount, fileRxChunksTotal);
+        fileState = FILE_STATE_IDLE;
+        if (fileRxBuffer && fileRxUniqueCount > 0) {
+          fileRxComplete = true;
+#ifdef TEST_CONSOLE
+          testConsoleOnFileRxDone(fileRxName, fileRxSize, fileRxChunksTotal,
+                                  fileRxUniqueCount, fileRxBuffer);
+#endif
+        } else if (fileRxBuffer) {
+          free(fileRxBuffer); fileRxBuffer = nullptr;
+        }
+        loraStartReceive();
+        break;
+      }
 
       // Повторный FILE_END — переотправить кешированный ответ (ACK или NACK)
       if (pkt->session_id == lastFileRespSessionId &&
@@ -1383,7 +1414,9 @@ static void bleTaskFunc(void* param) {
       LOG_F("[File] RX timeout: %d/%d unique chunks (lost %d)\n",
         fileRxUniqueCount, fileRxChunksTotal, fileRxChunksTotal - fileRxUniqueCount);
       // Отправить что есть если получено хотя бы 90%
-      if (fileRxBuffer && fileRxUniqueCount >= fileRxChunksTotal * 9 / 10) {
+      // (у рассылки всем досылки нет — отдаём всё, что пришло)
+      if (fileRxBuffer && (fileRxUniqueCount >= fileRxChunksTotal * 9 / 10 ||
+                           (fileRxBroadcast && fileRxUniqueCount > 0))) {
         LOG_D("[File] >90% received, sending partial");
         fileRxComplete = true;
       } else {
@@ -1518,34 +1551,45 @@ static void bleTaskFunc(void* param) {
         fileRxBuffer = nullptr;
         continue;
       }
-      const uint32_t fileRxSizeOrig = fileRxSize;
-      fileRxSize = sendSize;
+      // Файл забираем себе целиком, прежде чем отдавать: отдача идёт по 100
+      // байт с паузой, 20 КБ — секунд двадцать, и за это время по радио может
+      // начаться следующий приём. Он освобождал fileRxBuffer, из которого здесь
+      // ещё читали, а в конце мы освобождали уже его буфер — новый файл
+      // пропадал (видно на стенде: голосовое всем следом за файлом 20 КБ).
+      uint8_t* rxBuf = fileRxBuffer;
+      fileRxBuffer = nullptr;
+      const uint32_t rxSize = sendSize;
+      const uint8_t rxType = fileRxType;
+      const uint8_t rxChunks = fileRxChunksTotal & 0xFF;
+      const uint8_t rxSender[2] = { fileRxSender[0], fileRxSender[1] };
+      char rxName[20];
+      memcpy(rxName, fileRxName, 20);
       LOG_F("[File] Sending to phone: %d bytes via BLE (принято из %lu)\n",
-            fileRxSize, (unsigned long)fileRxSizeOrig);
+            rxSize, (unsigned long)fileRxSize);
 
       // Заголовок: cmd(1)+type(1)+size(4)+chunks(1)+sender(2)+name(20)=29
       uint8_t hdr[9 + 20];
       hdr[0] = BLE_CMD_FILE_RECV;
-      hdr[1] = fileRxType;
-      hdr[2] = fileRxSize & 0xFF;
-      hdr[3] = (fileRxSize >> 8) & 0xFF;
-      hdr[4] = (fileRxSize >> 16) & 0xFF;
-      hdr[5] = (fileRxSize >> 24) & 0xFF;
-      hdr[6] = fileRxChunksTotal & 0xFF;
-      hdr[7] = fileRxSender[0];
-      hdr[8] = fileRxSender[1];
-      memcpy(hdr + 9, fileRxName, 20);
+      hdr[1] = rxType;
+      hdr[2] = rxSize & 0xFF;
+      hdr[3] = (rxSize >> 8) & 0xFF;
+      hdr[4] = (rxSize >> 16) & 0xFF;
+      hdr[5] = (rxSize >> 24) & 0xFF;
+      hdr[6] = rxChunks;
+      hdr[7] = rxSender[0];
+      hdr[8] = rxSender[1];
+      memcpy(hdr + 9, rxName, 20);
       bleSendNotify(hdr, 29);
       vTaskDelay(pdMS_TO_TICKS(100));
 
       // Данные чанками
       size_t off = 0;
-      while (off < fileRxSize) {
-        size_t chunk = fileRxSize - off;
+      while (off < rxSize) {
+        size_t chunk = rxSize - off;
         if (chunk > 100) chunk = 100;
         uint8_t buf[101];
         buf[0] = BLE_CMD_FILE_DATA;
-        memcpy(buf + 1, fileRxBuffer + off, chunk);
+        memcpy(buf + 1, rxBuf + off, chunk);
         bleSendNotify(buf, 1 + chunk);
         off += chunk;
         vTaskDelay(pdMS_TO_TICKS(100));
@@ -1553,11 +1597,10 @@ static void bleTaskFunc(void* param) {
 
       char oledBuf[22];
       snprintf(oledBuf, sizeof(oledBuf), "FILE: %s %dKB",
-        fileRxName, (int)(fileRxSize / 1024));
+        rxName, (int)(rxSize / 1024));
       oledShowMessage(oledBuf, "", 3000);
 
-      free(fileRxBuffer);
-      fileRxBuffer = nullptr;
+      free(rxBuf);
       LOG_D("[File] Sent to phone OK");
     }
 
@@ -1695,7 +1738,7 @@ static void sendUploadStatus(uint8_t status, uint8_t sessionId = 0) {
   pkt[3] = 0;
   bleSendNotify(pkt, 4);
   // Для финальных статусов — дублировать через bleTask
-  if (status == 3 || status == 4) {
+  if (status == 3 || status == 4 || status == 6) {
     pendingUploadStatus = status;
     pendingUploadSession = sessionId;
   }
@@ -1735,7 +1778,14 @@ static void fileSendTask(void* param) {
       vTaskDelay(pdMS_TO_TICKS(100)); // дать приёмнику подготовиться
     }
 
+    // Рассылка всем (dest 0000): подтверждений нет, поэтому небольшой файл
+    // (голосовое до 10 с — 34 чанка) уходит двумя проходами: потерянный в
+    // первом чанк приёмник возьмёт из второго.
+    const bool bcast = fileTxDest[0] == 0 && fileTxDest[1] == 0;
+    const int passes = (bcast && fileTxChunksTotal <= BCAST_DOUBLE_PASS_MAX_CHUNKS) ? 2 : 1;
+
     // Отправить все чанки
+    for (int pass = 0; pass < passes; pass++)
     for (uint16_t i = 0; i < fileTxChunksTotal; i++) {
       if (millis() - startMs > (uint32_t)fileTimeoutSec * 1000) break; // таймаут
       LoRaFileChunk pkt;
@@ -1753,6 +1803,33 @@ static void fileSendTask(void* param) {
       loraSend((uint8_t*)&pkt, 8 + dataLen);
       // loraTask перезапустит RX через loraNeedRxRestart
       vTaskDelay(pdMS_TO_TICKS(50));
+    }
+
+    if (bcast) {
+      // FILE_END дважды: по нему приёмники отдают файл телефону, не дожидаясь
+      // таймаута. Ответа никто не шлёт — итог «отправлено», а не «доставлено».
+      for (int k = 0; k < 2; k++) {
+        LoRaFileEnd endPkt;
+        memset(&endPkt, 0, sizeof(endPkt));
+        endPkt.type = PKT_TYPE_FILE_END;
+        endPkt.session_id = fileTxSessionId;
+        endPkt.ttl = TTL_DEFAULT;
+        loraSend((uint8_t*)&endPkt, sizeof(endPkt));
+        vTaskDelay(pdMS_TO_TICKS(150));
+      }
+      loraStartReceive();
+      sendUploadStatus(6, fileTxSessionId); // SENT — разослано всем
+      LOG_F("[FileSend] SENT to all (%d ms, %d passes)\n", millis() - startMs, passes);
+#ifdef TEST_CONSOLE
+      Serial.printf("EVT FILE_TX result=SENT ms=%lu nack_rounds=0\n",
+        (unsigned long)(millis() - startMs));
+#endif
+      free(fileTxBuffer);
+      fileTxBuffer = nullptr;
+      fileTxActive = false;
+      fileState = FILE_STATE_IDLE;
+      loraAppBusy = false;
+      continue;
     }
 
     // Отправить FILE_END

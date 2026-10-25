@@ -182,6 +182,23 @@ def test_files(A: Device, B: Device, sizes=(1024, 5120, 20480)):
             check(f"файл {size} Б {tag}", ok and pattern_ok, detail)
 
 
+    # Голосовое в общем канале — файл всем, без подтверждений (с 4.4.35).
+    # 4000 байт — запись на 10 секунд; уходит двумя проходами.
+    for src, dst, tag in ((A, B, "A→всем"), (B, A, "B→всем")):
+        dst.drain()
+        acc, done = src.send_file("voice", 4000, "BCAST", timeout=60)
+        rx = dst.wait("FILE_RX", 8.0)
+        sent = bool(done and done.get("result") == "SENT")
+        pattern_ok = bool(rx and rx.get("pattern_ok") == "1")
+        detail = f"{done.get('ms')} мс" if done else "нет результата"
+        detail += (f", приём {rx.get('chunks')}, паттерн {'целый' if pattern_ok else 'БИТЫЙ'}"
+                   if rx else ", приёма нет")
+        check(f"голосовое {tag}", sent and pattern_ok, detail)
+    # Повторный FILE_END рассылки не должен открыть новый приём или дать дубль
+    dup = A.wait("FILE_RX", 3.0)
+    check("голосовое всем без дублей", dup is None, "дубль" if dup else "один приём")
+
+
 def test_beacon(A: Device, B: Device):
     print("\n[5] Beacon")
     # Устройства сами шлют маяки раз в 5 минут, и два маяка в эфире иногда

@@ -1061,7 +1061,8 @@ class MeshTRXService : Service() {
                 }
             }
             BleManager.CMD_FILE_UPLOAD_STATUS -> {
-                // File v2: статус от ESP32 — 0=ACCEPTED, 1=BUSY, 2=SENDING, 3=DELIVERED, 4=FAILED, 5=NO_MEMORY
+                // File v2: статус от ESP32 — 0=ACCEPTED, 1=BUSY, 2=SENDING, 3=DELIVERED, 4=FAILED, 5=NO_MEMORY,
+                // 6=SENT (разослано всем — подтверждать некому, с 4.4.35)
                 if (data.size >= 3) {
                     val status = data[1].toInt() and 0xFF
                     val sid = data[2].toInt() and 0xFF
@@ -1075,7 +1076,7 @@ class MeshTRXService : Service() {
                                 list[idx] = list[idx].copy(status = FileStatus.FAILED)
                                 ServiceState.statusMessage.postValue("Устройство занято")
                             }
-                            3 -> { // DELIVERED
+                            3, 6 -> { // DELIVERED / SENT всем
                                 list[idx] = list[idx].copy(status = FileStatus.DONE)
                             }
                             4 -> { // FAILED
@@ -1093,6 +1094,7 @@ class MeshTRXService : Service() {
                         // это одно и то же сообщение, поэтому статус переносим.
                         updateVoiceMessageStatus(list[idx].fileName, when (status) {
                             3 -> MessageStatus.DELIVERED
+                            6 -> MessageStatus.SENT
                             1, 4, 5 -> MessageStatus.FAILED
                             else -> null
                         })

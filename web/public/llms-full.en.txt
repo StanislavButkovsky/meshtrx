@@ -1,6 +1,6 @@
 # MeshTRX — full documentation
 
-> App 4.4.27, firmware 4.4.34, updated 2026-10-13. Source: https://meshtrx.ru/docs/
+> App 4.4.28, firmware 4.4.35, updated 2026-10-13. Source: https://meshtrx.ru/docs/
 
 ---
 
@@ -92,7 +92,7 @@ The revision is printed on the board itself in small type next to the antenna co
 
 ### 1. Flashing the device
 
-The simplest way is to flash straight from the browser: open the [flashing page](/flash/) in Chrome or Edge, connect the device over USB and pick your board revision. Ready-made files are on the [download page](/download/) if you prefer to flash with your own tools (see the revision table above). From source:
+The simplest way is to flash straight from the browser: open the [flashing page](/flash/) in Chrome or Edge, connect the device over USB and pick your board revision. If the board used to run Meshtastic or MeshCore, tick **“Erase the whole board”**: their leftovers in memory break the Bluetooth connection — the phone connects and drops at once. If that has already happened, flash with full erase, then remove the board in the phone's Bluetooth settings and connect from the app. Ready-made files are on the [download page](/download/) if you prefer to flash with your own tools (see the revision table above). From source:
 
 ```bash
 cd firmware
@@ -387,6 +387,14 @@ The app asks for confirmation.
 
 Messages are stored on your phone only: your correspondents keep their copies,
 and deleted ones cannot be recovered.
+
+
+### Voice messages
+
+The button with a microphone sits to the right of the input field. Hold it and speak, release it, and a recording of up to 10 seconds goes into the chat. It shows in the conversation with a ▶ button, and both you and the recipient can play it as many times as you like.
+
+- **To: All** (since firmware 4.4.35) — every radio on the channel gets the recording. Nobody confirms it, so the radio sends a short recording twice. Radios with older firmware drop such a message, so update the whole group.
+- **To: [name]** — only the addressee gets the recording, with a delivery mark, the same as for text.
 
 ### Filtering
 
