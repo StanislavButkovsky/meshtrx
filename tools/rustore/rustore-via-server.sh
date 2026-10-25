@@ -4,6 +4,10 @@
 #   tools/rustore/rustore-via-server.sh setup                — один раз положить ключ на сервер
 #   tools/rustore/rustore-via-server.sh auth | status
 #   tools/rustore/rustore-via-server.sh publish APK "Что нового"
+#   tools/rustore/rustore-via-server.sh release VERSION_ID   — выпустить одобренную
+#   tools/rustore/rustore-via-server.sh release-when-ready VERSION_ID — поставить на
+#     сервере разовую проверку (cron раз в 15 мин): выпустит версию сразу после
+#     одобрения и удалит себя; при отказе тоже удалит себя. Журнал: ~/rustore/release.log
 # Сервер берётся из ~/.config/meshtrx/deploy.env (как у web/scripts/deploy.sh).
 # Ключ на сервере — /root/.rustore/meshtrx_api_key (каталог 700, файл 600);
 # скрипт и APK копируются во временный каталог и удаляются после запуска.
@@ -24,8 +28,30 @@ case "${1:-}" in
     ssh "$DEST" 'umask 077; mkdir -p ~/.rustore && cat > ~/.rustore/meshtrx_api_key' < "$LOCAL_KEY"
     echo "ключ на сервере: ~/.rustore/meshtrx_api_key"
     exec "$0" auth ;;
-  auth|status|publish) ;;
-  *) sed -n 2,10p "$0"; exit 64 ;;
+  release-when-ready)
+    VID="${2:?versionId}"
+    ssh "$DEST" 'mkdir -p ~/rustore'
+    scp -q "$HERE/rustore.sh" "$DEST:rustore/rustore.sh"
+    JOB="$(mktemp)"; trap 'rm -f "$JOB"' EXIT
+    sed "s/@VID@/$VID/g" > "$JOB" <<'TEMPLATE'
+#!/bin/bash
+# Разовая проверка: выпустить версию @VID@ в RuStore после одобрения.
+cd ~/rustore
+RUSTORE_KEY=~/.rustore/meshtrx_api_key bash ./rustore.sh release-if-ready @VID@ >> release.log 2>&1
+rc=$?
+echo "$(date '+%F %T') rc=$rc" >> release.log
+# 3 — ещё на модерации: ждём следующего запуска; иначе проверка больше не нужна
+if [ $rc -ne 3 ]; then
+  crontab -l | grep -v "release-@VID@.sh" | crontab -
+  rm -f ~/rustore/release-@VID@.sh
+fi
+TEMPLATE
+    scp -q "$JOB" "$DEST:rustore/release-$VID.sh"
+    ssh "$DEST" "chmod +x ~/rustore/release-$VID.sh && (crontab -l 2>/dev/null | grep -v 'release-$VID.sh'; echo '*/15 * * * * \$HOME/rustore/release-$VID.sh') | crontab - && crontab -l | grep release-$VID"
+    echo "проверка поставлена; журнал на сервере: ~/rustore/release.log"
+    exit 0 ;;
+  auth|status|publish|release) ;;
+  *) sed -n 2,14p "$0"; exit 64 ;;
 esac
 
 TMP="$(ssh "$DEST" 'mktemp -d /tmp/rustore.XXXXXX')"
@@ -37,5 +63,5 @@ if [ "$1" = publish ]; then
   scp -q "$APK" "$DEST:$TMP/app.apk"
   ssh "$DEST" "RUSTORE_KEY=$REMOTE_KEY bash $TMP/rustore.sh publish $TMP/app.apk $(printf '%q' "$NEWS")"
 else
-  ssh "$DEST" "RUSTORE_KEY=$REMOTE_KEY bash $TMP/rustore.sh $1"
+  ssh "$DEST" "RUSTORE_KEY=$REMOTE_KEY bash $TMP/rustore.sh $1 ${2:-}"
 fi
