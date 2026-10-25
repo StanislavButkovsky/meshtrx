@@ -3,6 +3,9 @@
 #   tools/rustore/rustore.sh auth                  — проверить ключ (получить токен)
 #   tools/rustore/rustore.sh status                — версии приложения и их статусы
 #   tools/rustore/rustore.sh publish APK "Что нового"   — черновик → APK → на модерацию
+#   tools/rustore/rustore.sh release VERSION_ID        — выпустить одобренную версию
+#   tools/rustore/rustore.sh release-if-ready VERSION_ID — выпустить, если уже одобрена;
+#     код 0 — выпущена, 3 — ещё на модерации, 4 — отклонена (для разовой проверки по cron)
 # Ключ — ~/.rustore/meshtrx_api_key (строки «id …» и «key …», вне репозитория);
 # путь можно задать в RUSTORE_KEY. Значения ключа не выводим.
 # Публикация видна всем — только по команде владельца. Первую версию API не
@@ -71,5 +74,25 @@ if not b.get("content"): print("версий нет")' ;;
     curl -sS -X POST "$API/v1/application/$PACKAGE/version/$VID/commit" \
       -H "Public-Token: $T" | ok >/dev/null
     echo "отправлено на модерацию; после одобрения — опубликовать в Консоли (publishType MANUAL)" ;;
-  *) sed -n 2,10p "$0"; exit 64 ;;
+  release)
+    VID="${2:?versionId}"; T="$(token)"
+    curl -sS -X POST "$API/v1/application/$PACKAGE/version/$VID/publish" \
+      -H "Public-Token: $T" | ok >/dev/null
+    echo "версия $VID выпущена" ;;
+  release-if-ready)
+    VID="${2:?versionId}"; T="$(token)"
+    ST="$(curl -sS "$API/v1/application/$PACKAGE/version?filterTestingType=ALL&size=20" \
+      -H "Public-Token: $T" | ok | python3 -c '
+import json, sys
+vid = sys.argv[1]
+for v in (json.load(sys.stdin) or {}).get("content", []):
+    if str(v.get("versionId")) == vid: print(v.get("versionStatus"))' "$VID")"
+    echo "версия $VID: ${ST:-не найдена}"
+    case "$ST" in
+      READY_FOR_PUBLICATION) "$0" release "$VID" ;;
+      ACTIVE) exit 0 ;;
+      REJECTED*|"") exit 4 ;;
+      *) exit 3 ;;
+    esac ;;
+  *) sed -n 2,13p "$0"; exit 64 ;;
 esac
