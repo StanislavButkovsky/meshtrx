@@ -17,6 +17,7 @@ export default function FlashWizard() {
   // но усилителем будет управлять не тот вывод. Угадывать по умолчанию нельзя.
   const boards = flashBoards(DOWNLOAD_LINKS);
   const [board, setBoard] = useState<FlashBoard | null>(null);
+  const [eraseAll, setEraseAll] = useState(false);
   const [progress, setProgress] = useState<FlashProgressType>({
     stage: 'idle',
     percent: 0,
@@ -52,7 +53,7 @@ export default function FlashWizard() {
     setFlashing(true);
     setLogs([]);
     try {
-      await flashFirmware(port, board, setProgress, addLog);
+      await flashFirmware(port, board, setProgress, addLog, '', eraseAll);
     } catch {
       // Error handled in flashFirmware
     } finally {
@@ -105,6 +106,19 @@ export default function FlashWizard() {
             </button>
           ))}
         </div>
+        <label className="flex items-start gap-2 mt-4 text-sm text-text-secondary cursor-pointer">
+          <input
+            type="checkbox"
+            checked={eraseAll}
+            onChange={(e) => setEraseAll(e.target.checked)}
+            disabled={flashing}
+            className="mt-1 accent-current"
+          />
+          <span>
+            <span className="text-text-primary font-medium">{t('flash.erase.title')}</span>
+            {' — '}{t('flash.erase.hint')}
+          </span>
+        </label>
       </div>
 
       <div className="p-6 rounded-xl bg-bg-card border border-border space-y-4">

@@ -102,6 +102,11 @@ export const USER_GUIDE = `# MeshTRX — Руководство пользова
 
 Проще всего — прошить прямо из браузера: откройте [страницу прошивки](/flash/)
 в Chrome или Edge, подключите устройство по USB и выберите свою ревизию платы.
+Если на плате раньше стоял Meshtastic или MeshCore, отметьте **«Стереть плату
+полностью»**: их остатки в памяти мешают подключению по Bluetooth — телефон
+подключается и сразу отключается. Если это уже случилось, после прошивки с
+полным стиранием удалите плату в настройках Bluetooth телефона и подключитесь из
+приложения.
 Готовые файлы лежат на [странице загрузки](/download/), если хотите прошивать
 своими средствами (см. таблицу ревизий выше). Из исходников:
 
@@ -396,6 +401,18 @@ python3 -m venv .venv
 | ✓ принято нодой | рация адресата приняла, но его телефон сейчас не подключён — сообщение ждёт на рации и появится у человека, когда он подключится |
 | ↑ | ушло в эфир, ответа нет — сообщение могло дойти, а потеряться мог сам ответ |
 | ✗ | не ушло даже на свою рацию — нажмите на сообщение, чтобы отправить снова |
+
+### Голосовые сообщения
+
+Справа от поля ввода — кнопка с микрофоном. Удерживайте её и говорите, отпустите —
+запись до 10 секунд уйдёт в чат. Её видно в переписке с кнопкой ▶, и прослушать
+её можно сколько угодно раз — и вам, и получателю.
+
+- **Кому: Всем** (с прошивки 4.4.35) — запись получат все рации на канале.
+  Подтверждать её некому, поэтому рация передаёт короткую запись дважды. Рации
+  со старой прошивкой такое сообщение не примут — обновите прошивку у всей группы.
+- **Кому: [имя]** — запись получит только адресат, с отметкой о доставке, как у
+  текста.
 
 ### Если телефон был отключён от рации
 
@@ -995,7 +1012,7 @@ The revision is printed on the board itself in small type next to the antenna co
 
 ### 1. Flashing the device
 
-The simplest way is to flash straight from the browser: open the [flashing page](/flash/) in Chrome or Edge, connect the device over USB and pick your board revision. Ready-made files are on the [download page](/download/) if you prefer to flash with your own tools (see the revision table above). From source:
+The simplest way is to flash straight from the browser: open the [flashing page](/flash/) in Chrome or Edge, connect the device over USB and pick your board revision. If the board used to run Meshtastic or MeshCore, tick **“Erase the whole board”**: their leftovers in memory break the Bluetooth connection — the phone connects and drops at once. If that has already happened, flash with full erase, then remove the board in the phone's Bluetooth settings and connect from the app. Ready-made files are on the [download page](/download/) if you prefer to flash with your own tools (see the revision table above). From source:
 
 \`\`\`bash
 cd firmware
@@ -1290,6 +1307,14 @@ The app asks for confirmation.
 
 Messages are stored on your phone only: your correspondents keep their copies,
 and deleted ones cannot be recovered.
+
+
+### Voice messages
+
+The button with a microphone sits to the right of the input field. Hold it and speak, release it, and a recording of up to 10 seconds goes into the chat. It shows in the conversation with a ▶ button, and both you and the recipient can play it as many times as you like.
+
+- **To: All** (since firmware 4.4.35) — every radio on the channel gets the recording. Nobody confirms it, so the radio sends a short recording twice. Radios with older firmware drop such a message, so update the whole group.
+- **To: [name]** — only the addressee gets the recording, with a delivery mark, the same as for text.
 
 ### Filtering
 

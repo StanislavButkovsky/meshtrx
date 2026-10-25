@@ -12,6 +12,9 @@ import androidx.recyclerview.widget.RecyclerView
 import com.meshtrx.app.*
 import com.meshtrx.app.model.*
 
+/** С этой версии рация рассылает голосовое всем (файл с адресом 0000). */
+private const val VOICE_ALL_MIN_FW = "4.4.35"
+
 class MessagesFragment : Fragment() {
 
     private val service: MeshTRXService? get() = (activity as? MainActivity)?.service
@@ -70,9 +73,11 @@ class MessagesFragment : Fragment() {
         val tvRecCancel = v.findViewById<TextView>(R.id.tvRecCancel)
 
         fun updateVoiceButtonVisibility() {
-            // Показывать кнопку 🎤 только при адресной отправке и подключении
+            // Кнопка 🎤 — и в личном чате, и в общем канале (с прошивки 4.4.35
+            // рация умеет рассылать голосовое всем). Раньше была только в личном,
+            // и её просто не находили: чаще всего пишут в общий канал.
             val connected = ServiceState.connectionState.value == BleState.CONNECTED
-            btnVoice.visibility = if (destId != null && connected) View.VISIBLE else View.GONE
+            btnVoice.visibility = if (connected) View.VISIBLE else View.GONE
         }
 
         voiceRecorder.onTimeUpdate = { sec ->
@@ -88,6 +93,14 @@ class MessagesFragment : Fragment() {
         btnVoice.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
+                    // Старая прошивка голосовое «всем» не разошлёт — рации его отбросят
+                    if (destId == null && UpdateChecker.firmwareOlder(
+                            ServiceState.firmwareVersion.value, VOICE_ALL_MIN_FW)) {
+                        Toast.makeText(requireContext(),
+                            getString(R.string.voice_all_needs_fw, VOICE_ALL_MIN_FW),
+                            Toast.LENGTH_LONG).show()
+                        return@setOnTouchListener true
+                    }
                     // Начать запись
                     voiceRecorder.startRecording()
                     layoutRecording.visibility = View.VISIBLE
@@ -178,12 +191,12 @@ class MessagesFragment : Fragment() {
         etMessage.visibility = View.VISIBLE
         btnSend.visibility = View.VISIBLE
 
-        if (data != null && destId != null) {
-            // Отправить через файловый протокол
-            val destMac = byteArrayOf(
-                destId!!.substring(0, 2).toInt(16).toByte(),
-                destId!!.substring(2, 4).toInt(16).toByte()
-            )
+        if (data != null) {
+            // Отправить через файловый протокол; без адресата — всем (0000)
+            val destMac = destId?.let { id -> byteArrayOf(
+                id.substring(0, 2).toInt(16).toByte(),
+                id.substring(2, 4).toInt(16).toByte()
+            ) }
             val fileName = "voice_${java.text.SimpleDateFormat("HHmm", java.util.Locale.getDefault())
                 .format(java.util.Date())}.c2"
             // Сохранить .c2 на диск для воспроизведения
@@ -209,7 +222,8 @@ class MessagesFragment : Fragment() {
             ServiceState.messages.postValue(list)
             service?.saveMessages(list)
 
-            Toast.makeText(requireContext(), "Voice ${duration}s → ${destName}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(),
+                "Voice ${duration}s → ${destName ?: getString(R.string.to_all)}", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -426,4 +440,5 @@ private class Utf8LimitFilter(private val maxBytes: Int) : android.text.InputFil
         }
         return sb.toString()
     }
+
 }

@@ -239,4 +239,5 @@ MeshTRX v%2$s</string>
     <string name="notif_chan_all_desc">Messages sent to everyone</string>
     <string name="notif_private_from">%1$s — to you</string>
     <string name="notif_all_from">%1$s — group chat</string>
+    <string name="voice_all_needs_fw">Voice messages to everyone need radio firmware %1$s or newer</string>
 </resources>

@@ -604,7 +604,8 @@ class MeshTRXController: ObservableObject {
     }
 
     /// Итог отправки от рации: [0x32, статус, сессия]. 0 принят, 1 занята,
-    /// 2 отправляется, 3 доставлен, 4 не доставлен, 5 не хватило памяти.
+    /// 2 отправляется, 3 доставлен, 4 не доставлен, 5 не хватило памяти,
+    /// 6 разослан всем (подтверждать некому, с прошивки 4.4.35).
     private func handleFileUploadStatus(_ data: Data) {
         guard data.count >= 3 else { return }
         let status = Int(data[1])
@@ -624,6 +625,10 @@ class MeshTRXController: ObservableObject {
         case 4:
             appState.fileTransfers[i].status = .failed
             markVoiceStatus(fileType: fileType, ok: false)
+        case 6:
+            appState.fileTransfers[i].status = .done
+            appState.fileTransfers[i].chunksDone = appState.fileTransfers[i].chunksTotal
+            markVoiceStatus(fileType: fileType, ok: true, broadcast: true)
         case 5:
             appState.fileTransfers[i].status = .failed
             appState.statusMessage = "Файл слишком большой"
@@ -634,11 +639,11 @@ class MeshTRXController: ObservableObject {
     }
 
     /// Голосовое в чате — тот же файл: его судьбу переносим на сообщение.
-    private func markVoiceStatus(fileType: Int, ok: Bool) {
+    private func markVoiceStatus(fileType: Int, ok: Bool, broadcast: Bool = false) {
         guard fileType == 0x04,
               let i = appState.messages.lastIndex(where: { $0.isOutgoing && $0.isVoice && $0.status == .sending })
         else { return }
-        appState.messages[i].status = ok ? .delivered : .failed
+        appState.messages[i].status = !ok ? .failed : (broadcast ? .sent : .delivered)
     }
 
     private func addRecentCall(deviceId: String, callSign: String, isOutgoing: Bool, callType: String) {
