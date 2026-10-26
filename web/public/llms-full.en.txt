@@ -85,6 +85,7 @@ The revision is printed in small type on the back of the board, next to the GPS 
 - for each device — an Android phone (5.0+) **or** a computer with the desktop client
 - a USB-C cable for flashing
 - an antenna for the board's band (868 or 433 MHz), screwed on before power is applied: transmitting without an antenna destroys the output stage
+- optionally, a 3.7 V Li-Po battery with a JST 1.25 mm connector and a case. The board is the same one Meshtastic uses, so Meshtastic cases fit. For V3 the [H1 Case](https://www.printables.com/model/741974-h1-case-for-heltec-v3-running-meshtastic) works well — the project author uses it
 
 ---
 
