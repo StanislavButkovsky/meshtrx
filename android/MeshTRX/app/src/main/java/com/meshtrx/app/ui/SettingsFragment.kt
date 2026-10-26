@@ -44,6 +44,8 @@ class SettingsFragment : Fragment() {
             spinnerChannel.setSelection((ServiceState.currentChannel.value ?: 0).coerceIn(0, band.count - 1))
             seekTxPower.max = band.maxDbm
             if (seekTxPower.progress > band.maxDbm) seekTxPower.progress = band.maxDbm
+            // Мощность могла прийти раньше сетки, когда предел был ещё другой
+            ServiceState.deviceTxPower.value?.let { seekTxPower.progress = it.coerceIn(seekTxPower.min, band.maxDbm) }
         }
         spinnerChannel.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(p: AdapterView<*>?, v2: View?, pos: Int, id: Long) {
@@ -327,6 +329,22 @@ class SettingsFragment : Fragment() {
         val beaconOptions = listOf(getString(R.string.beacon_never), getString(R.string.beacon_1min), getString(R.string.beacon_3min), getString(R.string.beacon_5min), getString(R.string.beacon_15min), getString(R.string.beacon_30min), getString(R.string.beacon_1hour))
         spinnerBeacon.adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, beaconOptions)
         spinnerBeacon.setSelection(3)
+        // Мощность, Duty Cycle и маяк показываем такими, как они стоят в рации.
+        // Раньше экран всегда открывался с 14 дБм и «5 мин» из разметки, и
+        // «Применить и сохранить» (например, ради позывного) отправляло эти
+        // значения обратно — мощность «сама сбрасывалась на 14».
+        // Наблюдатели срабатывают только при смене значения в рации, поэтому
+        // ползунок, который человек двигает, периодический опрос не перебивает.
+        ServiceState.deviceTxPower.observe(viewLifecycleOwner) { p ->
+            if (p != null) seekTxPower.progress = p.coerceIn(seekTxPower.min, seekTxPower.max)
+        }
+        ServiceState.deviceDutyCycle.observe(viewLifecycleOwner) { dc ->
+            if (dc != null) switchDutyCycle.isChecked = dc
+        }
+        ServiceState.deviceBeaconSec.observe(viewLifecycleOwner) { sec ->
+            val idx = listOf(0, 60, 180, 300, 900, 1800, 3600).indexOf(sec)
+            if (idx >= 0) spinnerBeacon.setSelection(idx)
+        }
 
         seekTxPower.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(sb: SeekBar?, value: Int, fromUser: Boolean) {

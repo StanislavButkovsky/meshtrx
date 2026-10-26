@@ -696,6 +696,11 @@ class MeshTRXController: ObservableObject {
         guard data.count > 1,
               let obj = try? JSONSerialization.jsonObject(with: data.dropFirst()) as? [String: Any]
         else { return }
+        // Только при смене: опрос идёт регулярно и не должен перебивать то,
+        // что человек сейчас выставляет на экране настроек.
+        if let p = obj["tx_power"] as? Int, appState.deviceTxPower != p { appState.deviceTxPower = p }
+        if let dc = obj["duty_cycle"] as? Bool, appState.deviceDutyCycle != dc { appState.deviceDutyCycle = dc }
+        if let bs = obj["beacon_interval"] as? Int, appState.deviceBeaconSec != bs { appState.deviceBeaconSec = bs }
         let deviceCs = obj["callsign"] as? String ?? ""
         let saved = UserDefaults.standard.string(forKey: "my_callsign") ?? ""
         if !saved.isEmpty {

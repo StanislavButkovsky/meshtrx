@@ -71,6 +71,11 @@ object ServiceState {
     // Сетка частот рации: прошивка сообщает её после версии (с 4.4.34).
     // Пока не сообщила — считаем 868, как у всех прошивок до этого.
     val band = MutableLiveData(Band.EU868)
+    // Настройки, которые сейчас стоят в рации (ответ на запрос настроек).
+    // null — рация ещё не ответила.
+    val deviceTxPower = MutableLiveData<Int?>(null)
+    val deviceDutyCycle = MutableLiveData<Boolean?>(null)
+    val deviceBeaconSec = MutableLiveData<Int?>(null)
 
     // Events (one-shot) — UI подписывается
     val showPinDialog = MutableLiveData(false)
@@ -87,6 +92,9 @@ data class Band(val baseKhz: Int, val stepKhz: Int, val count: Int,
     fun label(ch: Int): String = "CH $ch — ${mhz(ch)} MHz"
 
     companion object {
-        val EU868 = Band(863_150, 300, 23, 22, -9)
+        // Предел 28 — как у V4 с усилителем: прошивки до 4.4.34 сетку не
+        // сообщают, и ползунок не должен отрезать им мощность. Лишнее рация
+        // V3 обрежет сама до своих 22 дБм.
+        val EU868 = Band(863_150, 300, 23, 28, -9)
     }
 }

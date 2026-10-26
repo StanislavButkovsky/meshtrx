@@ -72,7 +72,13 @@ struct SettingsView: View {
         .onAppear {
             callSign = appState.callSign
             selectedChannel = appState.currentChannel
+            loadDeviceSettings()
         }
+        // Мощность, Duty Cycle и маяк — такими, как стоят в рации. Раньше экран
+        // открывался с 14 дБм, и «Применить» отправляло их обратно.
+        .onChange(of: appState.deviceTxPower) { _ in loadDeviceSettings() }
+        .onChange(of: appState.deviceDutyCycle) { _ in loadDeviceSettings() }
+        .onChange(of: appState.deviceBeaconSec) { _ in loadDeviceSettings() }
         // Поиск свободного канала сам выставляет самый тихий, как в Android
         .onChange(of: appState.scanBestChannel) { best in
             if let best = best { selectedChannel = best }
@@ -628,5 +634,13 @@ struct SettingsView: View {
         }
         json += "}"
         controller.applySettings(json: json)
+    }
+
+    private func loadDeviceSettings() {
+        if let p = appState.deviceTxPower {
+            txPower = Double(min(max(p, 1), appState.band.maxDbm))
+        }
+        if let dc = appState.deviceDutyCycle { dutyCycle = dc }
+        if let bs = appState.deviceBeaconSec, let i = beaconSeconds.firstIndex(of: bs) { beaconIndex = i }
     }
 }
