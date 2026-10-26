@@ -103,8 +103,8 @@ export const NAV_LINKS = [
 ];
 
 export const VERSION_IOS = {
-  app: '1.0.2',
-  date: '2026-10-13',
+  app: '1.0.3',
+  date: '2026-10-26',
 };
 
 export const DOWNLOAD_LINKS = {
