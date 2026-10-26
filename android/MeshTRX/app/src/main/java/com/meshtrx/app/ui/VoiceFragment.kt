@@ -24,6 +24,11 @@ class VoiceFragment : Fragment() {
     private var pttBlockedUntilRelease = false
     private var updateTargetUiFn: (() -> Unit)? = null
     private var summaryTicker: Runnable? = null
+    // Свой обработчик, а не view.postDelayed: снять отложенную задачу с view,
+    // который уже отсоединён от окна, нельзя — она оставалась в очереди и
+    // срабатывала на уничтоженном экране. Xiaomi выгружает экраны свёрнутого
+    // приложения, и через минуту после сворачивания оно падало.
+    private val summaryHandler = android.os.Handler(android.os.Looper.getMainLooper())
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onCreateView(inflater: LayoutInflater, c: ViewGroup?, s: Bundle?): View {
@@ -393,6 +398,7 @@ class VoiceFragment : Fragment() {
         val tvSummaryLast = v.findViewById<TextView>(R.id.tvSummaryLast)
 
         fun refreshSummary() {
+            if (!isAdded || view == null) return
             // Слышимые станции считаем по тому же сроку, что и список абонентов:
             // станция, замолчавшая час назад, в сети уже не участвует.
             val timeoutMs = (ServiceState.peerTimeoutMin.value ?: 60) * 60_000L
@@ -428,11 +434,12 @@ class VoiceFragment : Fragment() {
         // пересчитываем по тому же таймеру, что и список последних вызовов.
         summaryTicker = object : Runnable {
             override fun run() {
+                if (!isAdded || view == null) return
                 refreshSummary()
-                view?.postDelayed(this, 15_000)
+                summaryHandler.postDelayed(this, 15_000)
             }
         }
-        v.postDelayed(summaryTicker!!, 15_000)
+        summaryHandler.postDelayed(summaryTicker!!, 15_000)
 
         // Обновлять target info и позывной при изменении peers
         ServiceState.peers.observe(viewLifecycleOwner) { peers ->
@@ -453,7 +460,7 @@ class VoiceFragment : Fragment() {
     override fun onDestroyView() {
         // Таймер держит ссылку на view: не снять его — и он будет дёргать
         // разметку уже уничтоженного экрана.
-        summaryTicker?.let { view?.removeCallbacks(it) }
+        summaryTicker?.let { summaryHandler.removeCallbacks(it) }
         summaryTicker = null
         super.onDestroyView()
     }

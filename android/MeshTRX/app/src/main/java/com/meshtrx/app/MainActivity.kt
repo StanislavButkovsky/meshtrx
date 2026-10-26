@@ -26,12 +26,16 @@ class MainActivity : AppCompatActivity() {
     var service: MeshTRXService? = null
     private var bound = false
 
-    private val voiceFragment = VoiceFragment()
-    private val messagesFragment = MessagesFragment()
-    private val filesFragment = FilesFragment()
-    private val mapFragment = MapFragment()
-    private val settingsFragment = SettingsFragment()
-    private var activeFragment: Fragment = voiceFragment
+    // Экраны вкладок. При пересоздании окна (Xiaomi делает это в фоне, а
+    // ещё смена темы или языка) система восстанавливает их сама — берём
+    // восстановленные, а не добавляем новые поверх: двойники продолжали жить
+    // отдельно, и таймер экрана «Голос» срабатывал уже на отсоединённом.
+    private lateinit var voiceFragment: VoiceFragment
+    private lateinit var messagesFragment: MessagesFragment
+    private lateinit var filesFragment: FilesFragment
+    private lateinit var mapFragment: MapFragment
+    private lateinit var settingsFragment: SettingsFragment
+    private lateinit var activeFragment: Fragment
     private var locationHelper: LocationHelper? = null
 
     private val connection = object : ServiceConnection {
@@ -49,7 +53,9 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        CrashLog.install(this)
         setContentView(R.layout.activity_main)
+        CrashLog.offerReport(this)
 
         requestPermissions()
 
@@ -58,13 +64,31 @@ class MainActivity : AppCompatActivity() {
         bindService(Intent(this, MeshTRXService::class.java), connection, Context.BIND_AUTO_CREATE)
 
         // Fragments
-        supportFragmentManager.beginTransaction()
-            .add(R.id.fragmentContainer, settingsFragment, "settings").hide(settingsFragment)
-            .add(R.id.fragmentContainer, mapFragment, "map").hide(mapFragment)
-            .add(R.id.fragmentContainer, filesFragment, "files").hide(filesFragment)
-            .add(R.id.fragmentContainer, messagesFragment, "messages").hide(messagesFragment)
-            .add(R.id.fragmentContainer, voiceFragment, "voice")
-            .commit()
+        val fm = supportFragmentManager
+        val restored = fm.findFragmentByTag("voice") as? VoiceFragment
+        if (restored != null) {
+            voiceFragment = restored
+            messagesFragment = fm.findFragmentByTag("messages") as MessagesFragment
+            filesFragment = fm.findFragmentByTag("files") as FilesFragment
+            mapFragment = fm.findFragmentByTag("map") as MapFragment
+            settingsFragment = fm.findFragmentByTag("settings") as SettingsFragment
+            activeFragment = listOf(voiceFragment, messagesFragment, filesFragment,
+                mapFragment, settingsFragment).firstOrNull { !it.isHidden } ?: voiceFragment
+        } else {
+            voiceFragment = VoiceFragment()
+            messagesFragment = MessagesFragment()
+            filesFragment = FilesFragment()
+            mapFragment = MapFragment()
+            settingsFragment = SettingsFragment()
+            activeFragment = voiceFragment
+            fm.beginTransaction()
+                .add(R.id.fragmentContainer, settingsFragment, "settings").hide(settingsFragment)
+                .add(R.id.fragmentContainer, mapFragment, "map").hide(mapFragment)
+                .add(R.id.fragmentContainer, filesFragment, "files").hide(filesFragment)
+                .add(R.id.fragmentContainer, messagesFragment, "messages").hide(messagesFragment)
+                .add(R.id.fragmentContainer, voiceFragment, "voice")
+                .commit()
+        }
 
         // GPS — стартует после получения разрешений
         locationHelper = LocationHelper(this)

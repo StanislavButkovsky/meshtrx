@@ -240,4 +240,8 @@ MeshTRX v%2$s</string>
     <string name="notif_private_from">%1$s — to you</string>
     <string name="notif_all_from">%1$s — group chat</string>
     <string name="voice_all_needs_fw">Voice messages to everyone need radio firmware %1$s or newer</string>
+    <string name="crash_title">The app closed with an error</string>
+    <string name="crash_message">Last time MeshTRX stopped with an error. Please send the report to the MeshTRX group — it shows where the error is.</string>
+    <string name="crash_share">Send</string>
+    <string name="crash_copy">Copy</string>
 </resources>

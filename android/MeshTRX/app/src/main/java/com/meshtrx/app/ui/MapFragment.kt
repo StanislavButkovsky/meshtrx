@@ -67,6 +67,12 @@ class MapFragment : Fragment() {
         mapView = MapView(ctx).apply {
             setTileSource(TileSourceFactory.MAPNIK)
             setMultiTouchControls(true)
+            // Без этого при сильном отдалении мир повторялся столбиком сверху
+            // вниз, а метки уезжали на одну из копий.
+            isVerticalMapRepetitionEnabled = false
+            setScrollableAreaLimitLatitude(MapView.getTileSystem().maxLatitude,
+                MapView.getTileSystem().minLatitude, 0)
+            minZoomLevel = 3.0
             controller.setZoom(14.0)
         }
         container.addView(mapView)

@@ -62,6 +62,7 @@ class MeshTRXService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        CrashLog.install(this)
         Log.d(TAG, "Service created")
 
         createNotificationChannel()

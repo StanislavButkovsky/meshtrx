@@ -240,4 +240,8 @@ MeshTRX v%2$s</string>
     <string name="notif_private_from">%1$s — лично вам</string>
     <string name="notif_all_from">%1$s — в общий чат</string>
     <string name="voice_all_needs_fw">Голосовое всем: обновите прошивку рации до %1$s или новее</string>
+    <string name="crash_title">Приложение закрылось с ошибкой</string>
+    <string name="crash_message">В прошлый раз MeshTRX остановился из-за ошибки. Отправьте, пожалуйста, отчёт в группу MeshTRX — по нему видно, где ошибка.</string>
+    <string name="crash_share">Отправить</string>
+    <string name="crash_copy">Скопировать</string>
 </resources>
