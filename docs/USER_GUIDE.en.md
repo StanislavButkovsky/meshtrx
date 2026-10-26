@@ -69,7 +69,7 @@ Both board revisions are supported. Their firmware is **different** — take the
 | V4 rev 4.2 | GC1109 amplifier | `firmware-v4-<version>.bin` |
 | V4 rev 4.3 | KCT8103L amplifier | `firmware-v4.3-<version>.bin` |
 
-The revision is printed on the board itself in small type next to the antenna connector. Firmware for the wrong revision will boot, but the amplifier will be driven from the wrong pin: the device will hear poorly or will not transmit at all.
+The revision is printed in small type on the back of the board, next to the GPS connector, as “HTIT-WB32LAF V4.3” or similar. Firmware for the wrong revision will boot, but the amplifier will be driven from the wrong pin: the device will hear poorly or will not transmit at all.
 
 **433 MHz boards (since 4.4.34, beta).** Heltec V3 also comes in a 433 MHz version, and it has its own firmware, `firmware-v3-433`. It uses the LPD band: 5 channels from 433.225 to 434.425 MHz, 300 kHz apart, at no more than 10 dBm (10 mW). The app asks the radio for its band and shows the matching channels. Radios on 433 and on 868 MHz cannot hear each other, so the whole group needs boards of the same band. Use a 433 MHz antenna.
 
