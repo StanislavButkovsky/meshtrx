@@ -6,6 +6,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: 'iOS 1.0.3',
+    date: '2026-10-26',
+    changes: [
+      'Приложение для iPhone: голосовые сообщения в общем канале, как в Android 4.4.28 (нужна прошивка 4.4.35)',
+      'Поддержка плат Heltec V3 на 433 МГц: каналы 433,225–434,425 МГц и предел мощности 10 мВт берутся у рации',
+    ],
+  },
+  {
     version: '4.4.28',
     date: '2026-10-25',
     changes: [
