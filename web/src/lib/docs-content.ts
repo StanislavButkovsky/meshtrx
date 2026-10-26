@@ -93,6 +93,10 @@ export const USER_GUIDE = `# MeshTRX — Руководство пользова
 - USB-C кабель для прошивки
 - антенна на диапазон платы (868 или 433 МГц), прикрученная до подачи питания: передача без антенны
   выводит из строя выходной каскад
+- по желанию — аккумулятор Li-Po 3,7 В с разъёмом JST 1,25 мм и корпус. Плата
+  та же, что у Meshtastic, поэтому подходят корпуса для неё. Для V3 удобен
+  [H1 Case](https://www.printables.com/model/741974-h1-case-for-heltec-v3-running-meshtastic)
+  — проверен автором проекта
 
 ---
 
@@ -1005,6 +1009,7 @@ The revision is printed in small type on the back of the board, next to the GPS 
 - for each device — an Android phone (5.0+) **or** a computer with the desktop client
 - a USB-C cable for flashing
 - an antenna for the board's band (868 or 433 MHz), screwed on before power is applied: transmitting without an antenna destroys the output stage
+- optionally, a 3.7 V Li-Po battery with a JST 1.25 mm connector and a case. The board is the same one Meshtastic uses, so Meshtastic cases fit. For V3 the [H1 Case](https://www.printables.com/model/741974-h1-case-for-heltec-v3-running-meshtastic) works well — the project author uses it
 
 ---
 
