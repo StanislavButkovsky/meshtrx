@@ -1005,6 +1005,15 @@ class MeshTRXService : Service() {
             BleManager.CMD_SETTINGS_RESP -> {
                 val json = String(data, 1, data.size - 1, Charsets.UTF_8)
                 Log.d(TAG, "Settings: $json")
+                try {
+                    val doc = org.json.JSONObject(json)
+                    if (doc.has("tx_power")) doc.optInt("tx_power").let {
+                        if (ServiceState.deviceTxPower.value != it) ServiceState.deviceTxPower.postValue(it) }
+                    if (doc.has("duty_cycle")) doc.optBoolean("duty_cycle").let {
+                        if (ServiceState.deviceDutyCycle.value != it) ServiceState.deviceDutyCycle.postValue(it) }
+                    if (doc.has("beacon_interval")) doc.optInt("beacon_interval").let {
+                        if (ServiceState.deviceBeaconSec.value != it) ServiceState.deviceBeaconSec.postValue(it) }
+                } catch (_: Exception) {}
                 // Позывной: приоритет — локально сохранённый, иначе с девайса
                 val saved = prefs.getString("my_callsign", null)
                 if (!saved.isNullOrEmpty()) {

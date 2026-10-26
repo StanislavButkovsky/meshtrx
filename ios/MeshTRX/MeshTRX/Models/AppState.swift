@@ -77,6 +77,10 @@ class AppState: ObservableObject {
     @Published var firmwareVersion: String = ""
     // Сетка частот рации; до ответа прошивки (и у прошивок до 4.4.34) — 868
     @Published var band: Band = .eu868
+    // Настройки, которые стоят в рации (ответ на запрос настроек); nil — не ответила
+    @Published var deviceTxPower: Int? = nil
+    @Published var deviceDutyCycle: Bool? = nil
+    @Published var deviceBeaconSec: Int? = nil
 
     // Notifications
     // По умолчанию «обо всех», как в Android (было «только личные»)
@@ -125,7 +129,7 @@ struct Band: Equatable {
     var maxDbm: Int
     var minDbm: Int
 
-    static let eu868 = Band(baseKhz: 863_150, stepKhz: 300, count: 23, maxDbm: 22, minDbm: -9)
+    static let eu868 = Band(baseKhz: 863_150, stepKhz: 300, count: 23, maxDbm: 28, minDbm: -9)  // 28 — как у V4: старые прошивки сетку не сообщают
 
     var is433: Bool { baseKhz < 500_000 }
     func mhz(_ ch: Int) -> Double { Double(baseKhz + ch * stepKhz) / 1000 }
