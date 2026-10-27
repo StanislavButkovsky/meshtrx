@@ -24,6 +24,7 @@ struct MainTabView: View {
                         Image(systemName: "mic.fill")
                         Text("PTT")
                     }
+                    .badge(appState.missedCalls)
                     .tag(0)
 
                 MessagesView()
@@ -55,11 +56,13 @@ struct MainTabView: View {
                     }
                     .tag(4)
             }
-            .accentColor(.green)
+            .accentColor(AppColors.accent)
             // Счётчик непрочитанных обнуляется, когда чат на экране. Раньше —
             // только при отправке сообщения или очистке, и цифра висела.
             .onChange(of: selectedTab) { tab in
                 if tab == 1 { appState.unreadMessages = 0 }
+                // Пропущенные вызовы видны в «Последних» на PTT — открыли, сбросили
+                if tab == 0 { appState.missedCalls = 0 }
             }
             .onChange(of: appState.requestedTab) { tab in
                 if let tab = tab { selectedTab = tab; appState.requestedTab = nil }

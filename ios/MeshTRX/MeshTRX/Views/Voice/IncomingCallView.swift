@@ -6,6 +6,8 @@ struct IncomingCallView: View {
     // Как в Android: только «OK», окно закрывается без ответа в эфир.
     // Раньше были «Принять/Отклонить», а через 30 с уходил автоматический отказ.
     var onDismiss: () -> Void = {}
+    /// Никто не нажал «OK», окно закрылось само — пропущенный вызов
+    var onMissed: () -> Void = {}
 
     static let timeoutSec = 10
     @State private var secondsLeft: Int = timeoutSec
@@ -140,6 +142,7 @@ struct IncomingCallView: View {
                 if secondsLeft % 5 == 0 { vibrate() }
             } else {
                 stopTimer()
+                onMissed()
                 onDismiss()   // через 10 с просто закрыть, ответа в эфир нет
             }
         }

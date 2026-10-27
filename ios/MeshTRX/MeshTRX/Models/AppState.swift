@@ -49,6 +49,8 @@ class AppState: ObservableObject {
     @Published var incomingCall: IncomingCall? = nil
     @Published var callActive: Bool = false
     @Published var recentCalls: [RecentCall] = []
+    /// Пропущенные вызовы — цифра на вкладке PTT, как в Android 4.4.32
+    @Published var missedCalls: Int = 0
 
     // Location
     @Published var myLat: Double? = nil

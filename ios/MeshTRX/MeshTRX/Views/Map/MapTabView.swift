@@ -51,7 +51,7 @@ struct MapTabContent: View {
                             gpsStatusLabel
                                 .padding(6)
                                 .background(Color.black.opacity(0.8))
-                                .cornerRadius(6)
+                                .cornerRadius(14)
                             Spacer()
                         }
                         .padding(8)

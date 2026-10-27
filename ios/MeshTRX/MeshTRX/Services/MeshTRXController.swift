@@ -945,7 +945,11 @@ class MeshTRXController: ObservableObject {
             // 3 — тайм-аут, 4 — вызов отменён: окно вызова закрываем, как Android
             if data.count >= 2 && (data[1] == 0 || data[1] >= 3) {
                 appState.callActive = false
-                if data[1] >= 3 { appState.incomingCall = nil }
+                if data[1] >= 3 {
+                    // Вызов кончился, а окно ещё на экране — его пропустили
+                    if appState.incomingCall != nil { appState.missedCalls += 1 }
+                    appState.incomingCall = nil
+                }
             }
         case BLECmd.keyState:
             handleKeyState(data)

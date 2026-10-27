@@ -16,6 +16,7 @@ struct SettingsView: View {
                 set: { appState[keyPath: kp] = Int($0) })
     }
     @State private var languageIndex: Int = 0
+    @AppStorage(AppTheme.key) private var theme = AppTheme.main.rawValue
 
     // Encryption
     @State private var passphrase: String = ""
@@ -59,6 +60,7 @@ struct SettingsView: View {
                     // Порядок — как в Android: история файлов, потом уведомления
                     historySection
                     notificationSection
+                    themeSection
                     // Выбор языка спрятан: английского перевода у iOS-версии пока
                     // нет, и переключатель ничего не менял. Вернуть вместе с переводом.
                     repeaterSection
@@ -514,6 +516,18 @@ struct SettingsView: View {
     }
 
     // MARK: - Language
+
+    private var themeSection: some View {
+        Section {
+            Picker("Оформление", selection: $theme) {
+                Text("Основное (сине-жёлтое)").tag(AppTheme.main.rawValue)
+                Text("Хаки").tag(AppTheme.khaki.rawValue)
+            }
+            .foregroundColor(AppColors.textPrimary)
+        } header: {
+            Text("Оформление")
+        }
+    }
 
     private var languageSection: some View {
         Section {
