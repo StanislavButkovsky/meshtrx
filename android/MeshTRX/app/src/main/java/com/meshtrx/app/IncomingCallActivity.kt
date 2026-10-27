@@ -46,6 +46,8 @@ class IncomingCallActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        com.meshtrx.app.ui.Colors.apply(this)
+        if (com.meshtrx.app.ui.Colors.isKhaki(this)) setTheme(R.style.Theme_MeshTRX_IncomingCall_Khaki)
         super.onCreate(savedInstanceState)
 
         // Показать поверх экрана блокировки

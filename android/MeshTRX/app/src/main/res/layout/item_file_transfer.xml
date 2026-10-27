@@ -5,7 +5,7 @@
     android:orientation="horizontal"
     android:gravity="center_vertical"
     android:padding="8dp"
-    android:background="#1a1a1a"
+    android:background="?attr/mtx_surface"
     android:layout_marginBottom="4dp">
 
     <!-- Иконка направления -->
@@ -20,11 +20,11 @@
 
         <TextView android:id="@+id/tvFileName"
             android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="photo.jpg" android:textSize="13sp" android:textColor="#cccccc" />
+            android:text="photo.jpg" android:textSize="13sp" android:textColor="?attr/mtx_text2" />
 
         <TextView android:id="@+id/tvFileInfo"
             android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="12 KB · Фото · 14:20" android:textSize="11sp" android:textColor="#555555" />
+            android:text="12 KB · Фото · 14:20" android:textSize="11sp" android:textColor="?attr/mtx_text_dim" />
     </LinearLayout>
 
     <!-- Прогресс -->
@@ -32,13 +32,13 @@
         style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="50dp" android:layout_height="4dp"
         android:max="100" android:progress="0"
-        android:progressTint="#4ade80"
+        android:progressTint="?attr/mtx_accent"
         android:visibility="gone" />
 
     <!-- Статус -->
     <TextView android:id="@+id/tvFileStatus"
         android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:text="✓" android:textSize="14sp" android:textColor="#4ade80" />
+        android:text="✓" android:textSize="14sp" android:textColor="?attr/mtx_accent" />
 
 
 </LinearLayout>

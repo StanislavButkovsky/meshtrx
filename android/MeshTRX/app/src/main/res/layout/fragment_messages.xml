@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#141414">
+    android:background="?attr/mtx_bg">
 
     <!-- Фильтр -->
     <LinearLayout
@@ -13,13 +13,13 @@
         android:gravity="center_vertical"
         android:paddingHorizontal="12dp"
         android:paddingVertical="6dp"
-        android:background="#111111">
+        android:background="?attr/mtx_bg_deep">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/filter"
-            android:textColor="#888888"
+            android:textColor="?attr/mtx_text_muted"
             android:textSize="13sp" />
 
         <Spinner android:id="@+id/spinnerFilter"
@@ -27,8 +27,8 @@
             android:layout_height="36dp"
             android:layout_weight="1"
             android:layout_marginStart="8dp"
-            android:background="#1a1a1a"
-            android:popupBackground="#1a1a1a" />
+            android:background="?attr/mtx_surface"
+            android:popupBackground="?attr/mtx_surface" />
 
         <!-- Очистка истории стоит здесь, а не в настройках: её ищут там, где
              читают переписку. -->
@@ -56,13 +56,13 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:padding="8dp"
-        android:background="#111111">
+        android:background="?attr/mtx_bg_deep">
 
         <TextView android:id="@+id/tvDest"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/to_all"
-            android:textColor="#4a9eff"
+            android:textColor="?attr/mtx_secondary"
             android:textSize="12sp"
             android:layout_marginBottom="4dp" />
 
@@ -85,9 +85,9 @@
                 android:layout_height="40dp"
                 android:layout_weight="1"
                 android:hint="@string/msg_hint"
-                android:textColor="#e8e8e8"
-                android:textColorHint="#555555"
-                android:background="#1a1a1a"
+                android:textColor="?attr/mtx_text"
+                android:textColorHint="?attr/mtx_text_dim"
+                android:background="?attr/mtx_surface"
                 android:paddingHorizontal="8dp"
                 android:inputType="text"
                 android:singleLine="true"
@@ -102,7 +102,7 @@
                 android:text="84"
                 android:textSize="11sp"
                 android:fontFamily="monospace"
-                android:textColor="#555555" />
+                android:textColor="?attr/mtx_text_dim" />
 
             <ImageButton android:id="@+id/btnSend"
                 android:layout_width="40dp"
@@ -154,7 +154,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/cancel"
-                android:textColor="#888888"
+                android:textColor="?attr/mtx_text_muted"
                 android:textSize="12sp"
                 android:padding="8dp" />
         </LinearLayout>

@@ -23,13 +23,13 @@ class FileDestPickerSheet : BottomSheetDialogFragment() {
         val layout = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(0, 24, 0, 24)
-            setBackgroundColor(0xFF1a1a1a.toInt())
+            setBackgroundColor(Colors.surface)
         }
 
         val title = TextView(ctx).apply {
             text = customTitle ?: getString(R.string.send_to)
             textSize = 18f
-            setTextColor(0xFFe8e8e8.toInt())
+            setTextColor(Colors.text)
             setPadding(32, 16, 32, 16)
         }
         layout.addView(title)
@@ -65,9 +65,9 @@ class FileDestPickerSheet : BottomSheetDialogFragment() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
             val view = LayoutInflater.from(parent.context)
                 .inflate(android.R.layout.simple_list_item_2, parent, false)
-            view.findViewById<TextView>(android.R.id.text1).setTextColor(0xFFe8e8e8.toInt())
-            view.findViewById<TextView>(android.R.id.text2).setTextColor(0xFF888888.toInt())
-            view.setBackgroundColor(0xFF1a1a1a.toInt())
+            view.findViewById<TextView>(android.R.id.text1).setTextColor(Colors.text)
+            view.findViewById<TextView>(android.R.id.text2).setTextColor(Colors.textMuted)
+            view.setBackgroundColor(Colors.surface)
             return VH(view)
         }
 

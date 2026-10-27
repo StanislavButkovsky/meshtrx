@@ -34,42 +34,42 @@ class RadarView @JvmOverloads constructor(
 
     // ---- Цвета: обычный режим ----
     private object NormalColors {
-        val bg = Color.BLACK
-        val grid = Color.parseColor("#1a3a1a")
-        val gridText = Color.parseColor("#2a5a2a")
-        val center = Color.parseColor("#4ade80")
-        val peer = Color.parseColor("#4ade80")
-        val peerYellow = Color.parseColor("#f59e0b")
-        val peerRed = Color.parseColor("#f87171")
-        val cross = Color.parseColor("#0d1f0d")
-        val north = Color.parseColor("#f87171")
-        val text = Color.parseColor("#4ade80")
-        val peerDistText = Color.parseColor("#88cc88")
-        val rangeText = Color.parseColor("#888888")
-        val btnBg = Color.parseColor("#222222")
-        val btnStroke = Color.parseColor("#1a2a1a")
-        val btnText = Color.parseColor("#aaaaaa")
-        val cardinal = Color.parseColor("#2a5a2a")
+        val bg get() = Colors.bgDeep
+        val grid get() = Colors.secondaryBorder
+        val gridText get() = Colors.textFaint
+        val center get() = Colors.accent
+        val peer get() = Colors.accent
+        val peerYellow get() = Color.parseColor("#f59e0b")
+        val peerRed get() = Color.parseColor("#f87171")
+        val cross get() = Colors.surface
+        val north get() = Color.parseColor("#f87171")
+        val text get() = Colors.text
+        val peerDistText get() = Colors.text2
+        val rangeText get() = Colors.textMuted
+        val btnBg get() = Colors.elevated
+        val btnStroke get() = Colors.borderStrong
+        val btnText get() = Colors.text2
+        val cardinal get() = Colors.textFaint
     }
 
     // ---- Цвета: высококонтрастный режим (улица) ----
     private object HiColors {
         val bg = Color.BLACK
-        val grid = Color.parseColor("#2a6a2a")
-        val gridText = Color.parseColor("#55cc55")
-        val center = Color.parseColor("#4ade80")
-        val peer = Color.parseColor("#00ff80")
+        val grid = Color.parseColor("#3E6BC4")
+        val gridText = Color.parseColor("#9DB8F0")
+        val center = Colors.accent
+        val peer = Color.parseColor("#FFD54A")
         val peerYellow = Color.parseColor("#ffcc00")
         val peerRed = Color.parseColor("#ff5555")
-        val cross = Color.parseColor("#1a3a1a")
+        val cross = Colors.secondaryBg
         val north = Color.parseColor("#ff6666")
         val text = Color.WHITE
-        val peerDistText = Color.parseColor("#ccffcc")
-        val rangeText = Color.parseColor("#cccccc")
-        val btnBg = Color.parseColor("#333333")
-        val btnStroke = Color.parseColor("#336633")
+        val peerDistText = Color.parseColor("#E0E8FF")
+        val rangeText = Colors.text2
+        val btnBg = Colors.borderStrong
+        val btnStroke = Colors.secondary
         val btnText = Color.WHITE
-        val cardinal = Color.parseColor("#55cc55")
+        val cardinal = Color.parseColor("#9DB8F0")
     }
 
     // Текущие цвета (переключаются)

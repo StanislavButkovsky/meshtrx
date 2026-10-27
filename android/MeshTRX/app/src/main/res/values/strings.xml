@@ -244,4 +244,8 @@ MeshTRX v%2$s</string>
     <string name="crash_message">Last time MeshTRX stopped with an error. Please send the report to the MeshTRX group — it shows where the error is.</string>
     <string name="crash_share">Send</string>
     <string name="crash_copy">Copy</string>
+    <string name="ui_theme">Theme</string>
+    <string name="ui_theme_main">Main (blue and yellow)</string>
+    <string name="ui_theme_khaki">Khaki</string>
+    <string name="splash_tagline">Walkie-talkie without internet or cell service</string>
 </resources>

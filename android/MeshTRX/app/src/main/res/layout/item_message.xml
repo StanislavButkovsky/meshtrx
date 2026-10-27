@@ -11,25 +11,25 @@
         android:padding="8dp"
         android:layout_marginStart="48dp"
         android:layout_gravity="end"
-        android:background="#1a3a5c">
+        android:background="?attr/mtx_secondary_bg">
 
         <TextView android:id="@+id/tvSender"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="#4a9eff"
+            android:textColor="?attr/mtx_secondary"
             android:textSize="11sp"
             android:visibility="gone" />
 
         <TextView android:id="@+id/tvText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="#e8e8e8"
+            android:textColor="?attr/mtx_text"
             android:textSize="14sp" />
 
         <TextView android:id="@+id/tvMeta"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="#666666"
+            android:textColor="?attr/mtx_text_dim"
             android:textSize="10sp"
             android:layout_gravity="end" />
     </LinearLayout>

@@ -204,7 +204,7 @@ class FilesFragment : Fragment() {
         }
         val tvInfo = TextView(ctx).apply {
             text = "$dir · $typeStr · ${transfer.totalSize / 1024} КБ\n$time$destInfo$hasData"
-            setTextColor(0xFFAAAAAA.toInt())
+            setTextColor(Colors.text2)
             textSize = 13f
         }
         layout.addView(tvInfo, LinearLayout.LayoutParams(

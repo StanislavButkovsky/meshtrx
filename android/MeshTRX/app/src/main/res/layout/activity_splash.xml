@@ -1,25 +1,45 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/splashRoot"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="#0C162C">
 
-    <!-- Камуфляжный фон -->
-    <ImageView
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:src="@drawable/camo_bg"
-        android:scaleType="centerCrop" />
-
-    <!-- Логотип по центру с отступами -->
-    <ImageView
-        android:id="@+id/splashLogo"
-        android:layout_width="match_parent"
+    <!-- Знак, название и подпись по центру -->
+    <LinearLayout
+        android:id="@+id/splashCenter"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:layout_margin="24dp"
-        android:adjustViewBounds="true"
-        android:src="@drawable/splash_logo"
-        android:scaleType="fitCenter" />
+        android:gravity="center_horizontal"
+        android:orientation="vertical">
+
+        <ImageView
+            android:id="@+id/splashLogo"
+            android:layout_width="200dp"
+            android:layout_height="200dp"
+            android:src="@drawable/splash_mark_main"
+            android:scaleType="fitCenter" />
+
+        <TextView
+            android:id="@+id/splashTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="MeshTRX"
+            android:textColor="?attr/mtx_text"
+            android:textSize="38sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/splashTagline"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="@string/splash_tagline"
+            android:textColor="?attr/mtx_text_muted"
+            android:textSize="15sp" />
+    </LinearLayout>
 
     <!-- Версия внизу -->
     <TextView
@@ -29,7 +49,7 @@
         android:layout_gravity="bottom|center_horizontal"
         android:layout_marginBottom="48dp"
         android:text="v4.3.1"
-        android:textColor="#4ade80"
-        android:textSize="14sp" />
+        android:textColor="?attr/mtx_text_faint"
+        android:textSize="13sp" />
 
 </FrameLayout>

@@ -37,6 +37,15 @@ class PttButtonView @JvmOverloads constructor(
     private val paintInnerBorder = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 2f }
     private val paintText = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER }
     private val paintWave = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 2f }
+    private val paintShadow = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    private val paintGloss = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    private val glossRect = RectF()
+
+    /** Цвет светлее (k > 1) или темнее (k < 1) — для объёма кнопки. */
+    private fun shade(c: Int, k: Float): Int {
+        fun ch(v: Int) = (v * k).toInt().coerceIn(0, 255)
+        return Color.argb(Color.alpha(c), ch(Color.red(c)), ch(Color.green(c)), ch(Color.blue(c)))
+    }
 
     // Волны (расходящиеся круги)
     private data class Wave(var radius: Float, var alpha: Int, var startTime: Long)
@@ -88,12 +97,13 @@ class PttButtonView @JvmOverloads constructor(
 
         // Цвета по состоянию
         val (bgColor, borderColor, ringColor, textColor, mainLabel, subLbl, waveColor) = when (state) {
-            State.IDLE -> Scheme(Colors.greenBg, Colors.greenBorder, Colors.bgBorder, Colors.greenAccent, resources.getString(R.string.ptt_talk), resources.getString(R.string.ptt_hold), 0)
+            // В покое кнопка — главный акцент: жёлтая (в «Хаки» — охра) с тёмной надписью
+            State.IDLE -> Scheme(Colors.accent, Colors.accent, Colors.bgBorder, Colors.onAccent, resources.getString(R.string.ptt_talk), resources.getString(R.string.ptt_hold), 0)
             State.TX -> Scheme(Colors.redTxBg, Colors.redTxBorder, Colors.redBorder, Colors.redTx, resources.getString(R.string.ptt_transmit), resources.getString(R.string.ptt_release), Colors.redTx)
             State.RX -> Scheme(Color.parseColor("#0a2a4a"), Colors.blueBorder, Color.parseColor("#1a3a6b"), Colors.blueAccent, resources.getString(R.string.ptt_receive), "", Colors.blueAccent)
-            State.VOX_IDLE -> Scheme(Colors.greenBg, Colors.greenBorder, Colors.bgBorder, Colors.greenAccent, "VOX", resources.getString(R.string.ptt_vox_auto), 0)
+            State.VOX_IDLE -> Scheme(Colors.accent, Colors.accent, Colors.bgBorder, Colors.onAccent, "VOX", resources.getString(R.string.ptt_vox_auto), 0)
             State.VOX_TX -> Scheme(Colors.redTxBg, Colors.redTxBorder, Colors.redBorder, Colors.redTx, "VOX TX", "", Colors.redTx)
-            State.SENDING -> Scheme(Color.parseColor("#555555"), Color.parseColor("#777777"), Color.parseColor("#666666"), Color.parseColor("#cccccc"), resources.getString(R.string.ptt_sending), "", 0)
+            State.SENDING -> Scheme(Colors.textDim, Color.parseColor("#777777"), Colors.textDim, Colors.text2, resources.getString(R.string.ptt_sending), "", 0)
         }
 
         // Волны (за кнопкой)
@@ -109,11 +119,33 @@ class PttButtonView @JvmOverloads constructor(
         paintRing.color = ringColor
         canvas.drawCircle(cx, cy, outerR, paintRing)
 
-        // Внутренний круг
-        paintInner.color = bgColor
+        // Внутренний круг — «стеклянная» кнопка: тёмный ободок, светлый диск
+        // с тонкой светлой окантовкой и овальный блик сверху
+        val d = resources.displayMetrics.density
+        paintShadow.shader = RadialGradient(cx, cy + 5f * d, innerR + 9f * d,
+            intArrayOf(0x55000000, 0x00000000), floatArrayOf(0.85f, 1f), Shader.TileMode.CLAMP)
+        canvas.drawCircle(cx, cy + 5f * d, innerR + 9f * d, paintShadow)
+        // ободок: сверху светлее, снизу темнее
+        paintInner.shader = LinearGradient(cx, cy - innerR, cx, cy + innerR,
+            shade(bgColor, 1.02f), shade(bgColor, 0.70f), Shader.TileMode.CLAMP)
         canvas.drawCircle(cx, cy, innerR, paintInner)
-        paintInnerBorder.color = borderColor
-        canvas.drawCircle(cx, cy, innerR, paintInnerBorder)
+        // диск: светлый центр, к краю — основной цвет
+        val discR = innerR * 0.88f
+        paintInner.shader = RadialGradient(cx, cy + discR * 0.25f, discR * 1.05f,
+            shade(bgColor, 1.10f), shade(bgColor, 0.92f), Shader.TileMode.CLAMP)
+        canvas.drawCircle(cx, cy, discR, paintInner)
+        paintInner.shader = null
+        // тонкая светлая окантовка диска
+        val lc = shade(bgColor, 1.35f)
+        paintInnerBorder.color = Color.argb(170, Color.red(lc), Color.green(lc), Color.blue(lc))
+        paintInnerBorder.strokeWidth = 1.5f * d
+        canvas.drawCircle(cx, cy, discR, paintInnerBorder)
+        // блик — овал в верхней части, сверху ярче, книзу исчезает
+        val gTop = cy - discR * 0.92f; val gBot = cy - discR * 0.22f
+        paintGloss.shader = LinearGradient(cx, gTop, cx, gBot,
+            0x70FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP)
+        glossRect.set(cx - discR * 0.62f, gTop, cx + discR * 0.62f, gBot)
+        canvas.drawOval(glossRect, paintGloss)
 
         // Текст
         paintText.color = textColor
@@ -135,10 +167,10 @@ class PttButtonView @JvmOverloads constructor(
             paintText.textSize = 11f * resources.displayMetrics.density
             paintText.typeface = Typeface.DEFAULT
             val subColor = when (state) {
-                State.IDLE, State.VOX_IDLE -> Colors.greenDim
+                State.IDLE, State.VOX_IDLE -> Colors.onAccent
                 State.TX, State.VOX_TX -> Colors.redBorder
                 State.RX -> Color.parseColor("#1a3a6b")
-                State.SENDING -> Color.parseColor("#555555")
+                State.SENDING -> Colors.textDim
             }
             paintText.color = subColor
             canvas.drawText(subLbl, cx, cy + 28f * resources.displayMetrics.density / 2f, paintText)
