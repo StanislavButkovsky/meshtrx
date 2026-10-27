@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.4.32',
+    date: '2026-10-27',
+    changes: [
+      'Счётчики на вкладках: на «Чате» — сколько пришло сообщений, пока чат не был открыт, на «PTT» — сколько вызовов пропущено',
+    ],
+  },
+  {
     version: '4.4.31',
     date: '2026-10-27',
     changes: [

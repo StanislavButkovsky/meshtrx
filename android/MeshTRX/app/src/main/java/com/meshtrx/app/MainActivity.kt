@@ -98,7 +98,9 @@ class MainActivity : AppCompatActivity() {
         tryStartLocation()
 
         // BottomNav
-        findViewById<BottomNavigationView>(R.id.bottomNav).setOnItemSelectedListener { item ->
+        val bottomNav = findViewById<BottomNavigationView>(R.id.bottomNav)
+        bottomNav.setOnItemSelectedListener { item ->
+            openTab(item.itemId)
             val target = when (item.itemId) {
                 R.id.nav_voice -> voiceFragment
                 R.id.nav_messages -> messagesFragment
@@ -112,6 +114,26 @@ class MainActivity : AppCompatActivity() {
             activeFragment = target
             true
         }
+        bottomNav.setOnItemReselectedListener { openTab(it.itemId) }
+        // После пересоздания окна счётчики не сбрасываем — только помечаем вкладку
+        openTab(bottomNav.selectedItemId, clear = false)
+
+        // Счётчики на вкладках: непрочитанные — на «Чате», пропущенные
+        // вызовы — на «PTT» (там список последних вызовов)
+        fun showBadge(itemId: Int, n: Int) {
+            if (n > 0) {
+                val badge = bottomNav.getOrCreateBadge(itemId)
+                badge.number = n
+                badge.maxCharacterCount = 3
+                badge.backgroundColor = Colors.redTx
+                badge.badgeTextColor = android.graphics.Color.WHITE
+                badge.isVisible = true
+            } else {
+                bottomNav.removeBadge(itemId)
+            }
+        }
+        ServiceState.unreadMessages.observe(this) { showBadge(R.id.nav_messages, it) }
+        ServiceState.missedCalls.observe(this) { showBadge(R.id.nav_voice, it) }
 
         // === Хедер observers ===
         val tvCallSign = findViewById<android.widget.TextView>(R.id.tvCallSign)
@@ -198,11 +220,30 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /** Отметить открытую вкладку и сбросить её счётчик. */
+    private fun openTab(itemId: Int, clear: Boolean = true) {
+        val tab = when (itemId) {
+            R.id.nav_messages -> ServiceState.Tab.MESSAGES
+            R.id.nav_files -> ServiceState.Tab.FILES
+            R.id.nav_map -> ServiceState.Tab.MAP
+            R.id.nav_settings -> ServiceState.Tab.SETTINGS
+            else -> ServiceState.Tab.VOICE
+        }
+        ServiceState.openTab.value = tab
+        if (clear) when (tab) {
+            ServiceState.Tab.MESSAGES -> ServiceState.clearUnread()
+            ServiceState.Tab.VOICE -> ServiceState.clearMissedCalls()
+            else -> {}
+        }
+    }
+
     override fun onResume() {
         super.onResume()
         // Пока экран перед глазами, уведомления о сообщениях не нужны: человек
         // видит их в чате. Служба смотрит на этот признак.
         ServiceState.appVisible.value = true
+        // Вернулись в приложение на открытом чате — пришедшее уже перед глазами
+        if (ServiceState.openTab.value == ServiceState.Tab.MESSAGES) ServiceState.clearUnread()
         if (bound && ServiceState.connectionState.value == BleState.DISCONNECTED) {
             service?.autoConnect()
         }
