@@ -1,6 +1,6 @@
 # MeshTRX — full documentation
 
-> App 4.4.30, firmware 4.4.35, updated 2026-10-26. Source: https://meshtrx.ru/docs/
+> App 4.4.31, firmware 4.4.35, updated 2026-10-26. Source: https://meshtrx.ru/docs/
 
 ---
 
@@ -507,6 +507,9 @@ Since version 4.4.5 every setting in this section is remembered and survives an 
 
 ### Repeater
 - See [Repeater mode](#repeater-mode)
+
+### Appearance
+- Main (blue and yellow) / Khaki — the app redraws in the chosen colours right away
 
 ### Language
 - Russian / English — switches instantly

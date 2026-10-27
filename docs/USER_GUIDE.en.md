@@ -502,6 +502,9 @@ Since version 4.4.5 every setting in this section is remembered and survives an 
 ### Repeater
 - See [Repeater mode](#repeater-mode)
 
+### Appearance
+- Main (blue and yellow) / Khaki — the app redraws in the chosen colours right away
+
 ### Language
 - Russian / English — switches instantly
 

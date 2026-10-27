@@ -582,6 +582,9 @@ python3 -m venv .venv
 ### Ретранслятор
 - См. раздел [Режим ретранслятора](#режим-ретранслятора)
 
+### Оформление
+- Основное (сине-жёлтое) / Хаки — приложение сразу перерисовывается в выбранных цветах
+
 ### Язык
 - Русский / English — переключение мгновенное
 
@@ -1431,6 +1434,9 @@ Since version 4.4.5 every setting in this section is remembered and survives an 
 
 ### Repeater
 - See [Repeater mode](#repeater-mode)
+
+### Appearance
+- Main (blue and yellow) / Khaki — the app redraws in the chosen colours right away
 
 ### Language
 - Russian / English — switches instantly
