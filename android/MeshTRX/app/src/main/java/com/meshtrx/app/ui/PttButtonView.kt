@@ -88,10 +88,11 @@ class PttButtonView @JvmOverloads constructor(
 
         // Цвета по состоянию
         val (bgColor, borderColor, ringColor, textColor, mainLabel, subLbl, waveColor) = when (state) {
-            State.IDLE -> Scheme(Colors.greenBg, Colors.greenBorder, Colors.bgBorder, Colors.greenAccent, resources.getString(R.string.ptt_talk), resources.getString(R.string.ptt_hold), 0)
+            // В покое кнопка — главный акцент: жёлтая (в «Хаки» — охра) с тёмной надписью
+            State.IDLE -> Scheme(Colors.accent, Colors.accent, Colors.bgBorder, Colors.onAccent, resources.getString(R.string.ptt_talk), resources.getString(R.string.ptt_hold), 0)
             State.TX -> Scheme(Colors.redTxBg, Colors.redTxBorder, Colors.redBorder, Colors.redTx, resources.getString(R.string.ptt_transmit), resources.getString(R.string.ptt_release), Colors.redTx)
             State.RX -> Scheme(Color.parseColor("#0a2a4a"), Colors.blueBorder, Color.parseColor("#1a3a6b"), Colors.blueAccent, resources.getString(R.string.ptt_receive), "", Colors.blueAccent)
-            State.VOX_IDLE -> Scheme(Colors.greenBg, Colors.greenBorder, Colors.bgBorder, Colors.greenAccent, "VOX", resources.getString(R.string.ptt_vox_auto), 0)
+            State.VOX_IDLE -> Scheme(Colors.accent, Colors.accent, Colors.bgBorder, Colors.onAccent, "VOX", resources.getString(R.string.ptt_vox_auto), 0)
             State.VOX_TX -> Scheme(Colors.redTxBg, Colors.redTxBorder, Colors.redBorder, Colors.redTx, "VOX TX", "", Colors.redTx)
             State.SENDING -> Scheme(Colors.textDim, Color.parseColor("#777777"), Colors.textDim, Colors.text2, resources.getString(R.string.ptt_sending), "", 0)
         }
@@ -135,7 +136,7 @@ class PttButtonView @JvmOverloads constructor(
             paintText.textSize = 11f * resources.displayMetrics.density
             paintText.typeface = Typeface.DEFAULT
             val subColor = when (state) {
-                State.IDLE, State.VOX_IDLE -> Colors.greenDim
+                State.IDLE, State.VOX_IDLE -> Colors.onAccent
                 State.TX, State.VOX_TX -> Colors.redBorder
                 State.RX -> Color.parseColor("#1a3a6b")
                 State.SENDING -> Colors.textDim
