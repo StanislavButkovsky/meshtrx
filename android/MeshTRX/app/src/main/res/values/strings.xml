@@ -247,4 +247,5 @@ MeshTRX v%2$s</string>
     <string name="ui_theme">Theme</string>
     <string name="ui_theme_main">Main (blue and yellow)</string>
     <string name="ui_theme_khaki">Khaki</string>
+    <string name="splash_tagline">Walkie-talkie without internet or cell service</string>
 </resources>

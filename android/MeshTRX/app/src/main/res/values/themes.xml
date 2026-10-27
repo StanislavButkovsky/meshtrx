@@ -61,23 +61,29 @@
         <item name="cornerSize">14dp</item>
     </style>
     <style name="Theme.MeshTRX.Splash" parent="Theme.MeshTRX">
-        <item name="android:windowBackground">#000000</item>
-        <item name="android:statusBarColor">#000000</item>
-        <item name="android:navigationBarColor">#000000</item>
+        <item name="android:windowBackground">#0C162C</item>
+        <item name="android:statusBarColor">#0C162C</item>
+        <item name="android:navigationBarColor">#0C162C</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+    <style name="Theme.MeshTRX.Splash.Khaki" parent="Theme.MeshTRX.Khaki">
+        <item name="android:windowBackground">#24281C</item>
+        <item name="android:statusBarColor">#24281C</item>
+        <item name="android:navigationBarColor">#24281C</item>
         <item name="android:windowLightStatusBar">false</item>
     </style>
     <style name="Theme.MeshTRX.IncomingCall" parent="Theme.MeshTRX">
         <item name="android:windowBackground">#0E1A33</item>
         <item name="android:windowFullscreen">true</item>
-        <item name="android:statusBarColor">#000000</item>
-        <item name="android:navigationBarColor">#000000</item>
+        <item name="android:statusBarColor">#0C162C</item>
+        <item name="android:navigationBarColor">#0C162C</item>
         <item name="android:windowLightStatusBar">false</item>
     </style>
     <style name="Theme.MeshTRX.IncomingCall.Khaki" parent="Theme.MeshTRX.Khaki">
         <item name="android:windowBackground">#1F2318</item>
         <item name="android:windowFullscreen">true</item>
-        <item name="android:statusBarColor">#000000</item>
-        <item name="android:navigationBarColor">#000000</item>
+        <item name="android:statusBarColor">#0C162C</item>
+        <item name="android:navigationBarColor">#0C162C</item>
         <item name="android:windowLightStatusBar">false</item>
     </style>
 </resources>

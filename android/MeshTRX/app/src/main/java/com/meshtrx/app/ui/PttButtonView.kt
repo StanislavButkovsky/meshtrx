@@ -37,6 +37,14 @@ class PttButtonView @JvmOverloads constructor(
     private val paintInnerBorder = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 2f }
     private val paintText = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER }
     private val paintWave = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 2f }
+    private val paintShadow = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    private val paintGloss = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+
+    /** Цвет светлее (k > 1) или темнее (k < 1) — для объёма кнопки. */
+    private fun shade(c: Int, k: Float): Int {
+        fun ch(v: Int) = (v * k).toInt().coerceIn(0, 255)
+        return Color.argb(Color.alpha(c), ch(Color.red(c)), ch(Color.green(c)), ch(Color.blue(c)))
+    }
 
     // Волны (расходящиеся круги)
     private data class Wave(var radius: Float, var alpha: Int, var startTime: Long)
@@ -110,10 +118,20 @@ class PttButtonView @JvmOverloads constructor(
         paintRing.color = ringColor
         canvas.drawCircle(cx, cy, outerR, paintRing)
 
-        // Внутренний круг
+        // Внутренний круг — объёмный: тень снизу, переход цвета сверху вниз, блик
+        val d = resources.displayMetrics.density
+        paintShadow.shader = RadialGradient(cx, cy + 6f * d, innerR + 10f * d,
+            intArrayOf(0x66000000, 0x00000000), floatArrayOf(0.82f, 1f), Shader.TileMode.CLAMP)
+        canvas.drawCircle(cx, cy + 6f * d, innerR + 10f * d, paintShadow)
         paintInner.color = bgColor
+        paintInner.shader = LinearGradient(cx, cy - innerR, cx, cy + innerR,
+            shade(bgColor, 1.14f), shade(bgColor, 0.80f), Shader.TileMode.CLAMP)
         canvas.drawCircle(cx, cy, innerR, paintInner)
-        paintInnerBorder.color = borderColor
+        paintInner.shader = null
+        paintGloss.shader = RadialGradient(cx - innerR * 0.25f, cy - innerR * 0.45f, innerR * 0.75f,
+            intArrayOf(0x55FFFFFF, 0x00FFFFFF), null, Shader.TileMode.CLAMP)
+        canvas.drawCircle(cx, cy, innerR, paintGloss)
+        paintInnerBorder.color = shade(borderColor, 0.75f)
         canvas.drawCircle(cx, cy, innerR, paintInnerBorder)
 
         // Текст
