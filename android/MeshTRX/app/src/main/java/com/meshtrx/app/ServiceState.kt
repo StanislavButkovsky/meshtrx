@@ -40,6 +40,42 @@ object ServiceState {
     val appVisible = MutableLiveData(false)
     val recentCalls = MutableLiveData<List<RecentCall>>(emptyList())
 
+    // Счётчики на вкладках: непрочитанные сообщения («Чат») и пропущенные
+    // вызовы («PTT»). Открытая вкладка — какая сейчас на экране; что пришло
+    // в открытую вкладку на видимом экране, человек и так видит.
+    enum class Tab { VOICE, MESSAGES, FILES, MAP, SETTINGS }
+    val openTab = MutableLiveData(Tab.VOICE)
+    val unreadMessages = MutableLiveData(0)
+    val missedCalls = MutableLiveData(0)
+    private val unreadN = java.util.concurrent.atomic.AtomicInteger(0)
+    private val missedN = java.util.concurrent.atomic.AtomicInteger(0)
+
+    private fun onScreen(tab: Tab) = appVisible.value == true && openTab.value == tab
+
+    fun addUnread() {
+        if (onScreen(Tab.MESSAGES)) return
+        unreadMessages.postValue(unreadN.incrementAndGet())
+    }
+
+    fun clearUnread() {
+        unreadN.set(0); unreadMessages.postValue(0)
+    }
+
+    // Конец вызова видят и экран вызова (30 секунд без ответа), и служба
+    // (рация сообщила «время вышло»): один вызов считаем один раз.
+    @Volatile private var lastMissed = ""
+
+    fun addMissedCall(call: IncomingCall) {
+        val key = "${call.senderId}:${call.callSeq}:${call.timeMs}"
+        if (key == lastMissed) return
+        lastMissed = key
+        missedCalls.postValue(missedN.incrementAndGet())
+    }
+
+    fun clearMissedCalls() {
+        missedN.set(0); missedCalls.postValue(0)
+    }
+
     val fileTransfers = MutableLiveData<List<FileTransfer>>(emptyList())
     val incomingCall = MutableLiveData<IncomingCall?>(null)
     val callActive = MutableLiveData(false)

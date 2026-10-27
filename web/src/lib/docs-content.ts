@@ -378,6 +378,10 @@ python3 -m venv .venv
 - Цвет по типу: синий (общий), зелёный (личный), жёлтый (группа)
 - Нажатие — повторный вызов
 
+### Счётчики на вкладках
+
+Красная цифра на вкладке **PTT** — сколько вызовов пропущено: вызов закончился, а вы его не приняли и не отклонили. Цифра на вкладке **Чат** — сколько пришло сообщений (текстовых и голосовых), пока чат не был открыт. Цифра пропадает, когда открываете вкладку.
+
 ---
 
 ## Текстовые сообщения
@@ -1257,6 +1261,10 @@ At the bottom of the PTT screen there is a scrollable list of recent calls:
 - Direction: → outgoing, ← incoming
 - Colour by type: blue (broadcast), green (private), yellow (group)
 - Tap to call again
+
+### Tab counters
+
+A red number on the **PTT** tab shows how many calls you missed: the call ended and you neither accepted nor declined it. The number on the **Chat** tab shows how many messages (text and voice) arrived while the chat was not open. The number goes away when you open the tab.
 
 ---
 

@@ -866,6 +866,7 @@ class MeshTRXService : Service() {
                     list.add(msg)
                     ServiceState.messages.postValue(list)
                     saveMessages(list)
+                    ServiceState.addUnread()
                     notifyIncomingMessage(msg)
 
                     if (senderId != "??") {
@@ -1222,6 +1223,7 @@ class MeshTRXService : Service() {
                             msgList.add(msg)
                             ServiceState.messages.postValue(msgList)
                             saveMessages(msgList)
+                            ServiceState.addUnread()
                         } else {
                             val transfer = FileTransfer(
                                 sessionId = 0, fileName = "$recvFileName от $senderName", fileType = fileType,
@@ -1301,6 +1303,9 @@ class MeshTRXService : Service() {
                     val status = data[1].toInt() and 0xFF
                     // 3=TIMEOUT, 4=CANCELLED → очистить
                     if (status >= 3) {
+                        // Вызов закончился, а его не приняли и не отклонили —
+                        // пропущенный
+                        ServiceState.incomingCall.value?.let { ServiceState.addMissedCall(it) }
                         ServiceState.incomingCall.postValue(null)
                         ServiceState.callActive.postValue(false)
                     }

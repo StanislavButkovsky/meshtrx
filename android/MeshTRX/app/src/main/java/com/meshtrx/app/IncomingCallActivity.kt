@@ -135,6 +135,8 @@ class IncomingCallActivity : AppCompatActivity() {
                 timeoutSec--
                 tvCallTimer.text = "${timeoutSec}с"
                 if (timeoutSec <= 0) {
+                    // Никто не ответил за 30 секунд — пропущенный вызов
+                    ServiceState.incomingCall.value?.let { ServiceState.addMissedCall(it) }
                     dismissCall()
                 } else {
                     handler.postDelayed(this, 1000)

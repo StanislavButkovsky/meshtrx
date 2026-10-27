@@ -325,6 +325,10 @@ At the bottom of the PTT screen there is a scrollable list of recent calls:
 - Colour by type: blue (broadcast), green (private), yellow (group)
 - Tap to call again
 
+### Tab counters
+
+A red number on the **PTT** tab shows how many calls you missed: the call ended and you neither accepted nor declined it. The number on the **Chat** tab shows how many messages (text and voice) arrived while the chat was not open. The number goes away when you open the tab.
+
 ---
 
 ## Text messages
