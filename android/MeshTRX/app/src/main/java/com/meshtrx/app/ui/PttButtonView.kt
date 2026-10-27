@@ -39,6 +39,7 @@ class PttButtonView @JvmOverloads constructor(
     private val paintWave = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = 2f }
     private val paintShadow = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val paintGloss = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    private val glossRect = RectF()
 
     /** Цвет светлее (k > 1) или темнее (k < 1) — для объёма кнопки. */
     private fun shade(c: Int, k: Float): Int {
@@ -118,21 +119,33 @@ class PttButtonView @JvmOverloads constructor(
         paintRing.color = ringColor
         canvas.drawCircle(cx, cy, outerR, paintRing)
 
-        // Внутренний круг — объёмный: тень снизу, переход цвета сверху вниз, блик
+        // Внутренний круг — «стеклянная» кнопка: тёмный ободок, светлый диск
+        // с тонкой светлой окантовкой и овальный блик сверху
         val d = resources.displayMetrics.density
-        paintShadow.shader = RadialGradient(cx, cy + 6f * d, innerR + 10f * d,
-            intArrayOf(0x66000000, 0x00000000), floatArrayOf(0.82f, 1f), Shader.TileMode.CLAMP)
-        canvas.drawCircle(cx, cy + 6f * d, innerR + 10f * d, paintShadow)
-        paintInner.color = bgColor
+        paintShadow.shader = RadialGradient(cx, cy + 5f * d, innerR + 9f * d,
+            intArrayOf(0x55000000, 0x00000000), floatArrayOf(0.85f, 1f), Shader.TileMode.CLAMP)
+        canvas.drawCircle(cx, cy + 5f * d, innerR + 9f * d, paintShadow)
+        // ободок: сверху светлее, снизу темнее
         paintInner.shader = LinearGradient(cx, cy - innerR, cx, cy + innerR,
-            shade(bgColor, 1.14f), shade(bgColor, 0.80f), Shader.TileMode.CLAMP)
+            shade(bgColor, 1.02f), shade(bgColor, 0.70f), Shader.TileMode.CLAMP)
         canvas.drawCircle(cx, cy, innerR, paintInner)
+        // диск: светлый центр, к краю — основной цвет
+        val discR = innerR * 0.88f
+        paintInner.shader = RadialGradient(cx, cy + discR * 0.25f, discR * 1.05f,
+            shade(bgColor, 1.10f), shade(bgColor, 0.92f), Shader.TileMode.CLAMP)
+        canvas.drawCircle(cx, cy, discR, paintInner)
         paintInner.shader = null
-        paintGloss.shader = RadialGradient(cx - innerR * 0.25f, cy - innerR * 0.45f, innerR * 0.75f,
-            intArrayOf(0x55FFFFFF, 0x00FFFFFF), null, Shader.TileMode.CLAMP)
-        canvas.drawCircle(cx, cy, innerR, paintGloss)
-        paintInnerBorder.color = shade(borderColor, 0.75f)
-        canvas.drawCircle(cx, cy, innerR, paintInnerBorder)
+        // тонкая светлая окантовка диска
+        val lc = shade(bgColor, 1.35f)
+        paintInnerBorder.color = Color.argb(170, Color.red(lc), Color.green(lc), Color.blue(lc))
+        paintInnerBorder.strokeWidth = 1.5f * d
+        canvas.drawCircle(cx, cy, discR, paintInnerBorder)
+        // блик — овал в верхней части, сверху ярче, книзу исчезает
+        val gTop = cy - discR * 0.92f; val gBot = cy - discR * 0.22f
+        paintGloss.shader = LinearGradient(cx, gTop, cx, gBot,
+            0x70FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP)
+        glossRect.set(cx - discR * 0.62f, gTop, cx + discR * 0.62f, gBot)
+        canvas.drawOval(glossRect, paintGloss)
 
         // Текст
         paintText.color = textColor
