@@ -25,9 +25,8 @@ export default function Header() {
     <header className="fixed top-0 left-0 right-0 z-50 bg-bg/80 backdrop-blur-md border-b border-border">
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2 group">
-          <div className="w-8 h-8 rounded-lg bg-accent/10 border border-accent/30 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
-            <span className="text-accent font-bold text-sm">M</span>
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/mark-64.png" alt="" width={32} height={32} className="w-8 h-8 rounded-lg" />
           <span className="font-bold text-lg text-text-primary">
             Mesh<span className="text-accent">TRX</span>
           </span>
