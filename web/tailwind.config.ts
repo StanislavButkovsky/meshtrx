@@ -8,14 +8,14 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        bg: '#141414',
-        'bg-card': '#1e1e1e',
-        'bg-hover': '#2a2a2a',
-        accent: '#4ade80',
-        'accent-dim': '#22c55e',
-        'text-primary': '#f5f5f5',
-        'text-secondary': '#a3a3a3',
-        border: '#333333',
+        bg: '#0E1A33',
+        'bg-card': '#14233F',
+        'bg-hover': '#1B2C4E',
+        accent: '#FABE14',
+        'accent-dim': '#E0A800',
+        'text-primary': '#EEF2FA',
+        'text-secondary': '#A9B4CC',
+        border: '#22355A',
       },
       fontFamily: {
         mono: ['JetBrains Mono', 'Fira Code', 'monospace'],

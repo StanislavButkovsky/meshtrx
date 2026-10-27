@@ -53,8 +53,8 @@ export default function PacketDiagram() {
               width={cell.w - 2}
               height={46}
               rx="3"
-              fill="#60a5fa15"
-              stroke="#60a5fa"
+              fill="#5B9BFF15"
+              stroke="#5B9BFF"
               strokeWidth="1.5"
             />
             {/* Однобайтовая ячейка — это меньше 25 px по ширине, и подпись в
@@ -65,7 +65,7 @@ export default function PacketDiagram() {
               x={cell.x + cell.w / 2}
               y={63}
               textAnchor="middle"
-              fill="#60a5fa"
+              fill="#5B9BFF"
               fontSize="10"
               fontFamily="monospace"
               transform={`rotate(-90 ${cell.x + cell.w / 2} 63)`}
@@ -84,8 +84,8 @@ export default function PacketDiagram() {
               width={frameWidth - 2}
               height={46}
               rx="3"
-              fill="#4ade8015"
-              stroke="#4ade80"
+              fill="#FABE1415"
+              stroke="#FABE14"
               strokeWidth="1.5"
               className="animate-pulse-line"
             />
@@ -93,7 +93,7 @@ export default function PacketDiagram() {
               x={headerWidth + i * frameWidth + frameWidth / 2}
               y={62}
               textAnchor="middle"
-              fill="#4ade80"
+              fill="#FABE14"
               fontSize="11"
               fontFamily="monospace"
             >
@@ -103,7 +103,7 @@ export default function PacketDiagram() {
               x={headerWidth + i * frameWidth + frameWidth / 2}
               y={77}
               textAnchor="middle"
-              fill="#4ade80"
+              fill="#FABE14"
               fontSize="10"
               fontFamily="monospace"
               opacity="0.75"
@@ -117,14 +117,14 @@ export default function PacketDiagram() {
         <path
           d={`M0 96 L0 104 L${headerWidth} 104 L${headerWidth} 96`}
           fill="none"
-          stroke="#60a5fa"
+          stroke="#5B9BFF"
           strokeWidth="1.5"
           opacity="0.6"
         />
-        <text x={headerWidth / 2} y={124} textAnchor="middle" fill="#60a5fa" fontSize="12" fontFamily="monospace">
+        <text x={headerWidth / 2} y={124} textAnchor="middle" fill="#5B9BFF" fontSize="12" fontFamily="monospace">
           {ru ? '7 байт' : '7 bytes'}
         </text>
-        <text x={headerWidth / 2} y={140} textAnchor="middle" fill="#a3a3a3" fontSize="11" fontFamily="monospace">
+        <text x={headerWidth / 2} y={140} textAnchor="middle" fill="#A9B4CC" fontSize="11" fontFamily="monospace">
           {ru ? 'заголовок' : 'header'}
         </text>
 
@@ -132,7 +132,7 @@ export default function PacketDiagram() {
         <path
           d={`M${headerWidth} 96 L${headerWidth} 104 L${WIDTH} 104 L${WIDTH} 96`}
           fill="none"
-          stroke="#4ade80"
+          stroke="#FABE14"
           strokeWidth="1.5"
           opacity="0.6"
         />
@@ -140,7 +140,7 @@ export default function PacketDiagram() {
           x={headerWidth + (WIDTH - headerWidth) / 2}
           y={124}
           textAnchor="middle"
-          fill="#4ade80"
+          fill="#FABE14"
           fontSize="12"
           fontFamily="monospace"
         >
@@ -150,7 +150,7 @@ export default function PacketDiagram() {
           x={headerWidth + (WIDTH - headerWidth) / 2}
           y={140}
           textAnchor="middle"
-          fill="#a3a3a3"
+          fill="#A9B4CC"
           fontSize="11"
           fontFamily="monospace"
         >
@@ -166,10 +166,10 @@ export default function PacketDiagram() {
         </text>
 
         {/* Подпись оси сверху */}
-        <text x="0" y={26} fill="#a3a3a3" fontSize="11" fontFamily="monospace">
+        <text x="0" y={26} fill="#A9B4CC" fontSize="11" fontFamily="monospace">
           {ru ? 'байт 0' : 'byte 0'}
         </text>
-        <text x={WIDTH} y={26} textAnchor="end" fill="#a3a3a3" fontSize="11" fontFamily="monospace">
+        <text x={WIDTH} y={26} textAnchor="end" fill="#A9B4CC" fontSize="11" fontFamily="monospace">
           {ru ? 'байт 38' : 'byte 38'}
         </text>
       </svg>

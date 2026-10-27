@@ -30,7 +30,7 @@ export default function MeshDiagram() {
             y1={nodes[link.from].y}
             x2={nodes[link.to].x}
             y2={nodes[link.to].y}
-            stroke={link.type === 'lora' ? '#4ade80' : '#60a5fa'}
+            stroke={link.type === 'lora' ? '#FABE14' : '#5B9BFF'}
             strokeWidth="2"
             strokeDasharray={link.type === 'lora' ? '8 4' : 'none'}
             className={link.type === 'lora' ? 'animate-dash' : ''}
@@ -44,13 +44,13 @@ export default function MeshDiagram() {
               cy={node.y}
               r={node.type === 'node' ? 24 : 18}
               fill={
-                node.type === 'node' ? '#4ade8020' :
-                node.type === 'phone' ? '#60a5fa15' :
+                node.type === 'node' ? '#FABE1420' :
+                node.type === 'phone' ? '#5B9BFF15' :
                 '#a78bfa15'
               }
               stroke={
-                node.type === 'node' ? '#4ade80' :
-                node.type === 'phone' ? '#60a5fa' :
+                node.type === 'node' ? '#FABE14' :
+                node.type === 'phone' ? '#5B9BFF' :
                 '#a78bfa'
               }
               strokeWidth="1.5"
@@ -61,8 +61,8 @@ export default function MeshDiagram() {
               y={node.y + 4}
               textAnchor="middle"
               fill={
-                node.type === 'node' ? '#4ade80' :
-                node.type === 'phone' ? '#60a5fa' :
+                node.type === 'node' ? '#FABE14' :
+                node.type === 'phone' ? '#5B9BFF' :
                 '#a78bfa'
               }
               fontSize="10"
@@ -74,7 +74,7 @@ export default function MeshDiagram() {
               x={node.x}
               y={node.y + 40}
               textAnchor="middle"
-              fill="#a3a3a3"
+              fill="#A9B4CC"
               fontSize="11"
               fontFamily="monospace"
             >
@@ -84,10 +84,10 @@ export default function MeshDiagram() {
         ))}
         {/* Legend */}
         <g transform="translate(340, 150)">
-          <line x1="0" y1="0" x2="30" y2="0" stroke="#60a5fa" strokeWidth="2" />
-          <text x="35" y="4" fill="#a3a3a3" fontSize="10" fontFamily="monospace">BLE</text>
-          <line x1="80" y1="0" x2="110" y2="0" stroke="#4ade80" strokeWidth="2" strokeDasharray="8 4" />
-          <text x="115" y="4" fill="#a3a3a3" fontSize="10" fontFamily="monospace">LoRa</text>
+          <line x1="0" y1="0" x2="30" y2="0" stroke="#5B9BFF" strokeWidth="2" />
+          <text x="35" y="4" fill="#A9B4CC" fontSize="10" fontFamily="monospace">BLE</text>
+          <line x1="80" y1="0" x2="110" y2="0" stroke="#FABE14" strokeWidth="2" strokeDasharray="8 4" />
+          <text x="115" y="4" fill="#A9B4CC" fontSize="10" fontFamily="monospace">LoRa</text>
         </g>
       </svg>
     </div>
