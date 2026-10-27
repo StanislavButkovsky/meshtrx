@@ -31,27 +31,27 @@ class MapFragment : Fragment() {
 
         val root = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(0xFF141414.toInt())
+            setBackgroundColor(Colors.bg)
         }
 
         // Табы: Карта / Радар
         val tabBar = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
-            setBackgroundColor(0xFF111111.toInt())
+            setBackgroundColor(Colors.bgDeep)
             gravity = Gravity.CENTER
             setPadding(0, 8, 0, 8)
         }
 
         val btnMap = Button(ctx).apply {
             text = getString(R.string.map_tab)
-            setTextColor(0xFF4ade80.toInt())
-            setBackgroundColor(0xFF1a3a1a.toInt())
+            setTextColor(Colors.accent)
+            setBackgroundColor(Colors.secondaryBg)
             setPadding(32, 8, 32, 8)
         }
         val btnRadar = Button(ctx).apply {
             text = getString(R.string.radar_tab)
-            setTextColor(0xFF888888.toInt())
-            setBackgroundColor(0xFF1a1a1a.toInt())
+            setTextColor(Colors.textMuted)
+            setBackgroundColor(Colors.surface)
             setPadding(32, 8, 32, 8)
         }
         tabBar.addView(btnMap, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
@@ -119,7 +119,7 @@ class MapFragment : Fragment() {
             val lon = ServiceState.myLon.value
             if (lat != null && lon != null) {
                 tvGps.text = "GPS: %.5f, %.5f".format(lat, lon)
-                tvGps.setTextColor(0xFF4ade80.toInt())
+                tvGps.setTextColor(Colors.accent)
                 if (!centeredOnce && !isRadarMode) {
                     centeredOnce = true
                     mapView?.controller?.setCenter(org.osmdroid.util.GeoPoint(lat, lon))
@@ -139,8 +139,8 @@ class MapFragment : Fragment() {
             radarView?.visibility = View.GONE
             radarView?.stopCompass()
             fabContainer.visibility = View.VISIBLE
-            btnMap.setTextColor(0xFF4ade80.toInt()); btnMap.setBackgroundColor(0xFF1a3a1a.toInt())
-            btnRadar.setTextColor(0xFF888888.toInt()); btnRadar.setBackgroundColor(0xFF1a1a1a.toInt())
+            btnMap.setTextColor(Colors.accent); btnMap.setBackgroundColor(Colors.secondaryBg)
+            btnRadar.setTextColor(Colors.textMuted); btnRadar.setBackgroundColor(Colors.surface)
             updateMap()
         }
         btnRadar.setOnClickListener {
@@ -149,8 +149,8 @@ class MapFragment : Fragment() {
             radarView?.visibility = View.VISIBLE
             radarView?.startCompass()
             fabContainer.visibility = View.GONE
-            btnRadar.setTextColor(0xFF4ade80.toInt()); btnRadar.setBackgroundColor(0xFF1a3a1a.toInt())
-            btnMap.setTextColor(0xFF888888.toInt()); btnMap.setBackgroundColor(0xFF1a1a1a.toInt())
+            btnRadar.setTextColor(Colors.accent); btnRadar.setBackgroundColor(Colors.secondaryBg)
+            btnMap.setTextColor(Colors.textMuted); btnMap.setBackgroundColor(Colors.surface)
         }
 
         // Observers
@@ -171,11 +171,11 @@ class MapFragment : Fragment() {
         return Button(ctx).apply {
             text = label
             textSize = 11f
-            setTextColor(0xFFe8e8e8.toInt())
+            setTextColor(Colors.text)
             val bg = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(0xFF1a3a1a.toInt())
-                setStroke(2, 0xFF2a5a2a.toInt())
+                setColor(Colors.secondaryBg)
+                setStroke(2, Colors.secondaryBorder)
             }
             background = bg
             setPadding(0, 0, 0, 0)
@@ -226,7 +226,7 @@ class MapFragment : Fragment() {
                     addPoint(GeoPoint(myLat, myLon))
                     addPoint(GeoPoint(peer.lat, peer.lon))
                     outlinePaint.color = when {
-                        ageSec < 300 -> 0x604ade80.toInt()
+                        ageSec < 300 -> 0x60FABE14.toInt()
                         ageSec < 600 -> 0x60f59e0b.toInt()
                         else -> 0x60f87171.toInt()
                     }

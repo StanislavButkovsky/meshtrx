@@ -67,12 +67,12 @@ class VoiceFragment : Fragment() {
         // Listen mode toggle
         fun updateListenButtons(mode: ListenMode) {
             val isAll = mode == ListenMode.ALL
-            btnListenAll.setTextColor(if (isAll) 0xFF4ade80.toInt() else 0xFF888888.toInt())
+            btnListenAll.setTextColor(if (isAll) Colors.accent else Colors.textMuted)
             btnListenAll.backgroundTintList = android.content.res.ColorStateList.valueOf(
-                if (isAll) 0xFF1e3a1e.toInt() else 0xFF222222.toInt())
-            btnListenMy.setTextColor(if (!isAll) 0xFF4ade80.toInt() else 0xFF888888.toInt())
+                if (isAll) Colors.secondaryBg else Colors.elevated)
+            btnListenMy.setTextColor(if (!isAll) Colors.accent else Colors.textMuted)
             btnListenMy.backgroundTintList = android.content.res.ColorStateList.valueOf(
-                if (!isAll) 0xFF1e3a1e.toInt() else 0xFF222222.toInt())
+                if (!isAll) Colors.secondaryBg else Colors.elevated)
         }
         btnListenAll.setOnClickListener {
             service?.setListenMode(ListenMode.ALL)
@@ -100,7 +100,7 @@ class VoiceFragment : Fragment() {
 
             if (targetId == null) {
                 tvTargetName.text = getString(R.string.general_channel)
-                tvTargetName.setTextColor(0xFF5ba3e8.toInt())
+                tvTargetName.setTextColor(Colors.secondary)
                 tvTargetSignal.visibility = View.GONE
             } else {
                 tvTargetName.text = targetName ?: "TX-$targetId"

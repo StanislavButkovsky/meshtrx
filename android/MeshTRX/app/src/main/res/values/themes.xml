@@ -1,24 +1,80 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.MeshTRX" parent="Theme.MaterialComponents.NoActionBar">
-        <item name="colorPrimary">#4ade80</item>
-        <item name="colorPrimaryVariant">#2d5a2d</item>
-        <item name="colorOnPrimary">#141414</item>
-        <item name="colorSecondary">#5ba3e8</item>
-        <item name="colorOnSecondary">#141414</item>
-        <item name="android:windowBackground">#141414</item>
-        <item name="android:statusBarColor">#141414</item>
-        <item name="android:navigationBarColor">#111111</item>
+        <item name="colorPrimary">#FABE14</item>
+        <item name="colorPrimaryVariant">#7F8FB0</item>
+        <item name="colorOnPrimary">#101E3C</item>
+        <item name="colorSecondary">#5B9BFF</item>
+        <item name="colorOnSecondary">#0E1A33</item>
+        <item name="android:windowBackground">#0E1A33</item>
+        <item name="android:statusBarColor">#0E1A33</item>
+        <item name="android:navigationBarColor">#0B152B</item>
         <item name="android:windowLightStatusBar">false</item>
+        <!-- палитра «Основная» -->
+        <item name="mtx_bg">#0E1A33</item>
+        <item name="mtx_bg_deep">#0B152B</item>
+        <item name="mtx_surface">#14233F</item>
+        <item name="mtx_elevated">#1B2C4E</item>
+        <item name="mtx_border">#22355A</item>
+        <item name="mtx_border_strong">#2A3F66</item>
+        <item name="mtx_accent">#FABE14</item>
+        <item name="mtx_on_accent">#101E3C</item>
+        <item name="mtx_secondary">#5B9BFF</item>
+        <item name="mtx_secondary_bg">#1D3566</item>
+        <item name="mtx_secondary_border">#2F55A0</item>
+        <item name="mtx_text">#EEF2FA</item>
+        <item name="mtx_text2">#C7D0E2</item>
+        <item name="mtx_text_muted">#8E9AB3</item>
+        <item name="mtx_text_dim">#5C6A88</item>
+        <item name="mtx_text_faint">#7F8FB0</item>
+        <item name="shapeAppearanceSmallComponent">@style/MeshTRX.Shape.Soft</item>
+        <item name="shapeAppearanceMediumComponent">@style/MeshTRX.Shape.Soft</item>
     </style>
-    <style name="Theme.MeshTRX.Splash" parent="Theme.MaterialComponents.NoActionBar">
+    <!-- Тема «Хаки»: та же разметка, другая палитра -->
+    <style name="Theme.MeshTRX.Khaki" parent="Theme.MeshTRX">
+        <item name="colorPrimary">#CE9C3A</item>
+        <item name="colorPrimaryVariant">#5C6B38</item>
+        <item name="colorOnPrimary">#1F2318</item>
+        <item name="colorSecondary">#A3B56A</item>
+        <item name="android:windowBackground">#1F2318</item>
+        <item name="android:statusBarColor">#1F2318</item>
+        <item name="android:navigationBarColor">#191C13</item>
+        <item name="mtx_bg">#1F2318</item>
+        <item name="mtx_bg_deep">#191C13</item>
+        <item name="mtx_surface">#2A2F20</item>
+        <item name="mtx_elevated">#343A28</item>
+        <item name="mtx_border">#3E4530</item>
+        <item name="mtx_border_strong">#4A523A</item>
+        <item name="mtx_accent">#CE9C3A</item>
+        <item name="mtx_on_accent">#1F2318</item>
+        <item name="mtx_secondary">#A3B56A</item>
+        <item name="mtx_secondary_bg">#3A4425</item>
+        <item name="mtx_secondary_border">#5C6B38</item>
+        <item name="mtx_text">#EAE2C8</item>
+        <item name="mtx_text2">#D2CAB0</item>
+        <item name="mtx_text_muted">#A39C82</item>
+        <item name="mtx_text_dim">#6F6A57</item>
+        <item name="mtx_text_faint">#8A846C</item>
+    </style>
+    <style name="MeshTRX.Shape.Soft" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">14dp</item>
+    </style>
+    <style name="Theme.MeshTRX.Splash" parent="Theme.MeshTRX">
         <item name="android:windowBackground">#000000</item>
         <item name="android:statusBarColor">#000000</item>
         <item name="android:navigationBarColor">#000000</item>
         <item name="android:windowLightStatusBar">false</item>
     </style>
-    <style name="Theme.MeshTRX.IncomingCall" parent="Theme.MaterialComponents.NoActionBar">
-        <item name="android:windowBackground">#141414</item>
+    <style name="Theme.MeshTRX.IncomingCall" parent="Theme.MeshTRX">
+        <item name="android:windowBackground">#0E1A33</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:statusBarColor">#000000</item>
+        <item name="android:navigationBarColor">#000000</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+    <style name="Theme.MeshTRX.IncomingCall.Khaki" parent="Theme.MeshTRX.Khaki">
+        <item name="android:windowBackground">#1F2318</item>
         <item name="android:windowFullscreen">true</item>
         <item name="android:statusBarColor">#000000</item>
         <item name="android:navigationBarColor">#000000</item>

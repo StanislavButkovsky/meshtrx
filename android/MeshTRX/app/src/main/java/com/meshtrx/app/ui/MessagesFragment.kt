@@ -52,7 +52,7 @@ class MessagesFragment : Fragment() {
             override fun afterTextChanged(s: android.text.Editable?) {
                 val left = MAX_TEXT_BYTES - (s?.toString()?.toByteArray(Charsets.UTF_8)?.size ?: 0)
                 tvBytesLeft.text = left.toString()
-                tvBytesLeft.setTextColor(if (left < 10) Colors.redTx else 0xFF555555.toInt())
+                tvBytesLeft.setTextColor(if (left < 10) Colors.redTx else Colors.textDim)
             }
         })
 
@@ -382,7 +382,7 @@ class MessagesFragment : Fragment() {
             } else if (msg.isOutgoing && msg.status == MessageStatus.ACCEPTED) {
                 holder.tvMeta.setTextColor(Colors.amberAccent)
             } else {
-                holder.tvMeta.setTextColor(0xFF666666.toInt())
+                holder.tvMeta.setTextColor(Colors.textDim)
             }
 
             // Retry при нажатии на FAILED сообщение

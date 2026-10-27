@@ -52,6 +52,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Тема оформления (Основная / Хаки) — до создания окна
+        com.meshtrx.app.ui.Colors.apply(this)
+        setTheme(com.meshtrx.app.ui.Colors.themeRes(this))
         super.onCreate(savedInstanceState)
         CrashLog.install(this)
         setContentView(R.layout.activity_main)

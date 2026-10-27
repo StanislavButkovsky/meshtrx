@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Палитра приложения: роли цветов. Значения — в темах (themes.xml). -->
+    <attr name="mtx_bg" format="color" />
+    <attr name="mtx_bg_deep" format="color" />
+    <attr name="mtx_surface" format="color" />
+    <attr name="mtx_elevated" format="color" />
+    <attr name="mtx_border" format="color" />
+    <attr name="mtx_border_strong" format="color" />
+    <attr name="mtx_accent" format="color" />
+    <attr name="mtx_on_accent" format="color" />
+    <attr name="mtx_secondary" format="color" />
+    <attr name="mtx_secondary_bg" format="color" />
+    <attr name="mtx_secondary_border" format="color" />
+    <attr name="mtx_text" format="color" />
+    <attr name="mtx_text2" format="color" />
+    <attr name="mtx_text_muted" format="color" />
+    <attr name="mtx_text_dim" format="color" />
+    <attr name="mtx_text_faint" format="color" />
+</resources>

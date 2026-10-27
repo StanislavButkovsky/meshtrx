@@ -4,13 +4,13 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#141414">
+    android:background="?attr/mtx_bg">
 
     <!-- ОБЩИЙ ХЕДЕР -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#1a1a1a"
+        android:background="?attr/mtx_surface"
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:paddingStart="16dp" android:paddingEnd="16dp"
@@ -20,11 +20,11 @@
             android:layout_weight="1" android:orientation="vertical">
             <TextView android:id="@+id/tvCallSign"
                 android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:text="MeshTRX" android:textSize="16sp" android:textColor="#e8e8e8"
+                android:text="MeshTRX" android:textSize="16sp" android:textColor="?attr/mtx_text"
                 android:letterSpacing="0.03" />
             <TextView android:id="@+id/tvDeviceName"
                 android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:text="" android:textSize="11sp" android:textColor="#555555" />
+                android:text="" android:textSize="11sp" android:textColor="?attr/mtx_text_dim" />
         </LinearLayout>
         <LinearLayout
             android:layout_width="wrap_content" android:layout_height="wrap_content"
@@ -41,16 +41,16 @@
                     android:layout_marginStart="6dp" />
                 <TextView android:id="@+id/tvBattery"
                     android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="" android:textSize="11sp" android:textColor="#888888"
+                    android:text="" android:textSize="11sp" android:textColor="?attr/mtx_text_muted"
                     android:layout_marginStart="2dp" />
             </LinearLayout>
             <TextView android:id="@+id/tvChannelInfo"
                 android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:text="" android:textSize="11sp" android:textColor="#4ade80" />
+                android:text="" android:textSize="11sp" android:textColor="?attr/mtx_accent" />
         </LinearLayout>
     </LinearLayout>
 
-    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#2a2a2a" />
+    <View android:layout_width="match_parent" android:layout_height="1dp" android:background="?attr/mtx_border" />
 
     <FrameLayout
         android:id="@+id/fragmentContainer"
@@ -62,7 +62,7 @@
         android:id="@+id/bottomNav"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#111111"
+        android:background="?attr/mtx_bg_deep"
         app:itemIconTint="@color/nav_item_color"
         app:itemTextColor="@color/nav_item_color"
         app:labelVisibilityMode="labeled"

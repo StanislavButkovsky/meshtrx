@@ -139,7 +139,7 @@ class SettingsFragment : Fragment() {
             tvKeyState.setTextColor(when {
                 fp.isEmpty() -> 0xFFff9d5c.toInt()
                 alien > 0 -> 0xFFff9d5c.toInt()
-                else -> 0xFF4ade80.toInt()
+                else -> Colors.accent
             })
         }
         showKeyState()
@@ -390,6 +390,24 @@ class SettingsFragment : Fragment() {
         }
 
         // Язык
+        // Тема оформления: основная сине-жёлтая или «Хаки»
+        val spinnerUiTheme = v.findViewById<Spinner>(R.id.spinnerUiTheme)
+        val themeCodes = listOf(Colors.THEME_MAIN, Colors.THEME_KHAKI)
+        spinnerUiTheme.adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item,
+            listOf(getString(R.string.ui_theme_main), getString(R.string.ui_theme_khaki)))
+        spinnerUiTheme.setSelection(themeCodes.indexOf(Colors.themeOf(requireContext())).coerceAtLeast(0))
+        spinnerUiTheme.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(p: AdapterView<*>?, v2: View?, pos: Int, id: Long) {
+                val code = themeCodes[pos]
+                if (code != Colors.themeOf(requireContext())) {
+                    requireContext().getSharedPreferences(Colors.PREFS, android.content.Context.MODE_PRIVATE)
+                        .edit().putString(Colors.KEY_THEME, code).apply()
+                    activity?.recreate()
+                }
+            }
+            override fun onNothingSelected(p: AdapterView<*>?) {}
+        }
+
         val spinnerLanguage = v.findViewById<Spinner>(R.id.spinnerLanguage)
         val langNames = listOf("Русский", "English")
         val langCodes = listOf("ru", "en")
@@ -496,8 +514,8 @@ class SettingsFragment : Fragment() {
         val btnUpdateGet = v.findViewById<Button>(R.id.btnUpdateGet)
         var latestUrl: String? = null
         var lastLatest: LatestVersions? = null
-        val colorOk = 0xFF888888.toInt()
-        val colorNew = 0xFF4ade80.toInt()
+        val colorOk = Colors.textMuted
+        val colorNew = Colors.accent
 
         // Две отдельные строки: приложение и прошивка обновляются по-разному —
         // приложение кнопкой, прошивка кабелем, — и человеку нужно видеть
