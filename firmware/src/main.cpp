@@ -1030,6 +1030,32 @@ static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr) 
           pkt->session_id == fileSessionId &&
           pkt->sender[0] == fileRxSender[0] && pkt->sender[1] == fileRxSender[1]) break;
 
+      // Тот же отправитель начал новую передачу, а мы всё ещё ждём прежнюю —
+      // у него она уже закончилась (дошла или он сдался), ждать её дальше
+      // незачем. Без этого приёмник оставался в старой сессии, а новая
+      // отбрасывалась как «занято».
+      if (fileState == FILE_STATE_RECEIVING && !fileRxBroadcast &&
+          pkt->session_id != fileSessionId &&
+          pkt->sender[0] == fileRxSender[0] && pkt->sender[1] == fileRxSender[1]) {
+        LOG_F("[File] RX restart: отправитель начал сессию %d вместо %d (%d/%d чанков)\n",
+          pkt->session_id, fileSessionId, fileRxUniqueCount, fileRxChunksTotal);
+        if (fileRxBuffer) { free(fileRxBuffer); fileRxBuffer = nullptr; }
+        fileState = FILE_STATE_IDLE;
+      }
+      // Занято — ничего не трогаем. Раньше номер сессии, размер и имя
+      // переписывались до этой проверки: идущий приём начинал принимать чанки
+      // чужой сессии в свой буфер, и телефону уходила смесь — человек слышал
+      // прошлое голосовое вместо нового.
+      if (fileState != FILE_STATE_IDLE) {
+        LOG_D("[File] RX ignored — busy");
+        break;
+      }
+      // Принятый файл ещё ждёт отдачи телефону — не затирать его новым приёмом
+      if (fileRxComplete && fileRxBuffer) {
+        LOG_D("[File] RX ignored — предыдущий файл ещё не отдан телефону");
+        break;
+      }
+
       // Инициировать приём файла
       fileRxChunksTotal = pkt->total_chunks;
       fileRxSize = pkt->total_size;
@@ -1039,10 +1065,6 @@ static void processLoRaPacket(uint8_t* data, int len, int16_t rssi, int8_t snr) 
       strncpy(fileRxName, (char*)pkt->name, 19);
       fileRxSender[0] = pkt->sender[0];
       fileRxSender[1] = pkt->sender[1];
-      if (fileState != FILE_STATE_IDLE) {
-        LOG_D("[File] RX ignored — busy");
-        break;
-      }
       fileState = FILE_STATE_RECEIVING;
       fileRxBroadcast = bcast;
       loraAppBusy = true;
