@@ -24,6 +24,10 @@ PEER_STALE_SEC = 15 * 60      # старше — абонент считаетс
 # сообщений: в полудуплексе говорящий занимает канал целиком, и без предела
 # один человек затыкает всю сеть.
 PTT_MAX_SECONDS = 10
+# Сколько ждём ответа на входящий вызов, как экран вызова в телефоне. Рация
+# сама об окончании общего вызова не сообщает — без своего отсчёта вызов
+# висел бы вечно и не считался пропущенным.
+CALL_RING_SECONDS = 30
 
 
 @dataclass
@@ -36,6 +40,15 @@ class Message:
     delivered: bool = False
     seq: int | None = None
     time: float = field(default_factory=time.time)
+    stored: bool = False          # «принято нодой»: ждёт на рации адресата без телефона
+    failed: bool = False
+    encrypted: bool | None = None
+    voice: bytes | None = None    # голосовое сообщение: кадры Codec2 3200
+    file_name: str = ""
+
+    @property
+    def voice_seconds(self) -> int:
+        return len(self.voice) // 8 * 20 // 1000 if self.voice else 0
 
 
 @dataclass
@@ -48,6 +61,7 @@ class FileTransfer:
     total: int = 0
     data: bytearray = field(default_factory=bytearray)
     finished: bool = False
+    file_type: int | None = None
 
 
 class Client:
@@ -80,6 +94,24 @@ class Client:
 
         self.ptt_active = False
         self.listen_all = True
+
+        # Шифрование эфира: ключ хранит рация, здесь только его отпечаток
+        self.key_fingerprint = ""
+        self.hear_plaintext: bool | None = None
+        self.alien_packets = 0
+        self.channel_scan: proto.ChannelScan | None = None
+        self.firmware = ""
+
+        # Счётчики на вкладках, как в телефоне: непрочитанные сообщения и
+        # пропущенные вызовы. Обнуляет интерфейс, когда вкладку открывают.
+        self.unread_messages = 0
+        self.missed_calls = 0
+        self.chat_open = False
+
+        self.recording = False
+        self._rec: bytearray = bytearray()
+        self._rec_started = 0.0
+        self._voice_out: Message | None = None
         self.upload_status: proto.UploadStatus | None = None
         self.mic_level = 0.0
         self._ptt_started = 0.0
@@ -180,6 +212,34 @@ class Client:
     def set_repeater(self, enabled: bool):
         self.link.send(proto.set_repeater(enabled))
 
+    def scan_channels(self):
+        self.link.send(proto.scan_channels())
+
+    def set_channel_for_all(self, ch: int):
+        self.link.send(proto.set_channel_all(ch))
+        self.channel = ch
+        self._emit("status", None)
+
+    def set_passphrase(self, phrase: str):
+        self.link.send(proto.set_key(phrase))
+        self.link.send(proto.get_key_state())
+
+    def clear_key(self):
+        self.link.send(proto.clear_key())
+        self.link.send(proto.get_key_state())
+
+    def set_hear_plaintext(self, on: bool):
+        self.link.send(proto.hear_plaintext(on))
+        self.link.send(proto.get_key_state())
+
+    def mark_chat_read(self):
+        self.unread_messages = 0
+        self._emit("counters", None)
+
+    def mark_calls_seen(self):
+        self.missed_calls = 0
+        self._emit("counters", None)
+
     def send_message(self, text: str, dest_id: str | None = None) -> Message:
         self._seq = (self._seq + 1) & 0xFF
         self.link.send(proto.send_message(self._seq, text, dest_id))
@@ -241,6 +301,51 @@ class Client:
             time.sleep(0.02)          # устройство пишет в свою память, не спешим
         return transfer
 
+    # ---------- голосовые сообщения ----------
+    def start_voice_record(self):
+        """Запись голосового сообщения: тот же захват, что у передачи, но
+        кадры копятся в памяти, а не уходят в эфир."""
+        if self.recording or self.ptt_active:
+            return
+        self.recording = True
+        self._rec = bytearray()
+        self._rec_started = time.time()
+        if self.capture is None:
+            self.capture = Capture(on_packet=self._on_captured, on_level=self._on_level)
+        self.capture.start()
+        self._emit("recording", True)
+
+    def stop_voice_record(self) -> bytes:
+        if not self.recording:
+            return b""
+        self.recording = False
+        if self.capture:
+            self.capture.stop()
+        self.mic_level = 0.0
+        self._emit("recording", False)
+        return bytes(self._rec)
+
+    def send_voice(self, data: bytes, dest_id: str | None = None) -> Message | None:
+        """Голосовое уходит файлом. Всем — с прошивки 4.4.35, без подтверждений:
+        итог «разослано», а не «доставлено»."""
+        if len(data) < 8 * 50:            # меньше секунды — случайное нажатие
+            return None
+        msg = Message(text="", outgoing=True, peer_id=dest_id or proto.BROADCAST,
+                      peer_name=self.peer_name(dest_id), voice=data)
+        self.messages.append(msg)
+        self._voice_out = msg
+        self._emit("message", msg)
+        name = time.strftime("voice_%H%M%S.c2")
+        threading.Thread(target=self.send_file, daemon=True,
+                         args=(name, data, proto.FileType.VOICE, dest_id)).start()
+        return msg
+
+    def play_voice(self, data: bytes):
+        """Проиграть запись: кадры уходят в тот же буфер, что и живой эфир."""
+        step = proto.AUDIO_PACKET_BYTES
+        for off in range(0, len(data) - step + 1, step):
+            self.playback.push(data[off:off + step], off + 2 * step > len(data))
+
     # ---------- голос ----------
     def start_ptt(self):
         if self.ptt_active or not self.link.connected:
@@ -265,6 +370,12 @@ class Client:
         self._emit("ptt", False)
 
     def _on_captured(self, packet: bytes):
+        if self.recording:
+            if time.time() - self._rec_started >= PTT_MAX_SECONDS:
+                self._emit("record_limit", PTT_MAX_SECONDS)
+                return
+            self._rec.extend(packet)
+            return
         # Предел речи проверяем здесь: кадры приходят каждые 80 мс, отдельный
         # таймер ради этого заводить незачем.
         if time.time() - self._ptt_started >= PTT_MAX_SECONDS:
@@ -305,6 +416,7 @@ class Client:
             self.link.send(proto.get_fw_version())
             self.request_settings()
             self.scan_peers()
+            self.link.send(proto.get_key_state())
         if state == "disconnected":
             self.authorized = False
             self.call_active = False
@@ -325,9 +437,29 @@ class Client:
         elif isinstance(event, proto.IncomingMessage):
             msg = Message(text=event.text, outgoing=False, peer_id=event.sender_id,
                           peer_name=self.peer_name(event.sender_id), rssi=event.rssi,
-                          delivered=True)
+                          delivered=True, encrypted=event.encrypted,
+                          time=time.time() - event.age_sec)
             self.messages.append(msg)
+            self._count_unread()
             self._emit("message", msg)
+
+        elif isinstance(event, proto.MessageAck):
+            for msg in reversed(self.messages):
+                if msg.outgoing and msg.seq == event.seq and not msg.delivered:
+                    msg.delivered = not event.stored
+                    msg.stored = event.stored
+                    self._emit("message", msg)
+                    break
+
+        elif isinstance(event, proto.KeyState):
+            self.key_fingerprint = event.fingerprint if event.has_key else ""
+            if event.hear_plaintext is not None:
+                self.hear_plaintext = event.hear_plaintext
+            self._emit("key", event)
+
+        elif isinstance(event, proto.ChannelScan):
+            self.channel_scan = event
+            self._emit("channel_scan", event)
 
         elif isinstance(event, proto.AudioFrame):
             if self.listen_all or self.call_active:
@@ -342,6 +474,9 @@ class Client:
         elif isinstance(event, proto.IncomingCall):
             self.incoming_call = event
             self._emit("call", event)
+            timer = threading.Timer(CALL_RING_SECONDS, self._call_unanswered, args=(event,))
+            timer.daemon = True
+            timer.start()
 
         elif isinstance(event, proto.FileProgress):
             if self._rx_file:
@@ -350,12 +485,18 @@ class Client:
 
         elif isinstance(event, proto.UploadStatus):
             self.upload_status = event
+            if self._voice_out and event.final:
+                self._voice_out.delivered = event.code == 3
+                self._voice_out.stored = event.code == 6   # разослано всем
+                self._voice_out.failed = not event.ok
+                self._emit("message", self._voice_out)
+                self._voice_out = None
             self._emit("upload_status", event)
 
         elif isinstance(event, proto.IncomingFileHeader):
             self._rx_file = FileTransfer(name=event.name, size=event.size,
                                          incoming=True, peer_id=event.sender_id,
-                                         total=event.chunks)
+                                         total=event.chunks, file_type=event.file_type)
             self.transfers.append(self._rx_file)
             self._emit("transfer", self._rx_file)
 
@@ -365,6 +506,37 @@ class Client:
 
         elif isinstance(event, tuple):
             self._handle_named(event[0], event[1])
+
+    def _call_unanswered(self, call: proto.IncomingCall):
+        """Вызов так и не приняли и не отклонили — пропущенный."""
+        with self._lock:
+            if self.incoming_call is call:
+                self.incoming_call = None
+                self.missed_calls += 1
+                self._emit("counters", None)
+                self._emit("call", None)
+
+    def _count_unread(self):
+        if not self.chat_open:
+            self.unread_messages += 1
+            self._emit("counters", None)
+
+    def _file_received(self, tr: FileTransfer):
+        """Голос — в чат или сразу в динамик, остальное — пользователю на диск."""
+        ftype = getattr(tr, "file_type", None)
+        if ftype == proto.FileType.VOICE:
+            msg = Message(text="", outgoing=False, peer_id=tr.peer_id,
+                          peer_name=self.peer_name(tr.peer_id), delivered=True,
+                          voice=bytes(tr.data), file_name=tr.name)
+            self.messages.append(msg)
+            self._count_unread()
+            self._emit("message", msg)
+        elif ftype == proto.FileType.PTT_VOICE:
+            # Адресная передача кнопкой «Говорить» — играем сразу, как эфир
+            self.play_voice(bytes(tr.data))
+            self._emit("audio_rx", proto.AudioFrame(tr.peer_id, b"", True))
+        else:
+            self._emit("file_done", tr)
 
     def _handle_named(self, kind: str, payload):
         if kind == "settings":
@@ -380,19 +552,31 @@ class Client:
             self.link.authorized = self.authorized
             self._emit("pin", self.authorized)
 
-        elif kind == "message_ack":
-            for msg in reversed(self.messages):
-                if msg.outgoing and not msg.delivered and msg.seq == payload:
-                    msg.delivered = True
-                    self._emit("message", msg)
-                    break
-
         elif kind == "file_data" and self._rx_file:
             self._rx_file.data.extend(payload)
             if len(self._rx_file.data) >= self._rx_file.size:
                 self._rx_file.finished = True
-                self._emit("file_done", self._rx_file)
+                self._file_received(self._rx_file)
                 self._rx_file = None
+
+        elif kind == "fw_version":
+            self.firmware = payload
+            self._emit("firmware", payload)
+
+        elif kind == "crypto_alien":
+            self.alien_packets = int(payload)
+            self._emit("key", None)
+
+        elif kind == "call_status":
+            # 3 — время вышло, 4 — вызов отменён. Если окно вызова ещё ждало
+            # ответа, вызов пропущен.
+            if payload and payload[0] >= 3:
+                if self.incoming_call is not None:
+                    self.missed_calls += 1
+                    self._emit("counters", None)
+                self.incoming_call = None
+                self.call_active = False
+                self._emit("call", None)
 
         elif kind == "location_request":
             # Своих координат у настольного клиента нет: отвечаем тем, что

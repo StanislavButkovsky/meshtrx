@@ -28,8 +28,8 @@ class PttButton(QPushButton):
     def __init__(self, client: Client):
         super().__init__("ГОВОРИТЬ  (пробел)")
         self.client = client
-        self.setMinimumHeight(90)
-        self.setProperty("accent", True)
+        self.setMinimumHeight(110)
+        self.setStyleSheet(theme.ptt_style(theme.ACCENT, theme.ON_ACCENT))
         self.setFocusPolicy(Qt.StrongFocus)
         self._blocked_until_release = False
         self.pressed.connect(self._down)
@@ -182,5 +182,11 @@ class VoiceTab(QWidget):
         else:
             self._countdown.stop()
         self.ptt.setText("ПЕРЕДАЧА…" if active else "ГОВОРИТЬ  (пробел)")
-        self.ptt.setStyleSheet(
-            f"background: {theme.DANGER}; color: #fff; font-weight: bold;" if active else "")
+        self.restyle()
+
+    def restyle(self):
+        """Цвет кнопки — по теме и по тому, идёт ли передача."""
+        if self.client.ptt_active:
+            self.ptt.setStyleSheet(theme.ptt_style(theme.DANGER, "#ffffff"))
+        else:
+            self.ptt.setStyleSheet(theme.ptt_style(theme.ACCENT, theme.ON_ACCENT))

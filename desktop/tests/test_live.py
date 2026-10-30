@@ -93,8 +93,12 @@ def test_text(client: Client, board: Board, col: Collector, peer_addr: str):
     check("адресное сообщение клиента дошло до платы", ev is not None,
           f"len={ev.get('len')} crc={ev.get('crc')}" if ev else "не принято")
 
-    ack = wait_until(lambda: any(m.outgoing and m.delivered for m in client.messages), 8)
-    check("подтверждение доставки вернулось клиенту", ack)
+    # У платы-корреспондента нет телефона: с прошивки 4.4.32 она отвечает
+    # «принято нодой» — сообщение ждёт на рации, — а не «доставлено»
+    ack = wait_until(lambda: any(m.outgoing and (m.delivered or m.stored)
+                                 for m in client.messages), 8)
+    check("подтверждение доставки вернулось клиенту", ack,
+          "принято нодой" if ack and any(m.stored for m in client.messages) else "")
 
     before = len(client.messages)
     board.send_text(client.own_id, "air-to-desktop")
@@ -112,7 +116,7 @@ def test_text(client: Client, board: Board, col: Collector, peer_addr: str):
     ev = board.wait("TEXT_RX", 12.0)
     if ev:
         text = bytes.fromhex(ev.get("hex", "")).decode("utf-8", "replace")
-        check("текст не искажается", text == "Кириллица и знаки: №«»—", text)
+        check("текст не искажается", text == "Кириллица и знаки: №«»—", f"{text} (len={ev.get('len')}, hex={ev.get('hex')})")
     else:
         check("текст не искажается", False, "сообщение не дошло")
 
@@ -298,10 +302,67 @@ def test_load(client: Client, board: Board, col: Collector, peer_addr: str):
           f"принято {col.count('message')} сообщений")
 
 
+def test_new(client: Client, board: Board, col: Collector, peer_addr: str):
+    print("\n[10] Догоняем телефон: ключ, поиск канала, голосовые, счётчики")
+    phrase = "desktop-key-check"
+    client.set_passphrase(phrase)
+    got = wait_until(lambda: bool(client.key_fingerprint), 8)
+    board.drain()
+    board.send(f"KEY PASS {phrase}")
+    ev = board.wait("KEY", 5.0)
+    check("ключ задан, отпечаток виден клиенту", got, client.key_fingerprint or "нет KEY_STATE")
+    check("отпечаток совпадает с платой", bool(ev) and ev.get("fp") == client.key_fingerprint,
+          f"клиент {client.key_fingerprint}, плата {ev.get('fp') if ev else '—'}")
+    board.drain()
+    client.send_message("encrypted-check", peer_addr)
+    rx = board.wait("TEXT_RX", 12.0)
+    check("сообщение с ключом дошло", rx is not None)
+    client.clear_key()
+    board.send("KEY OFF")
+    gone = wait_until(lambda: not client.key_fingerprint, 8)
+    check("ключ снят", gone)
+
+    col.reset("channel_scan")
+    client.scan_channels()
+    got = wait_until(lambda: col.count("channel_scan") > 0, 30)
+    scan = client.channel_scan
+    check("поиск свободного канала вернул уровни", got and scan is not None
+          and len(scan.levels) == client.band.count,
+          f"тише всего канал {scan.best}, каналов {len(scan.levels)}" if got and scan else "нет ответа")
+    client.set_channel(CHANNEL)
+    time.sleep(2)
+
+    codec = Codec2()
+    tone = (7000 * np.sin(2 * np.pi * 440 * np.arange(PACKET_SAMPLES) / 8000)).astype("<i2")
+    voice = codec.encode_packet(tone.tobytes()) * 100          # 8 с
+    board.drain()
+    msg = client.send_voice(voice, None)
+    rx = board.wait("FILE_RX", 40.0)
+    check("голосовое клиента всем дошло до платы", rx is not None,
+          f"приём {rx.get('chunks')}" if rx else "не принято")
+    done = wait_until(lambda: msg is not None and (msg.stored or msg.failed), 20)
+    check("клиент показал «разослано»", done and msg.stored and not msg.failed)
+
+    client.chat_open = False
+    before = client.unread_messages
+    board.send_file("voice", 2000, "BCAST", timeout=60)
+    got = wait_until(lambda: any(m.voice and not m.outgoing for m in client.messages), 20)
+    check("голосовое из эфира пришло в чат", got)
+    check("непрочитанные посчитаны", client.unread_messages > before,
+          f"{before} → {client.unread_messages}")
+
+    before = client.missed_calls
+    board.call("all")
+    wait_until(lambda: client.incoming_call is not None, 12)
+    missed = wait_until(lambda: client.missed_calls > before, 45)
+    check("неотвеченный вызов посчитан пропущенным", missed,
+          f"{before} → {client.missed_calls}")
+
+
 BLOCKS = {
     "link": test_link, "text": test_text, "voice": test_voice, "calls": test_calls,
     "beacon": test_beacon, "files": test_files, "settings": test_settings,
-    "reconnect": test_reconnect, "load": test_load,
+    "reconnect": test_reconnect, "load": test_load, "new": test_new,
 }
 
 
