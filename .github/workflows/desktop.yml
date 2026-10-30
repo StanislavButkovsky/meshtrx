@@ -54,7 +54,8 @@ jobs:
         uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
-          install: mingw-w64-x86_64-codec2 mingw-w64-x86_64-ntldd
+          update: true
+          install: mingw-w64-x86_64-codec2
       - name: Codec2 — путь (Windows)
         if: runner.os == 'Windows'
         shell: msys2 {0}
@@ -63,7 +64,7 @@ jobs:
           mkdir -p /c/codec2
           DLL=$(ls /mingw64/bin/libcodec2*.dll | head -1)
           cp "$DLL" /c/codec2/
-          ntldd -R "$DLL" | grep -i mingw64 | awk '{print $3}' | tr '\\' '/' | while read d; do cp "$(cygpath -u "$d")" /c/codec2/ || true; done
+          ldd "$DLL" | grep -i mingw64 | awk '{print $3}' | while read d; do cp "$d" /c/codec2/ || true; done
           ls /c/codec2
           echo "CODEC2_LIB=$(ls /c/codec2/*.dll | xargs -n1 cygpath -w | paste -sd';')" >> $GITHUB_ENV
       - name: Codec2 (macOS)
