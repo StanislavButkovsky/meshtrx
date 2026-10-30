@@ -22,11 +22,14 @@ jobs:
             target: windows
           - os: macos-14
             target: macos-arm64
-          - os: macos-13
+          - os: macos-15-intel
             target: macos-intel
           - os: ubuntu-22.04
             target: linux-x86_64
     runs-on: ${{ matrix.os }}
+    env:
+      # В исходниках русские комментарии: без этого Windows читает их в cp1252
+      PYTHONUTF8: "1"
     steps:
       - uses: actions/checkout@v4
 
@@ -37,7 +40,7 @@ jobs:
       - name: Версия
         shell: bash
         run: |
-          V=$(python -c "import re;print(re.search(r'__version__ = \"(.+)\"', open('desktop/meshtrx_desktop/__init__.py').read()).group(1))")
+          V=$(python -c "import re;print(re.search(r'__version__ = \"(.+)\"', open('desktop/meshtrx_desktop/__init__.py', encoding='utf-8').read()).group(1))")
           echo "MESHTRX_VERSION=$V" >> $GITHUB_ENV
 
       - name: Python-зависимости
