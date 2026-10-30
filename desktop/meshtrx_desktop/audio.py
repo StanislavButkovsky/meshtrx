@@ -13,7 +13,26 @@ import threading
 from collections.abc import Callable
 
 import numpy as np
-import sounddevice as sd
+
+
+def _use_bundled_portaudio():
+    """В собранной под Linux программе PortAudio лежит внутри неё, а
+    sounddevice ищет библиотеку только в системе. Подсказываем путь."""
+    import ctypes.util
+    import glob
+    import os
+    import sys
+    base = getattr(sys, "_MEIPASS", "")
+    found = sorted(glob.glob(os.path.join(base, "libportaudio.so*"))) if base else []
+    if not found:
+        return
+    original = ctypes.util.find_library
+    ctypes.util.find_library = lambda name: (found[0] if name == "portaudio"
+                                             else original(name))
+
+
+_use_bundled_portaudio()
+import sounddevice as sd  # noqa: E402
 
 from .codec2 import Codec2, PACKET_BYTES, PACKET_SAMPLES, SAMPLE_RATE
 

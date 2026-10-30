@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import ApkDownload from '@/components/download/ApkDownload';
 import FirmwareDownload from '@/components/download/FirmwareDownload';
+import DesktopDownload from '@/components/download/DesktopDownload';
 import QrCode from '@/components/download/QrCode';
 import InstallSteps from '@/components/download/InstallSteps';
 import Changelog from '@/components/download/Changelog';
@@ -41,6 +42,7 @@ export default function DownloadPage() {
           </div>
         </Link>
 
+        <DesktopDownload />
         <FirmwareDownload />
         <Feedback />
         <InstallSteps />

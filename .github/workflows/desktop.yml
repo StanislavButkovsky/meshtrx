@@ -1,0 +1,106 @@
+# Сборка настольного клиента для Windows, macOS и Linux.
+# Запуск: метка desktop-vX.Y.Z (файлы попадают в релиз) или вручную из Actions.
+name: desktop
+
+on:
+  push:
+    tags: ["desktop-v*"]
+  pull_request:
+    paths: ["desktop/**", ".github/workflows/desktop.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: windows
+          - os: macos-14
+            target: macos-arm64
+          - os: macos-15-intel
+            target: macos-intel
+          - os: ubuntu-22.04
+            target: linux-x86_64
+    runs-on: ${{ matrix.os }}
+    env:
+      # В исходниках русские комментарии: без этого Windows читает их в cp1252
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Версия
+        shell: bash
+        run: |
+          V=$(python -c "import re;print(re.search(r'__version__ = \"(.+)\"', open('desktop/meshtrx_desktop/__init__.py', encoding='utf-8').read()).group(1))")
+          echo "MESHTRX_VERSION=$V" >> $GITHUB_ENV
+
+      - name: Python-зависимости
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r desktop/requirements.txt pyinstaller
+
+      # --- кодек Codec2 для каждой системы ---
+      - name: Codec2 (Windows, из MSYS2)
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: mingw-w64-x86_64-codec2
+      - name: Codec2 — путь (Windows)
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: |
+          # Кодек и всё, от чего он зависит из MinGW, — рядом с программой
+          mkdir -p /c/codec2
+          DLL=$(ls /mingw64/bin/libcodec2*.dll | head -1)
+          cp "$DLL" /c/codec2/
+          ldd "$DLL" | grep -i mingw64 | awk '{print $3}' | while read d; do cp "$d" /c/codec2/ || true; done
+          ls /c/codec2
+          echo "CODEC2_LIB=$(ls /c/codec2/*.dll | xargs -n1 cygpath -w | paste -sd';')" >> $GITHUB_ENV
+      - name: Codec2 (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install codec2
+          echo "CODEC2_LIB=$(ls $(brew --prefix codec2)/lib/libcodec2*.dylib | head -1)" >> $GITHUB_ENV
+      - name: Codec2 (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update && sudo apt-get install -y libcodec2-dev libportaudio2
+          echo "CODEC2_LIB=$(ls /usr/lib/x86_64-linux-gnu/libcodec2.so.1* | head -1):$(ls /usr/lib/x86_64-linux-gnu/libportaudio.so.2* | head -1)" >> $GITHUB_ENV
+
+      - name: Сборка
+        run: pyinstaller --noconfirm desktop/packaging/meshtrx.spec
+
+      - name: Упаковка
+        shell: bash
+        run: |
+          mkdir out
+          N="MeshTRX-${MESHTRX_VERSION}-${{ matrix.target }}"
+          case "${{ runner.os }}" in
+            Windows) cp dist/MeshTRX.exe "out/$N.exe" ;;
+            macOS)   ditto -c -k --keepParent dist/MeshTRX.app "out/$N.zip" ;;
+            Linux)   chmod +x dist/MeshTRX && tar -C dist -czf "out/$N.tar.gz" MeshTRX ;;
+          esac
+          ls -la out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}
+          path: out/*
+
+      - name: Релиз
+        if: startsWith(github.ref, 'refs/tags/desktop-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: out/*
+          name: Настольный клиент ${{ env.MESHTRX_VERSION }}

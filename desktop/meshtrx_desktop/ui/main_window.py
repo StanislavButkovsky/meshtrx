@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, QThread, QTimer, Signal
-from PySide6.QtWidgets import (QComboBox, QHBoxLayout, QInputDialog, QLabel,
-                               QMainWindow, QMessageBox, QPushButton,
-                               QStatusBar, QTabWidget, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QApplication, QComboBox, QHBoxLayout,
+                               QInputDialog, QLabel, QMainWindow, QMessageBox,
+                               QPushButton, QStatusBar, QTabWidget, QVBoxLayout,
+                               QWidget)
 
 from ..client import Client
 from ..config import Config
@@ -50,14 +51,22 @@ class MainWindow(QMainWindow):
         root.addWidget(self._build_header())
 
         self.tabs = QTabWidget()
-        self.tabs.addTab(VoiceTab(client, self.bridge), "Голос")
+        self.voice_tab = VoiceTab(client, self.bridge)
+        self.tabs.addTab(self.voice_tab, "Голос")
         self.tabs.addTab(MessagesTab(client, self.bridge), "Сообщения")
         self.tabs.addTab(FilesTab(client, self.bridge), "Файлы")
         self.tabs.addTab(RadarTab(client, self.bridge), "Радар")
         self.tabs.addTab(MapTab(client, self.bridge), "Карта")
-        self.tabs.addTab(SettingsTab(client, self.bridge), "Настройки")
+        self.tabs.addTab(SettingsTab(client, self.bridge, on_theme=self.set_theme,
+                                     current_theme=self.config.get("ui_theme", "main")),
+                         "Настройки")
         self.tabs.addTab(DiagnosticsTab(client, self.bridge), "Диагностика")
-        self.tabs.setEnabled(False)
+        # Счётчики на вкладках, как в телефоне: пропущенные вызовы — на
+        # «Голосе», непрочитанные — на «Сообщениях». Открыл вкладку — сбросил.
+        self.tabs.currentChanged.connect(self.on_tab)
+        # Вкладки переключаются всегда — настройки, тема и проверка обновлений
+        # нужны и без рации. Без связи гасим только то, что говорит с рацией.
+        self._set_connected(False)
         root.addWidget(self.tabs, 1)
         self.setCentralWidget(central)
 
@@ -68,6 +77,7 @@ class MainWindow(QMainWindow):
         self.bridge.status_changed.connect(self.on_status)
         self.bridge.pin_result.connect(self.on_pin)
         self.bridge.call_changed.connect(self.on_call)
+        self.bridge.counters.connect(self.on_counters)
 
         # Устройство, с которым уже работали, подключаем сами: пользователю
         # не нужно каждый раз искать его в списке.
@@ -155,7 +165,7 @@ class MainWindow(QMainWindow):
         self.link_label.setStyleSheet(
             f"color: {theme.ACCENT}" if state == "connected" else f"color: {theme.TEXT_DIM}")
         self.btn_connect.setText("Отключиться" if state == "connected" else "Подключиться")
-        self.tabs.setEnabled(state == "connected")
+        self._set_connected(state == "connected")
         self.statusBar().showMessage(f"{human} {detail}".strip())
 
         if state == "connected":
@@ -213,6 +223,44 @@ class MainWindow(QMainWindow):
         if call is not None:
             self.tabs.setCurrentIndex(0)
             self.raise_(); self.activateWindow()
+
+    def _set_connected(self, connected: bool):
+        for i in range(self.tabs.count()):
+            page = self.tabs.widget(i)
+            if isinstance(page, SettingsTab):
+                page.set_connected(connected)
+            elif not isinstance(page, DiagnosticsTab):
+                page.setEnabled(connected)
+
+    # ---------- счётчики и оформление ----------
+    def on_tab(self, index: int):
+        self.client.chat_open = index == 1
+        if index == 1:
+            self.client.mark_chat_read()
+        elif index == 0:
+            self.client.mark_calls_seen()
+        self.on_counters()
+
+    def on_counters(self):
+        missed, unread = self.client.missed_calls, self.client.unread_messages
+        self.tabs.setTabText(0, f"Голос  ({missed})" if missed else "Голос")
+        self.tabs.setTabText(1, f"Сообщения  ({unread})" if unread else "Сообщения")
+        # Пришло, пока окно свёрнуто или открыта другая вкладка, — мигнуть в панели задач
+        if (missed or unread) and not self.isActiveWindow():
+            QApplication.alert(self)
+
+    def set_theme(self, name: str):
+        self.config.set("ui_theme", name)
+        QApplication.instance().setStyleSheet(theme.use(name))
+        self.voice_tab.restyle()
+        self.on_state(self.client.state, "")
+        self.update()
+
+    def changeEvent(self, event):
+        # Вернулись к окну с открытым чатом — пришедшее уже перед глазами
+        super().changeEvent(event)
+        if self.isActiveWindow() and self.tabs.currentIndex() == 1 and self.client.unread_messages:
+            self.client.mark_chat_read()
 
     def closeEvent(self, event):
         self.client.stop()

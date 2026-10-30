@@ -9,7 +9,6 @@ import type { TranslationKey } from '@/lib/i18n';
 // та его часть, которая честно не сделана, — файлы и маяки.
 const PLANS: { status: 'soon' | 'planned'; titleKey: TranslationKey; descKey: TranslationKey }[] = [
   { status: 'soon', titleKey: 'roadmap.encrypt.title', descKey: 'roadmap.encrypt.desc' },
-  { status: 'soon', titleKey: 'roadmap.desktop.title', descKey: 'roadmap.desktop.desc' },
   { status: 'planned', titleKey: 'roadmap.zones.title', descKey: 'roadmap.zones.desc' },
   { status: 'planned', titleKey: 'roadmap.longrange.title', descKey: 'roadmap.longrange.desc' },
   { status: 'planned', titleKey: 'roadmap.mesh.title', descKey: 'roadmap.mesh.desc' },

@@ -27,6 +27,13 @@ class Bridge(QObject):
     mic_level = Signal(float)
     audio_rx = Signal(object)
     band_changed = Signal(object)
+    key_changed = Signal(object)
+    channel_scan = Signal(object)
+    counters = Signal()
+    recording = Signal(bool)
+    record_limit = Signal(int)
+    firmware = Signal(str)
+    upload_status = Signal(object)
     any_event = Signal(str, object)      # для журнала диагностики
 
     def __init__(self, client: Client):
@@ -68,3 +75,17 @@ class Bridge(QObject):
                 self.mic_level.emit(float(payload))
             case "audio_rx":
                 self.audio_rx.emit(payload)
+            case "key":
+                self.key_changed.emit(payload)
+            case "channel_scan":
+                self.channel_scan.emit(payload)
+            case "counters":
+                self.counters.emit()
+            case "recording":
+                self.recording.emit(bool(payload))
+            case "record_limit":
+                self.record_limit.emit(int(payload))
+            case "firmware":
+                self.firmware.emit(str(payload))
+            case "upload_status":
+                self.upload_status.emit(payload)

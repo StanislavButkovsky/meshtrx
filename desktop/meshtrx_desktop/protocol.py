@@ -59,8 +59,16 @@ class Cmd(IntEnum):
     FILE_UPLOAD_DATA = 0x31
     FILE_UPLOAD_STATUS = 0x32
     SCAN_PEERS = 0x33
+    SCAN_CHANNELS = 0x34    # прослушать все каналы и измерить шум
+    SCAN_RESULT = 0x35
+    SET_CHANNEL_ALL = 0x36  # перевести на канал всю группу
+    SET_KEY = 0x37          # кодовое слово группы; без него — снять ключ
+    KEY_STATE = 0x38
     GET_FW_VERSION = 0x39
     FW_VERSION = 0x3A
+    CRYPTO_ALIEN = 0x3B     # рядом говорят чужим ключом
+    GET_KEY_STATE = 0x3C
+    HEAR_PLAINTEXT = 0x3D   # слышать ли открытый эфир, когда ключ задан
     BAND_INFO = 0x3E        # сетка частот прошивки (с 4.4.34), идёт за FW_VERSION
 
 
@@ -116,6 +124,31 @@ class IncomingMessage:
     text: str
     sender_id: str
     rssi: int
+    # Хвост пакета появлялся в прошивке постепенно; у старых его нет — тогда
+    # пометок просто не ставим, угадывать хуже.
+    encrypted: bool | None = None
+    to_me: bool = False
+    age_sec: int = 0        # сколько сообщение ждало на рации без телефона (с 4.4.32)
+
+
+@dataclass
+class MessageAck:
+    seq: int
+    # Рация адресата приняла, но телефона у неё нет — сообщение ждёт там (с 4.4.32)
+    stored: bool = False
+
+
+@dataclass
+class KeyState:
+    has_key: bool
+    fingerprint: str        # четыре знака: сверяют вслух, у всех группы одинаковые
+    hear_plaintext: bool | None = None
+
+
+@dataclass
+class ChannelScan:
+    best: int
+    levels: list[int]       # шум по каждому каналу сетки, дБм
 
 
 @dataclass
@@ -164,6 +197,7 @@ UPLOAD_STATUS = {
     3: "доставлено",
     4: "не доставлено",
     5: "не хватает памяти устройства",
+    6: "разослано всем",
 }
 
 
@@ -180,7 +214,16 @@ class UploadStatus:
 
     @property
     def accepted(self) -> bool:
-        return self.code in (0, 2, 3)
+        return self.code in (0, 2, 3, 6)
+
+    @property
+    def final(self) -> bool:
+        return self.code in (1, 3, 4, 5, 6)
+
+    @property
+    def ok(self) -> bool:
+        """Итог удачный: доставлено адресату или разослано всем."""
+        return self.code in (3, 6)
 
 
 @dataclass
@@ -271,6 +314,32 @@ def call_cancel() -> bytes:
     return bytes([Cmd.CALL_CANCEL])
 
 
+def scan_channels() -> bytes:
+    return bytes([Cmd.SCAN_CHANNELS])
+
+
+def set_channel_all(ch: int) -> bytes:
+    """Рация разошлёт команду в эфир, и вся группа перейдёт разом."""
+    return bytes([Cmd.SET_CHANNEL_ALL, ch & 0xFF])
+
+
+def set_key(phrase: str) -> bytes:
+    """Ключ из фразы выводит сама рация — клиент фразу не хранит."""
+    return bytes([Cmd.SET_KEY, 0x01]) + phrase.encode()
+
+
+def clear_key() -> bytes:
+    return bytes([Cmd.SET_KEY])
+
+
+def get_key_state() -> bytes:
+    return bytes([Cmd.GET_KEY_STATE])
+
+
+def hear_plaintext(on: bool) -> bytes:
+    return bytes([Cmd.HEAR_PLAINTEXT, 1 if on else 0])
+
+
 def scan_peers() -> bytes:
     """Попросить соседей отозваться маяками.
 
@@ -321,8 +390,13 @@ def parse(data: bytes):
             end = len(data)
         text = data[2:end].decode("utf-8", "replace")
         sender = _hex_id(data[end + 1:end + 3]) if end + 2 < len(data) else "??"
+        encrypted = data[end + 3] == 1 if end + 3 < len(data) else None
+        to_me = end + 4 < len(data) and data[end + 4] == 1
+        age = (struct.unpack_from("<I", data, end + 5)[0]
+               if end + 8 < len(data) else 0)
         return IncomingMessage(text=text, sender_id=sender,
-                               rssi=struct.unpack_from("b", data, 1)[0])
+                               rssi=struct.unpack_from("b", data, 1)[0],
+                               encrypted=encrypted, to_me=to_me, age_sec=age)
 
     if cmd == Cmd.AUDIO_RX and len(data) >= 4 + AUDIO_PACKET_BYTES:
         return AudioFrame(sender_id=_hex_id(data[2:4]),
@@ -366,7 +440,20 @@ def parse(data: bytes):
         return ("pin", bool(data[1]))
 
     if cmd == Cmd.MESSAGE_ACK and len(data) >= 2:
-        return ("message_ack", data[1])
+        return MessageAck(seq=data[1], stored=len(data) >= 3 and data[2] == 1)
+
+    if cmd == Cmd.KEY_STATE and len(data) >= 6:
+        return KeyState(has_key=data[1] == 1,
+                        fingerprint=data[2:6].decode("ascii", "replace"),
+                        hear_plaintext=(data[6] == 1) if len(data) >= 7 else None)
+
+    if cmd == Cmd.CRYPTO_ALIEN and len(data) >= 3:
+        return ("crypto_alien", (data[1] << 8) | data[2])
+
+    if cmd == Cmd.SCAN_RESULT and len(data) >= 3:
+        return ChannelScan(best=data[1],
+                           levels=[struct.unpack_from("b", data, i)[0]
+                                   for i in range(2, len(data))])
 
     if cmd == Cmd.FILE_PROGRESS and len(data) >= 6:
         done, total = struct.unpack_from("<HH", data, 2)
