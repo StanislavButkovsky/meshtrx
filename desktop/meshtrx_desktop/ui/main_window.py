@@ -64,7 +64,9 @@ class MainWindow(QMainWindow):
         # Счётчики на вкладках, как в телефоне: пропущенные вызовы — на
         # «Голосе», непрочитанные — на «Сообщениях». Открыл вкладку — сбросил.
         self.tabs.currentChanged.connect(self.on_tab)
-        self.tabs.setEnabled(False)
+        # Вкладки переключаются всегда — настройки, тема и проверка обновлений
+        # нужны и без рации. Без связи гасим только то, что говорит с рацией.
+        self._set_connected(False)
         root.addWidget(self.tabs, 1)
         self.setCentralWidget(central)
 
@@ -163,7 +165,7 @@ class MainWindow(QMainWindow):
         self.link_label.setStyleSheet(
             f"color: {theme.ACCENT}" if state == "connected" else f"color: {theme.TEXT_DIM}")
         self.btn_connect.setText("Отключиться" if state == "connected" else "Подключиться")
-        self.tabs.setEnabled(state == "connected")
+        self._set_connected(state == "connected")
         self.statusBar().showMessage(f"{human} {detail}".strip())
 
         if state == "connected":
@@ -221,6 +223,14 @@ class MainWindow(QMainWindow):
         if call is not None:
             self.tabs.setCurrentIndex(0)
             self.raise_(); self.activateWindow()
+
+    def _set_connected(self, connected: bool):
+        for i in range(self.tabs.count()):
+            page = self.tabs.widget(i)
+            if isinstance(page, SettingsTab):
+                page.set_connected(connected)
+            elif not isinstance(page, DiagnosticsTab):
+                page.setEnabled(connected)
 
     # ---------- счётчики и оформление ----------
     def on_tab(self, index: int):

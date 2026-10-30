@@ -35,7 +35,7 @@ class SettingsTab(QScrollArea):
         layout = QVBoxLayout(body)
 
         # --- радио ---
-        radio = QGroupBox("Радио")
+        radio = self.radio_box = QGroupBox("Радио")
         form = QFormLayout(radio)
         self.channel = QComboBox()
         apply_ch = QPushButton("Применить канал")
@@ -79,7 +79,7 @@ class SettingsTab(QScrollArea):
         layout.addWidget(radio)
 
         # --- шифрование ---
-        crypto = QGroupBox("Шифрование эфира")
+        crypto = self.crypto_box = QGroupBox("Шифрование эфира")
         cf = QFormLayout(crypto)
         self.key_state = QLabel("открытый эфир: ключ не задан")
         self.key_state.setWordWrap(True)
@@ -164,6 +164,12 @@ class SettingsTab(QScrollArea):
         bridge.channel_scan.connect(self.on_scan)
         bridge.firmware.connect(self.on_firmware)
         self.update_result.connect(self.on_update)
+
+    def set_connected(self, connected: bool):
+        """Без рации гасим только то, что с ней разговаривает; звук,
+        оформление и проверка обновлений работают всегда."""
+        self.radio_box.setEnabled(connected)
+        self.crypto_box.setEnabled(connected)
 
     # --- звук ---
     def _apply_audio(self):
