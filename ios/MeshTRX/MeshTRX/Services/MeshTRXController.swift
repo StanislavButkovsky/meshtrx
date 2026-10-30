@@ -356,16 +356,22 @@ class MeshTRXController: ObservableObject {
         sendFile(fileName: name, fileType: 0x05, data: data,
                  destMac: Data([b0, b1]), destName: appState.pttTargetName)
         Task { @MainActor [weak self] in
-            for _ in 0..<30 {     // 15 с, как в Android
+            // Ждём итога от рации, как в Android 4.4.33: раньше через 15 с
+            // писали «не доставлено», хотя с переспросами доставка дольше и
+            // собеседник всё слышал. Через 15 с — «доставка...», до 2 минут.
+            for i in 0..<240 {
                 try? await Task.sleep(nanoseconds: 500_000_000)
                 guard let self = self else { return }
                 if let t = self.appState.fileTransfers.first(where: { $0.isOutgoing && $0.fileName == name }),
-                   t.status != .transferring {
+                   t.status == .done || t.status == .failed {
                     self.appState.pttDeliveryText = t.status == .done ? "доставлено" : "не доставлено"
                     break
                 }
+                if i == 30 { self.appState.pttDeliveryText = "доставка..." }
             }
-            if self?.appState.pttDeliveryText == "отправка..." { self?.appState.pttDeliveryText = "не доставлено" }
+            if let d = self?.appState.pttDeliveryText, d == "отправка..." || d == "доставка..." {
+                self?.appState.pttDeliveryText = "не доставлено"
+            }
             try? await Task.sleep(nanoseconds: 3_000_000_000)
             self?.appState.pttDeliveryText = nil
         }

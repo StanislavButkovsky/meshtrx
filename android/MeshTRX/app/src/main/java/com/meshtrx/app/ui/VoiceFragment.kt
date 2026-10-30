@@ -492,17 +492,31 @@ class VoiceFragment : Fragment() {
 
         val handler = android.os.Handler(android.os.Looper.getMainLooper())
         Thread {
+            // Ждём итога от рации: «доставлено» или «не дошло». Раньше ждали
+            // ровно 15 с и писали «не доставлено», хотя через стену с
+            // переспросами доставка идёт дольше — собеседник всё слышал, а у
+            // отправителя висел красный статус. Служба сама ждёт до таймаута
+            // файла и тогда помечает передачу неудачной; здесь — до 2 минут.
             var delivered = false
-            for (i in 0..30) { // 15 сек
+            for (i in 0 until 240) {
                 Thread.sleep(500)
                 val transfers = ServiceState.fileTransfers.value
                 val last = transfers?.firstOrNull { it.isOutgoing && it.fileName == fileName }
-                if (last?.status == com.meshtrx.app.model.FileStatus.DONE) {
-                    delivered = true
-                    break
+                if (last?.status == com.meshtrx.app.model.FileStatus.DONE) { delivered = true; break }
+                if (last?.status == com.meshtrx.app.model.FileStatus.FAILED) break
+                // Через 15 с кнопку возвращаем — говорить можно, итог доставки
+                // покажем, когда придёт
+                if (i == 30) handler.post {
+                    pttButton.isEnabled = true
+                    pttButton.state = PttButtonView.State.IDLE
+                    tvStatusLine.text = "● доставка..."
                 }
             }
             handler.post {
+                // Если за это время человек уже снова говорит или слушает —
+                // кнопку и строку состояния не трогаем
+                val st = pttButton.state
+                if (st != PttButtonView.State.IDLE && st != PttButtonView.State.SENDING) return@post
                 pttButton.isEnabled = true
                 pttButton.state = PttButtonView.State.IDLE
                 if (delivered) {
