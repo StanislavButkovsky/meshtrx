@@ -105,7 +105,7 @@ struct MessagesView: View {
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
                 .background(AppColors.greenBg)
-                .cornerRadius(6)
+                .cornerRadius(14)
             }
             .disabled(!isConnected)
             // Окна выбора получателя раньше не было вовсе: кнопка выставляла
@@ -136,7 +136,7 @@ struct MessagesView: View {
                     .padding(.horizontal, 6)
                     .padding(.vertical, 4)
                     .background(AppColors.redBg)
-                    .cornerRadius(6)
+                    .cornerRadius(14)
             }
             // Вопрос — в тексте окна, на кнопке — действие. Раньше вопрос
             // стоял на самой кнопке удаления.
@@ -166,7 +166,7 @@ struct MessagesView: View {
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
                 .background(AppColors.blueBg)
-                .cornerRadius(6)
+                .cornerRadius(14)
             }
         }
         .padding(.horizontal, 12)
@@ -185,7 +185,7 @@ struct MessagesView: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
                 .background(AppColors.bgElevated)
-                .cornerRadius(8)
+                .cornerRadius(14)
                 .disabled(!isConnected)
 
             // Bytes counter

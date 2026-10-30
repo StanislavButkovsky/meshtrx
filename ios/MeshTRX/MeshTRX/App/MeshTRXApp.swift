@@ -4,6 +4,8 @@ import SwiftUI
 struct MeshTRXApp: App {
     @StateObject private var appState = AppState()
     @StateObject private var controller: MeshTRXController
+    // Смена оформления перестраивает экраны: цвета вычисляются при отрисовке
+    @AppStorage(AppTheme.key) private var theme = AppTheme.main.rawValue
 
     init() {
         let state = AppState()
@@ -11,16 +13,33 @@ struct MeshTRXApp: App {
         _controller = StateObject(wrappedValue: MeshTRXController(appState: state))
     }
 
+    /// Нижняя панель вкладок в цветах темы
+    static func styleBars() {
+        let a = UITabBarAppearance()
+        a.configureWithOpaqueBackground()
+        a.backgroundColor = UIColor(AppColors.navBg)
+        let normal = UIColor(AppColors.textFaint)
+        a.stackedLayoutAppearance.normal.iconColor = normal
+        a.stackedLayoutAppearance.normal.titleTextAttributes = [.foregroundColor: normal]
+        a.stackedLayoutAppearance.normal.badgeBackgroundColor = UIColor(AppColors.redTx)
+        UITabBar.appearance().standardAppearance = a
+        UITabBar.appearance().scrollEdgeAppearance = a
+    }
+
     var body: some Scene {
         WindowGroup {
             SplashView()
+                .id(theme)
+                .onAppear { Self.styleBars() }
+                .onChange(of: theme) { _ in Self.styleBars() }
                 .environmentObject(appState)
                 .environmentObject(controller)
                 .preferredColorScheme(.dark)
                 .fullScreenCover(item: $appState.incomingCall) { call in
                     IncomingCallView(
                         call: call,
-                        onDismiss: { appState.incomingCall = nil }
+                        onDismiss: { appState.incomingCall = nil },
+                        onMissed: { appState.missedCalls += 1 }
                     )
                 }
                 .sheet(isPresented: $appState.showPinDialog) {
@@ -98,9 +117,9 @@ struct PinEntryView: View {
                     } label: {
                         Text("OK")
                             .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(.white)
+                            .foregroundColor(pinText.isEmpty ? AppColors.textMuted : AppColors.onAccent)
                             .frame(width: 120, height: 44)
-                            .background(pinText.isEmpty ? AppColors.bgElevated : AppColors.greenAccent)
+                            .background(pinText.isEmpty ? AppColors.bgElevated : AppColors.accent)
                             .cornerRadius(10)
                     }
                     .disabled(pinText.isEmpty)

@@ -81,7 +81,7 @@ struct FilesView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
                     .background(AppColors.greenBg)
-                    .cornerRadius(8)
+                    .cornerRadius(14)
             }
             .disabled(!isConnected)
 
@@ -94,7 +94,7 @@ struct FilesView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
                     .background(AppColors.blueBg)
-                    .cornerRadius(8)
+                    .cornerRadius(14)
             }
             .disabled(!isConnected)
             .fileImporter(isPresented: $showFilePicker, allowedContentTypes: [.data]) { result in
@@ -113,7 +113,7 @@ struct FilesView: View {
                 .resizable()
                 .scaledToFit()
                 .frame(maxHeight: 200)
-                .cornerRadius(8)
+                .cornerRadius(14)
 
             if let data = pendingPhotoData {
                 Text("\(data.count / 1024) КБ · \(Int(image.size.width))×\(Int(image.size.height))")
@@ -276,7 +276,7 @@ struct FileTransferRow: View {
         .padding(.vertical, 8)
         .padding(.horizontal, 10)
         .background(AppColors.bgSurface)
-        .cornerRadius(8)
+        .cornerRadius(14)
     }
 
     @ViewBuilder
@@ -331,7 +331,7 @@ struct FileDetailsView: View {
                 if transfer.fileType == 0x01, let d = transfer.loadData(), let img = UIImage(data: d) {
                     Image(uiImage: img).resizable().scaledToFit()
                         .frame(maxWidth: .infinity, maxHeight: 280)
-                        .cornerRadius(8)
+                        .cornerRadius(14)
                 }
                 Text(transfer.fileName)
                     .font(.system(size: 17, weight: .bold))

@@ -130,7 +130,7 @@ struct VoiceView: View {
                 Text("слышно \(live.count) \(stationsWord(live.count)) · " +
                      (repeater.map { "ретранслятор \($0.callSign) (\($0.rssi) dBm)" } ?? "ретранслятора не слышно"))
                     .font(.system(size: 12))
-                    .foregroundColor(Color(hex: 0xaaaaaa))
+                    .foregroundColor(AppColors.text2)
                     .lineLimit(1)
                 if let last = live.max(by: { $0.lastSeenMs < $1.lastSeenMs }) {
                     Text("последний: \(last.callSign), \(formatAgo(Int((now - last.lastSeenMs) / 1000))) · \(last.rssi)dBm, SNR \(last.snr)")
@@ -194,7 +194,7 @@ struct VoiceView: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
             .background(AppColors.bgElevated)
-            .cornerRadius(8)
+            .cornerRadius(14)
         }
     }
 
@@ -211,10 +211,10 @@ struct VoiceView: View {
                 .frame(height: 36)
                 .background(isSelected ? AppColors.greenBg : AppColors.bgElevated)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 6)
+                    RoundedRectangle(cornerRadius: 14)
                         .stroke(isSelected ? AppColors.greenBorder : Color.clear, lineWidth: 1)
                 )
-                .cornerRadius(6)
+                .cornerRadius(14)
         }
     }
 
@@ -290,8 +290,8 @@ struct VoiceView: View {
                     .foregroundColor(AppColors.blueAccent)
                     .frame(width: 48, height: 48)
                     .background(AppColors.blueBg)
-                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(AppColors.blueBorder, lineWidth: 1))
-                    .cornerRadius(8)
+                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(AppColors.blueBorder, lineWidth: 1))
+                    .cornerRadius(14)
             }
             .disabled(!isConnected)
             .confirmationDialog("Выбрать абонента", isPresented: $showTargetPicker, titleVisibility: .visible) {

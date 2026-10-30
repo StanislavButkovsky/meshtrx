@@ -13,34 +13,39 @@ struct SplashView: View {
         if isActive {
             MainTabView()
         } else {
-            // Как в Android: камуфляжный фон, логотип по центру с отступами,
-            // версия зелёным внизу. Раньше здесь была системная картинка антенны
-            // и вписанная руками «v1.0.0».
+            // Как в Android 4.4.31: фон темы, новый знак, «Mesh» + жёлтое «TRX»,
+            // подпись и версия внизу; в «Хаки» — оливковый фон и знак в охре.
+            let khaki = AppTheme.current == .khaki
             ZStack {
-                Image("SplashLogo")
-                    .resizable()
-                    .scaledToFit()
-                    .padding(24)
-                    .opacity(logoOpacity)
+                VStack(spacing: 0) {
+                    Image(khaki ? "SplashMarkKhaki" : "SplashMark")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 200, height: 200)
+                    (Text("Mesh").foregroundColor(AppColors.text) +
+                     Text("TRX").foregroundColor(AppColors.accent))
+                        .font(.system(size: 38, weight: .bold))
+                        .padding(.top, 4)
+                    Text("Рация без интернета и сотовой связи")
+                        .font(.system(size: 15))
+                        .foregroundColor(AppColors.textMuted)
+                        .padding(.top, 6)
+                }
+                .opacity(logoOpacity)
+                .scaleEffect(0.92 + 0.08 * logoOpacity)
 
                 VStack {
                     Spacer()
                     Text("v\(appVersion)")
-                        .font(.system(size: 14))
-                        .foregroundColor(AppColors.greenAccent)
+                        .font(.system(size: 13))
+                        .foregroundColor(AppColors.textFaint)
                         .opacity(versionOpacity)
                         .padding(.bottom, 48)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            // Фон — фоном, а не слоем: растянутая на весь экран картинка в слое
-            // раздвигает раскладку, и логотип съезжает в сторону.
-            .background(
-                Image("CamoBg")
-                    .resizable()
-                    .scaledToFill()
-                    .ignoresSafeArea()
-            )
+            // Фон совпадает с фоном картинки знака
+            .background(Color(hex: khaki ? 0x24281C : 0x0C162C).ignoresSafeArea())
             .onAppear {
                 withAnimation(.easeIn(duration: 0.8)) {
                     logoOpacity = 1

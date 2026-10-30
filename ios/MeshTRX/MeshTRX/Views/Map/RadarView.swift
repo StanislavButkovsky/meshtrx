@@ -11,11 +11,12 @@ struct RadarView: View {
     @State private var autoScale = true
     @State private var highContrast = false
 
-    private var gridColor: Color { highContrast ? Color(hex: 0x2a6a2a) : AppColors.greenBg }
-    private var gridTextColor: Color { highContrast ? Color(hex: 0x55cc55) : AppColors.greenDim }
-    private var crossColor: Color { highContrast ? Color(hex: 0x1a3a1a) : Color(hex: 0x0d1f0d) }
-    private var nameColor: Color { highContrast ? .white : AppColors.greenAccent }
-    private var distColor: Color { highContrast ? Color(hex: 0xccffcc) : Color(hex: 0x88cc88) }
+    // Цвета — как у радара в Android 4.4.31: синяя сетка, жёлтые точки
+    private var gridColor: Color { highContrast ? Color(hex: 0x3E6BC4) : AppColors.secondaryBorder }
+    private var gridTextColor: Color { highContrast ? Color(hex: 0x9DB8F0) : AppColors.textFaint }
+    private var crossColor: Color { highContrast ? AppColors.secondaryBg : AppColors.surface }
+    private var nameColor: Color { highContrast ? .white : AppColors.text }
+    private var distColor: Color { highContrast ? Color(hex: 0xE0E8FF) : AppColors.text2 }
 
     /// Диапазон: при автомасштабе — ближайший, в который влезает самый дальний
     private var effectiveRangeIndex: Int {
@@ -30,7 +31,7 @@ struct RadarView: View {
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            (highContrast ? Color.black : AppColors.bgDeep).ignoresSafeArea()
 
             TimelineView(.animation(minimumInterval: 1.0 / 20)) { timeline in
                 Canvas { context, size in
@@ -70,8 +71,8 @@ struct RadarView: View {
                 .foregroundColor(AppColors.textSecondary)
                 .frame(width: 40, height: 40)
                 .background(AppColors.bgElevated)
-                .cornerRadius(8)
-                .overlay(RoundedRectangle(cornerRadius: 8).stroke(AppColors.greenBg, lineWidth: 2))
+                .cornerRadius(14)
+                .overlay(RoundedRectangle(cornerRadius: 14).stroke(AppColors.greenBg, lineWidth: 2))
         }
     }
 

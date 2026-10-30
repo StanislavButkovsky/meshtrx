@@ -52,12 +52,37 @@ struct PttButtonView: View {
                                 startAngle: .zero, endAngle: .degrees(360), clockwise: false)
                 context.stroke(ringPath, with: .color(scheme.ringColor), lineWidth: 3)
 
-                // Inner circle
+                // Внутренний круг — «стеклянная» кнопка, как в Android 4.4.31:
+                // тень снизу, тёмный ободок, светлый диск с окантовкой, блик сверху
+                let base = scheme.bgColor
+                let shadowR = innerR + 9
+                var shadow = Path()
+                shadow.addArc(center: CGPoint(x: cx, y: cy + 5), radius: shadowR,
+                              startAngle: .zero, endAngle: .degrees(360), clockwise: false)
+                context.fill(shadow, with: .radialGradient(
+                    Gradient(stops: [.init(color: .black.opacity(0.33), location: 0.85),
+                                     .init(color: .clear, location: 1)]),
+                    center: CGPoint(x: cx, y: cy + 5), startRadius: 0, endRadius: shadowR))
                 var innerPath = Path()
                 innerPath.addArc(center: CGPoint(x: cx, y: cy), radius: innerR,
                                  startAngle: .zero, endAngle: .degrees(360), clockwise: false)
-                context.fill(innerPath, with: .color(scheme.bgColor))
-                context.stroke(innerPath, with: .color(scheme.borderColor), lineWidth: 2)
+                context.fill(innerPath, with: .linearGradient(
+                    Gradient(colors: [base.shade(1.02), base.shade(0.70)]),
+                    startPoint: CGPoint(x: cx, y: cy - innerR), endPoint: CGPoint(x: cx, y: cy + innerR)))
+                let discR = innerR * 0.88
+                var disc = Path()
+                disc.addArc(center: CGPoint(x: cx, y: cy), radius: discR,
+                            startAngle: .zero, endAngle: .degrees(360), clockwise: false)
+                context.fill(disc, with: .radialGradient(
+                    Gradient(colors: [base.shade(1.10), base.shade(0.92)]),
+                    center: CGPoint(x: cx, y: cy + discR * 0.25), startRadius: 0, endRadius: discR * 1.05))
+                context.stroke(disc, with: .color(base.shade(1.35).opacity(0.67)), lineWidth: 1.5)
+                let gTop = cy - discR * 0.92, gBot = cy - discR * 0.22
+                let gloss = Path(ellipseIn: CGRect(x: cx - discR * 0.62, y: gTop,
+                                                   width: discR * 1.24, height: gBot - gTop))
+                context.fill(gloss, with: .linearGradient(
+                    Gradient(colors: [.white.opacity(0.44), .white.opacity(0)]),
+                    startPoint: CGPoint(x: cx, y: gTop), endPoint: CGPoint(x: cx, y: gBot)))
 
                 // Main label
                 let mainFont = Font.system(size: 17, weight: .bold)
@@ -102,9 +127,9 @@ struct PttButtonView: View {
         switch state {
         case .idle:
             return PttColorScheme(
-                bgColor: AppColors.greenBg, borderColor: AppColors.greenBorder,
-                ringColor: AppColors.bgBorder, textColor: AppColors.greenAccent,
-                label: "ГОВОРИТЬ", subLabel: "удержать", subTextColor: AppColors.greenDim,
+                bgColor: AppColors.accent, borderColor: AppColors.accent,
+                ringColor: AppColors.bgBorder, textColor: AppColors.onAccent,
+                label: "ГОВОРИТЬ", subLabel: "удержать", subTextColor: AppColors.onAccent,
                 waveColor: .clear)
         case .tx:
             return PttColorScheme(
@@ -114,15 +139,15 @@ struct PttButtonView: View {
                 waveColor: AppColors.redTx)
         case .rx:
             return PttColorScheme(
-                bgColor: Color(hex: 0x0a2a4a), borderColor: AppColors.blueBorder,
-                ringColor: Color(hex: 0x1a3a6b), textColor: AppColors.blueAccent,
+                bgColor: AppColors.secondaryBg, borderColor: AppColors.blueBorder,
+                ringColor: AppColors.secondaryBorder, textColor: AppColors.blueAccent,
                 label: "ПРИЁМ", subLabel: "", subTextColor: .clear,
                 waveColor: AppColors.blueAccent)
         case .voxIdle:
             return PttColorScheme(
-                bgColor: AppColors.greenBg, borderColor: AppColors.greenBorder,
-                ringColor: AppColors.bgBorder, textColor: AppColors.greenAccent,
-                label: "VOX", subLabel: "авто", subTextColor: AppColors.greenDim,
+                bgColor: AppColors.accent, borderColor: AppColors.accent,
+                ringColor: AppColors.bgBorder, textColor: AppColors.onAccent,
+                label: "VOX", subLabel: "авто", subTextColor: AppColors.onAccent,
                 waveColor: .clear)
         case .voxTx:
             return PttColorScheme(
@@ -151,5 +176,16 @@ private extension GraphicsContext {
     func drawText(_ text: String, at point: CGPoint, color: Color, font: Font) {
         let resolved = resolve(Text(text).font(font).foregroundColor(color))
         draw(resolved, at: point, anchor: .center)
+    }
+}
+
+// MARK: - Светлее / темнее — для объёма кнопки
+
+extension Color {
+    func shade(_ k: Double) -> Color {
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        UIColor(self).getRed(&r, green: &g, blue: &b, alpha: &a)
+        func ch(_ v: CGFloat) -> Double { min(1, max(0, Double(v) * k)) }
+        return Color(.sRGB, red: ch(r), green: ch(g), blue: ch(b), opacity: Double(a))
     }
 }
