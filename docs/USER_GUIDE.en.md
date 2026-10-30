@@ -156,7 +156,17 @@ adb install -r app/build/outputs/apk/site/debug/app-site-debug.apk
 
 ## Desktop client (Windows / Linux / macOS)
 
-The computer gives you everything the phone does: voice, messages, calls, files, radar, map, settings and the repeater. Plus a diagnostics log that the phone does not have.
+The computer gives you everything the phone does: voice, text and voice messages, calls, files, radar, map, air encryption, the free-channel finder, settings and the repeater, plus the Main and Khaki themes. There is also a diagnostics log the phone does not have. The computer connects to the radio over Bluetooth, so the phone must not be connected to that radio at the same time.
+
+**Installing.** The [download page](https://meshtrx.com/download/#desktop) has ready-made apps for Windows, macOS (Apple M and Intel) and Linux — no Python or libraries needed.
+
+- Windows: on first launch SmartScreen warns about an unknown publisher — "More info" → "Run anyway".
+- macOS: unzip, then right-click MeshTRX → Open → Open; allow Bluetooth and microphone access.
+- Linux: unpack and run `MeshTRX`; Bluetooth (BlueZ) must be on.
+
+Numbers on the Voice and Messages tabs are missed calls and unread messages, as on the phone. A voice message records while you hold the microphone button; double-click a voice message to play it. The app reports a new version under Settings → Check for updates.
+
+Running from source (for developers):
 
 ```bash
 python3 -m venv .venv
@@ -164,7 +174,7 @@ python3 -m venv .venv
 .venv/bin/python desktop/run.py
 ```
 
-The client needs the system Codec2 library (`libcodec2` on Linux and macOS, `codec2.dll` next to the program on Windows). If it is missing, the client says so at startup instead of silently staying mute.
+Run this way, the client needs the system Codec2 library (`libcodec2` on Linux and macOS, `codec2.dll` next to the program on Windows); the ready-made apps have it built in.
 
 To transmit, hold the button with the mouse or press the space bar — with the same ten-second limit and the same countdown as on the phone. Details and a walk-through of the program are in [desktop/README.md](../desktop/README.md).
 

@@ -89,7 +89,7 @@ export const translations = {
   'roadmap.devices.title': { ru: 'Расширение устройств', en: 'More devices' },
   'roadmap.devices.desc': { ru: 'Поддержка других LoRa-плат: LilyGo T-Beam, RAK WisBlock, и других ESP32 + SX1262 модулей.', en: 'Support for other LoRa boards: LilyGo T-Beam, RAK WisBlock, and other ESP32 + SX1262 modules.' },
   'roadmap.desktop.title': { ru: 'Сборки настольного клиента', en: 'Desktop client builds' },
-  'roadmap.desktop.desc': { ru: 'Клиент уже работает и подключается к устройству по Bluetooth, как телефон. Осталось собрать готовые пакеты под Windows и macOS: сейчас его ставят из исходников, и это отсекает почти всех, кому он нужен.', en: 'The client already works and connects to the device over Bluetooth, just like the phone does. What is left is packaged builds for Windows and macOS: today it is installed from source, which shuts out almost everyone who needs it.' },
+  'roadmap.desktop.desc': { ru: 'Готово: программа для Windows, macOS и Linux ставится обычным файлом со страницы загрузок, без установки Python и библиотек.', en: 'Done: the Windows, macOS and Linux app installs from a regular file on the download page — no Python or libraries needed.' },
   'roadmap.mesh.title': { ru: 'Mesh-маршрутизация', en: 'Mesh routing' },
   'roadmap.mesh.desc': { ru: 'Улучшенные алгоритмы маршрутизации для многохоповых сетей с автовыбором оптимального пути.', en: 'Improved routing algorithms for multi-hop networks with automatic optimal path selection.' },
 

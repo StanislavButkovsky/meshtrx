@@ -107,6 +107,20 @@ export const VERSION_IOS = {
   date: '2026-10-30',
 };
 
+// Настольный клиент: номер свой. Файлы по ~100 МБ лежат в релизе на GitHub,
+// а не в репозитории сайта.
+export const VERSION_DESKTOP = {
+  app: '1.1.0',
+  date: '2026-10-30',
+};
+const DESKTOP_RELEASE = `https://github.com/StanislavButkovsky/meshtrx/releases/download/desktop-v${VERSION_DESKTOP.app}`;
+export const DESKTOP_LINKS = {
+  windows: `${DESKTOP_RELEASE}/MeshTRX-${VERSION_DESKTOP.app}-windows.exe`,
+  macArm: `${DESKTOP_RELEASE}/MeshTRX-${VERSION_DESKTOP.app}-macos-arm64.zip`,
+  macIntel: `${DESKTOP_RELEASE}/MeshTRX-${VERSION_DESKTOP.app}-macos-intel.zip`,
+  linux: `${DESKTOP_RELEASE}/MeshTRX-${VERSION_DESKTOP.app}-linux-x86_64.tar.gz`,
+};
+
 export const DOWNLOAD_LINKS = {
   // Версия в имени файла — не украшение: браузеры и мессенджеры отдают
   // «тот же» файл из кеша, и люди неделю ставили старую сборку, будучи

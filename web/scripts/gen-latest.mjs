@@ -28,6 +28,9 @@ const iosMatch = constants.match(/VERSION_IOS\s*=\s*\{\s*app:\s*'([^']+)'/);
 if (!iosMatch) throw new Error('не нашёл VERSION_IOS.app в constants.ts');
 const iosApp = iosMatch[1];
 const firmware = pick('firmware');
+const desktopMatch = constants.match(/VERSION_DESKTOP\s*=\s*\{\s*app:\s*'([^']+)'/);
+if (!desktopMatch) throw new Error('не нашёл VERSION_DESKTOP.app в constants.ts');
+const desktopApp = desktopMatch[1];
 
 // Версия прошивки записана в двух местах: в самой прошивке (её рация сообщает
 // телефону) и здесь, для страницы загрузки. Разъехаться им нельзя — человек
@@ -59,6 +62,10 @@ const latest = {
   ios: {
     version: iosApp,
     url: 'https://meshtrx.ru/ios/',
+  },
+  desktop: {
+    version: desktopApp,
+    page: 'https://meshtrx.ru/download/#desktop',
   },
   date: pick('date'),
   changelog: 'https://meshtrx.ru/download/',
