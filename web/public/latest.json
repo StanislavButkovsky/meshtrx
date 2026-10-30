@@ -15,6 +15,10 @@
     "version": "1.0.4",
     "url": "https://meshtrx.ru/ios/"
   },
+  "desktop": {
+    "version": "1.1.0",
+    "page": "https://meshtrx.ru/download/#desktop"
+  },
   "date": "2026-10-28",
   "changelog": "https://meshtrx.ru/download/"
 }

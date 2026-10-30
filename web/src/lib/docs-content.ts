@@ -198,9 +198,28 @@ adb install -r app/build/outputs/apk/site/debug/app-site-debug.apk
 
 ## Настольный клиент (Windows / Linux / macOS)
 
-С компьютера доступно то же, что с телефона: голос, сообщения, вызовы, файлы,
-радар, карта, настройки и ретранслятор. Плюс журнал диагностики, которого в
-телефоне нет.
+С компьютера доступно то же, что с телефона: голос, сообщения и голосовые,
+вызовы, файлы, радар, карта, шифрование эфира, поиск свободного канала,
+настройки и ретранслятор, оформление «Основное» и «Хаки». Плюс журнал
+диагностики, которого в телефоне нет. Компьютер подключается к рации по
+Bluetooth — значит, к рации в этот момент не подключён телефон.
+
+**Установка.** На странице [загрузок](https://meshtrx.ru/download/#desktop) —
+готовые программы для Windows, macOS (Apple M и Intel) и Linux, ставить Python
+и библиотеки не нужно.
+
+- Windows: при первом запуске SmartScreen предупредит о неизвестном издателе —
+  «Подробнее» → «Выполнить в любом случае».
+- macOS: распакуйте архив, затем правой кнопкой по MeshTRX → «Открыть» →
+  «Открыть»; разрешите Bluetooth и микрофон.
+- Linux: распакуйте и запустите \`MeshTRX\`; нужен включённый Bluetooth (BlueZ).
+
+Цифры на вкладках «Голос» и «Сообщения» — пропущенные вызовы и непрочитанные
+сообщения, как в телефоне. Голосовое сообщение записывается, пока держите
+кнопку с микрофоном; двойной щелчок по голосовому — прослушать. Новую версию
+программа покажет в настройках: «Проверить обновления».
+
+Запустить из исходников (для разработчиков):
 
 \`\`\`bash
 python3 -m venv .venv
@@ -208,9 +227,8 @@ python3 -m venv .venv
 .venv/bin/python desktop/run.py
 \`\`\`
 
-Клиенту нужна системная библиотека Codec2 (\`libcodec2\` в Linux и macOS,
-\`codec2.dll\` рядом с программой в Windows). Если её нет, клиент скажет об этом
-при запуске, а не останется молча без голоса.
+Так клиенту нужна системная библиотека Codec2 (\`libcodec2\` в Linux и macOS,
+\`codec2.dll\` рядом с программой в Windows); в готовых программах она уже внутри.
 
 Передача голоса — удержание кнопки мышью или пробелом, с тем же пределом в 10
 секунд и тем же обратным отсчётом, что в телефоне. Подробности и разбор
@@ -1093,7 +1111,17 @@ adb install -r app/build/outputs/apk/site/debug/app-site-debug.apk
 
 ## Desktop client (Windows / Linux / macOS)
 
-The computer gives you everything the phone does: voice, messages, calls, files, radar, map, settings and the repeater. Plus a diagnostics log that the phone does not have.
+The computer gives you everything the phone does: voice, text and voice messages, calls, files, radar, map, air encryption, the free-channel finder, settings and the repeater, plus the Main and Khaki themes. There is also a diagnostics log the phone does not have. The computer connects to the radio over Bluetooth, so the phone must not be connected to that radio at the same time.
+
+**Installing.** The [download page](https://meshtrx.com/download/#desktop) has ready-made apps for Windows, macOS (Apple M and Intel) and Linux — no Python or libraries needed.
+
+- Windows: on first launch SmartScreen warns about an unknown publisher — "More info" → "Run anyway".
+- macOS: unzip, then right-click MeshTRX → Open → Open; allow Bluetooth and microphone access.
+- Linux: unpack and run \`MeshTRX\`; Bluetooth (BlueZ) must be on.
+
+Numbers on the Voice and Messages tabs are missed calls and unread messages, as on the phone. A voice message records while you hold the microphone button; double-click a voice message to play it. The app reports a new version under Settings → Check for updates.
+
+Running from source (for developers):
 
 \`\`\`bash
 python3 -m venv .venv
@@ -1101,7 +1129,7 @@ python3 -m venv .venv
 .venv/bin/python desktop/run.py
 \`\`\`
 
-The client needs the system Codec2 library (\`libcodec2\` on Linux and macOS, \`codec2.dll\` next to the program on Windows). If it is missing, the client says so at startup instead of silently staying mute.
+Run this way, the client needs the system Codec2 library (\`libcodec2\` on Linux and macOS, \`codec2.dll\` next to the program on Windows); the ready-made apps have it built in.
 
 To transmit, hold the button with the mouse or press the space bar — with the same ten-second limit and the same countdown as on the phone. Details and a walk-through of the program are in [desktop/README.md](https://github.com/StanislavButkovsky/meshtrx/blob/master/desktop/README.md).
 
