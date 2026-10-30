@@ -26,6 +26,16 @@ class Codec2Error(RuntimeError):
     pass
 
 
+def _bundled() -> list[str]:
+    """Кодек, упакованный внутрь собранной программы (PyInstaller кладёт
+    его во временный каталог _MEIPASS или рядом с исполняемым файлом)."""
+    import glob
+    roots = [getattr(sys, "_MEIPASS", ""), os.path.dirname(sys.executable)]
+    pattern = {"Windows": "*codec2*.dll", "Darwin": "libcodec2*.dylib"}.get(
+        platform.system(), "libcodec2.so*")
+    return sorted(p for r in roots if r for p in glob.glob(os.path.join(r, pattern)))
+
+
 def _candidates() -> list[str]:
     system = platform.system()
     here = os.path.dirname(os.path.abspath(sys.argv[0] or "."))
@@ -40,7 +50,7 @@ def _candidates() -> list[str]:
 
 def _load() -> ctypes.CDLL:
     found = ctypes.util.find_library("codec2")
-    for name in ([found] if found else []) + _candidates():
+    for name in _bundled() + ([found] if found else []) + _candidates():
         try:
             return ctypes.CDLL(name)
         except OSError:

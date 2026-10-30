@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import atexit
 import json
+import os
 import signal
 import threading
 import time
@@ -142,11 +143,20 @@ class Client:
         for sig in (signal.SIGINT, signal.SIGTERM):
             try:
                 previous = signal.getsignal(sig)
-                signal.signal(sig, lambda s, f, prev=previous: (
-                    self._emergency_stop(),
-                    prev(s, f) if callable(prev) else None))
+                signal.signal(sig, lambda s, f, prev=previous: self._on_signal(s, f, prev))
             except (ValueError, OSError):
                 pass       # не главный поток — обработчик поставить нельзя
+
+    def _on_signal(self, sig, frame, previous):
+        """Закрыть соединение и завершиться так, как завершились бы без нас.
+        Раньше при стандартном обработчике сигнал просто глотался, и
+        программа не закрывалась по SIGTERM."""
+        self._emergency_stop()
+        if callable(previous):
+            previous(sig, frame)
+        else:
+            signal.signal(sig, signal.SIG_DFL)
+            os.kill(os.getpid(), sig)
 
     def _emergency_stop(self):
         try:

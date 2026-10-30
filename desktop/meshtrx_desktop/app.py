@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import os
 import sys
 
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QMessageBox
 
 from .client import Client
@@ -16,6 +18,7 @@ from .ui.main_window import MainWindow
 def main() -> int:
     app = QApplication(sys.argv)
     app.setApplicationName("MeshTRX")
+    app.setWindowIcon(QIcon(os.path.join(os.path.dirname(__file__), "assets", "icon.png")))
     config = Config()
     app.setStyleSheet(theme.use(config.get("ui_theme", "main")))
 
