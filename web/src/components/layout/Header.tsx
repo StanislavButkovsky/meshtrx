@@ -14,6 +14,7 @@ const NAV_ITEMS: { href: string; key: TranslationKey }[] = [
   { href: '/docs/', key: 'nav.docs' },
   { href: '/articles/', key: 'nav.articles' },
   { href: '/about/', key: 'nav.about' },
+  { href: '/donate/', key: 'nav.donate' },
 ];
 
 export default function Header() {

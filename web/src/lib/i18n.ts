@@ -8,6 +8,7 @@ export const translations = {
   'nav.docs': { ru: 'Документация', en: 'Docs' },
   'nav.articles': { ru: 'Статьи', en: 'Articles' },
   'nav.about': { ru: 'О проекте', en: 'About' },
+  'nav.donate': { ru: 'Поддержать', en: 'Support' },
 
   // Hero
   'hero.badge': { ru: 'Проект в активной разработке', en: 'Project in active development' },

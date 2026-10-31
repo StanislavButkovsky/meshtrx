@@ -30,7 +30,7 @@ export default function Footer() {
           <span>•</span>
           {locale === 'ru' && (
             <>
-              <a href={SITE.donate} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">
+              <a href="/donate/" className="text-accent hover:underline">
                 Поддержать проект
               </a>
               <span>•</span>
