@@ -15,6 +15,7 @@ const config: Config = {
         'accent-dim': '#E0A800',
         'text-primary': '#EEF2FA',
         'text-secondary': '#A9B4CC',
+        secondary: '#5B9BFF',
         border: '#22355A',
       },
       fontFamily: {
