@@ -189,6 +189,10 @@ class SettingsFragment : Fragment() {
                 return@setOnClickListener
             }
             service?.bleManager?.setPassphrase(phrase)
+            // Прошивки до 4.4.37 выводят ключ прямо в обработчике Bluetooth, и
+            // их ответ с отпечатком до телефона не доходит: ключ стоит, а
+            // приложение пишет «эфир открыт». Переспрашиваем, когда ключ готов.
+            v.postDelayed({ service?.bleManager?.requestKeyState() }, 5000)
             etPassphrase.setText("")
             Toast.makeText(requireContext(), getString(R.string.key_applying),
                 Toast.LENGTH_LONG).show()

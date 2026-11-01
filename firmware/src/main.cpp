@@ -220,6 +220,13 @@ static void pttStart();
 static void loadSettings();
 static void handleUserButton();
 
+// Кодовое слово от телефона. Ключ из него выводится около трёх секунд, и
+// делать это внутри обработчика Bluetooth нельзя: ответ с отпечатком, посланный
+// оттуда, до телефона не доходил, и человек видел «эфир открыт» при заданном
+// ключе. Поэтому обработчик только запоминает фразу, а вывод и ответ — в loop().
+static char pendingPhrase[65];
+static volatile bool pendingPhraseSet = false;
+
 // ================================================================
 // Power Management — auto light sleep + BLE modem sleep
 // ================================================================
@@ -428,6 +435,16 @@ void loop() {
 #endif
   handleUserButton();
   oledSleepTick();
+
+  if (pendingPhraseSet) {
+    char phrase[sizeof(pendingPhrase)];
+    memcpy(phrase, pendingPhrase, sizeof(phrase));
+    memset(pendingPhrase, 0, sizeof(pendingPhrase));
+    pendingPhraseSet = false;
+    cryptoSetPassphrase(phrase);
+    memset(phrase, 0, sizeof(phrase));
+    sendKeyState();
+  }
 
   if (!repeaterIsEnabled()) {
     callTick();
@@ -2062,12 +2079,12 @@ static void handleBleData(uint8_t* data, size_t len) {
       } else if (data[1] == 0x01) {
         // Кодовое слово: телефон шлёт строку, вывод ключа делает рация — так
         // фраза не превращается в ключ на стороне, где её могли бы сохранить.
-        char phrase[65];
         size_t n = len - 2;
-        if (n == 0 || n > sizeof(phrase) - 1) break;
-        memcpy(phrase, data + 2, n);
-        phrase[n] = 0;
-        cryptoSetPassphrase(phrase);
+        if (n == 0 || n > sizeof(pendingPhrase) - 1) break;
+        memcpy(pendingPhrase, data + 2, n);
+        pendingPhrase[n] = 0;
+        pendingPhraseSet = true;
+        break;   // ответит loop(), когда ключ будет готов
       } else if (len == 1 + CRYPTO_KEY_LEN) {
         char hex[CRYPTO_KEY_LEN * 2 + 1];
         static const char* d = "0123456789abcdef";

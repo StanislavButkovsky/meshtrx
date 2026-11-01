@@ -739,6 +739,13 @@ class MeshTRXController: ObservableObject {
     func setEncryptionKey(_ passphrase: String) {
         guard passphrase.count >= 8 else { return }
         bleManager.sendSetKey(passphrase: passphrase)
+        // Прошивки до 4.4.37 выводят ключ прямо в обработчике Bluetooth, и их
+        // ответ с отпечатком до телефона не доходит: ключ стоит, а приложение
+        // пишет «эфир открыт». Переспрашиваем, когда ключ готов.
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            self?.bleManager.send(Data([BLECmd.getKeyState]))
+        }
     }
 
     func clearEncryptionKey() {
