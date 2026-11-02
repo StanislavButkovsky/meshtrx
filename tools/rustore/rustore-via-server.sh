@@ -40,8 +40,11 @@ cd ~/rustore
 RUSTORE_KEY=~/.rustore/meshtrx_api_key bash ./rustore.sh release-if-ready @VID@ >> release.log 2>&1
 rc=$?
 echo "$(date '+%F %T') rc=$rc" >> release.log
-# 3 — ещё на модерации: ждём следующего запуска; иначе проверка больше не нужна
-if [ $rc -ne 3 ]; then
+# 0 — выпущена, 4 — отклонена: проверка больше не нужна. Всё остальное (3 —
+# ещё на модерации, сбой сети или пустой ответ RuStore) — ждём следующего
+# запуска: 30.10.2026 один пустой ответ снял проверку, и одобренная версия
+# неделю висела невыпущенной.
+if [ $rc -eq 0 ] || [ $rc -eq 4 ]; then
   crontab -l | grep -v "release-@VID@.sh" | crontab -
   rm -f ~/rustore/release-@VID@.sh
 fi
