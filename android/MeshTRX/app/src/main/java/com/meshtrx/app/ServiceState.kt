@@ -38,6 +38,8 @@ object ServiceState {
     // показывать ли уведомление о входящем: сообщать о том, что и так на
     // экране, — шум. Выставляется в MainActivity по onResume/onPause.
     val appVisible = MutableLiveData(false)
+    // Человек нажал «Выход» в уведомлении: окно закрывается, служба уже остановлена
+    val exitRequested = MutableLiveData(false)
     val recentCalls = MutableLiveData<List<RecentCall>>(emptyList())
 
     // Счётчики на вкладках: непрочитанные сообщения («Чат») и пропущенные

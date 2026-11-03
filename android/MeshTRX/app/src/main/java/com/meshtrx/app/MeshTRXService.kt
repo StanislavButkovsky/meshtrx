@@ -21,6 +21,10 @@ class MeshTRXService : Service() {
         private const val TAG = "MeshTRXService"
         private const val NOTIF_CHANNEL = "meshtrx_service"
         private const val NOTIF_ID = 1
+        /** Кнопка «Выход» в уведомлении: служба держит связь и после закрытия
+         *  окна, и другого способа её остановить, кроме «Остановить» в
+         *  настройках Android, не было. */
+        const val ACTION_EXIT = "com.meshtrx.app.EXIT"
         // Отдельные каналы для входящих сообщений: личное должно звучать,
         // общий чат — приходить тихо. Один канал с этим не справляется:
         // важность в Android задаётся каналу, а не отдельному уведомлению.
@@ -1718,11 +1722,16 @@ class MeshTRXService : Service() {
         val pi = PendingIntent.getActivity(this, 0, intent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
 
+        val exit = PendingIntent.getService(this, 1,
+            Intent(this, MeshTRXService::class.java).setAction(ACTION_EXIT),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+
         return NotificationCompat.Builder(this, NOTIF_CHANNEL)
             .setContentTitle("MeshTRX")
             .setContentText(text)
             .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
             .setContentIntent(pi)
+            .addAction(0, getString(R.string.exit_app), exit)
             .setOngoing(true)
             .build()
     }
@@ -1735,6 +1744,10 @@ class MeshTRXService : Service() {
     override fun onBind(intent: Intent): IBinder = binder
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_EXIT) {
+            exitApp()
+            return START_NOT_STICKY
+        }
         goForeground()
         return super.onStartCommand(intent, flags, startId)
     }
@@ -1764,6 +1777,20 @@ class MeshTRXService : Service() {
         } catch (e: Exception) {
             Log.w(TAG, "фоновая служба не включена: ${e.message}")
         }
+    }
+
+    /** Отключиться от рации, убрать уведомление и остановиться. Окно, если
+     *  оно открыто, закроется само — по ServiceState.exitRequested. */
+    private fun exitApp() {
+        disconnect()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+        } else {
+            @Suppress("DEPRECATION") stopForeground(true)
+        }
+        inForeground = false
+        ServiceState.exitRequested.postValue(true)
+        stopSelf()
     }
 
     override fun onDestroy() {
