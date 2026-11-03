@@ -3,8 +3,10 @@
 #include <Arduino.h>
 #include <string.h>
 #include <stdlib.h>
+#include "usb_link.h"
 #include <stdarg.h>
 #include "test_console.h"
+#include "usb_link.h"
 #include "packet.h"
 #include "lora_radio.h"
 #include "ble_service.h"
@@ -748,8 +750,10 @@ void testConsoleInit() {
 }
 
 void testConsoleTick() {
-  while (Serial.available()) {
-    char c = (char)Serial.read();
+  // Порт читает usb_link: рамки уходят ему, а обычный текст — сюда
+  int ch;
+  while ((ch = usbLinkConsoleRead()) >= 0) {
+    char c = (char)ch;
     if (c == '\r') continue;
     if (c == '\n') {
       lineBuf[lineLen] = 0;

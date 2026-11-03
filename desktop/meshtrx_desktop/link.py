@@ -20,6 +20,9 @@ from dataclasses import dataclass
 from bleak import BleakClient, BleakScanner
 
 from . import protocol as proto
+from . import usb_link
+
+USB_PREFIX = "usb:"
 
 RECONNECT_DELAYS = (3, 5, 7, 10, 20, 30, 60)   # секунды, дальше — по последней
 
@@ -43,6 +46,7 @@ class Link:
         self._want_connection = False
         self._attempt = 0
         self._connected_at = 0.0
+        self._usb: usb_link.UsbTransport | None = None
         self.authorized = False
 
     # ---------- жизненный цикл потока ----------
@@ -63,6 +67,7 @@ class Link:
 
     def stop(self):
         self._want_connection = False
+        self._stop_usb()
         if self._loop:
             asyncio.run_coroutine_threadsafe(self._disconnect(), self._loop).result(5)
             self._loop.call_soon_threadsafe(self._loop.stop)
@@ -82,11 +87,18 @@ class Link:
     async def _scan(self, timeout: float) -> list[Device]:
         self._on_state("scanning", "")
         found: list[Device] = []
-        for dev, adv in (await BleakScanner.discover(timeout=timeout,
-                                                     return_adv=True)).values():
-            if dev.name and "MeshTRX" in dev.name:
-                found.append(Device(dev.name, dev.address, adv.rssi))
+        try:
+            for dev, adv in (await BleakScanner.discover(timeout=timeout,
+                                                         return_adv=True)).values():
+                if dev.name and "MeshTRX" in dev.name:
+                    found.append(Device(dev.name, dev.address, adv.rssi))
+        except Exception as e:                                    # noqa: BLE001
+            # Без Bluetooth рацию всё равно можно подключить кабелем
+            self._on_state("scan_error", str(e))
         found.sort(key=lambda d: -(d.rssi or -999))
+        # Рации на кабеле — первыми: раз подключили провод, его и хотят
+        found[:0] = [Device(f"MeshTRX по USB ({desc})", USB_PREFIX + dev)
+                     for dev, desc in usb_link.find_ports()]
         self._on_state("scan_done", f"{len(found)}")
         return found
 
@@ -95,15 +107,49 @@ class Link:
         self._address = address
         self._want_connection = True
         self._attempt = 0
+        if address.startswith(USB_PREFIX):
+            self._stop_usb()
+            self._usb = usb_link.UsbTransport(address[len(USB_PREFIX):],
+                                              self._on_usb_payload, self._on_usb_state)
+            self._usb.start()
+            return
         self._submit(self._connect_loop())
 
     def disconnect(self):
         self._want_connection = False
+        if self._usb:
+            self._stop_usb()
+            self._on_state("disconnected", "")
+            return
         self._submit(self._disconnect())
 
     @property
     def connected(self) -> bool:
+        if self._usb:
+            return self._usb.is_open
         return bool(self._client and self._client.is_connected)
+
+    @property
+    def via_usb(self) -> bool:
+        return self._usb is not None
+
+    def _stop_usb(self):
+        usb, self._usb = self._usb, None
+        if usb:
+            usb.stop()
+
+    def _on_usb_state(self, state: str, detail: str):
+        if state == "connected":
+            self._connected_at = time.time()
+            # По кабелю PIN не нужен: доступ к проводу и так означает доступ к рации
+            self.authorized = True
+            detail = USB_PREFIX + detail
+        elif state == "disconnected":
+            self.authorized = False
+        self._on_state(state, detail)
+
+    def _on_usb_payload(self, payload: bytes):
+        self._on_notify(None, bytearray(payload))
 
     @property
     def uptime(self) -> float:
@@ -167,6 +213,8 @@ class Link:
 
     def send(self, payload: bytes):
         """Отправить команду. Не блокирует вызывающий поток."""
+        if self._usb:
+            return self._usb.send(payload)
         if not self.connected:
             return False
         self._submit(self._send(payload))
@@ -181,6 +229,8 @@ class Link:
     def send_sync(self, payload: bytes, timeout: float = 5.0) -> bool:
         """Отправить и дождаться подтверждения записи — для команд, порядок
         которых важен (PIN, настройки, начало файла)."""
+        if self._usb:
+            return self._usb.send(payload)
         if not self.connected:
             return False
         try:

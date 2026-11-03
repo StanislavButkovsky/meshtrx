@@ -19,6 +19,7 @@
 #include "audio_codec.h"
 #include "beacon.h"
 #include "crypto.h"
+#include "usb_link.h"
 #include "version.h"
 #include "repeater.h"
 #include "call_manager.h"
@@ -219,6 +220,7 @@ static void pttStop(bool byTimeout);
 static void pttStart();
 static void loadSettings();
 static void handleUserButton();
+static void usbTaskFunc(void* param);
 
 // Кодовое слово от телефона. Ключ из него выводится около трёх секунд, и
 // делать это внутри обработчика Bluetooth нельзя: ответ с отпечатком, посланный
@@ -347,6 +349,10 @@ void setup() {
   cryptoInit();
   inboxInit();
 
+  // Порт читаем в любом режиме: по нему ходят и команды стенда, и рамки
+  // телефона на кабеле. Обработчик рамок включается ниже, в обычном режиме.
+  xTaskCreatePinnedToCore(usbTaskFunc, "usb", 8192, nullptr, 2, nullptr, 1);
+
   // Проверить режим ретранслятора
   repeaterInit();
 
@@ -396,6 +402,7 @@ void setup() {
     // BLE
     bleInit();
     bleSetDataCallback(handleBleData);
+    usbLinkInit(handleBleData);
 
 #ifdef TEST_CONSOLE
     testConsoleInit();
@@ -615,7 +622,7 @@ static void loraTaskFunc(void* param) {
 #ifdef TEST_CONSOLE
     testActive = testConsoleIsActive();
 #endif
-    if (!bleConnected && !repeaterIsEnabled() && !testActive) {
+    if (!bleIsConnected() && !repeaterIsEnabled() && !testActive) {
       // Раньше здесь был полный standby, и устройство без телефона не слышало
       // эфир вообще: ни вызова, ни сообщения, ни файла — сеть для него
       // переставала существовать до следующего подключения по BLE.
@@ -1401,6 +1408,24 @@ static void pttStop(bool byTimeout) {
 #endif
     oledWake();
     oledShowMessage("LIMIT 10s", "", 2000);
+  }
+}
+
+// Кабель: читаем порт часто — голос идёт пакетом каждые 80 мс, а задача BLE
+// просыпается раз в полсекунды.
+static void usbTaskFunc(void* param) {
+  while (true) {
+    bool was = usbLinkActive();
+    usbLinkPoll();
+    if (usbLinkActive()) {
+      blePhoneSpoke = true;
+      bleLastRxMs = millis();
+      if (!was) {
+        LOG_D("EVT USB_LINK up");
+        if (loraTaskHandle) xTaskNotifyGive(loraTaskHandle);
+      }
+    }
+    vTaskDelay(pdMS_TO_TICKS(10));
   }
 }
 
