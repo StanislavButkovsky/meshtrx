@@ -20,6 +20,276 @@ export interface Article {
 // сортировки, которая молча переставит статьи, если в дате опечатка.
 export const ARTICLES: Article[] = [
   {
+    slug: 'meshtastic-board-to-radio',
+    date: '2026-11-03',
+    title: {
+      ru: 'Как сделать рацию из платы Meshtastic: Heltec V3 и V4',
+      en: 'How to turn a Meshtastic board into a radio: Heltec V3 and V4',
+    },
+    summary: {
+      ru: 'Пошаговая инструкция: прошить Heltec V3 или V4 из браузера, подключить телефон по Bluetooth и говорить голосом без интернета и сотовой связи. Что купить, как не сжечь плату и что делать, если на ней раньше стоял Meshtastic.',
+      en: 'Step by step: flash a Heltec V3 or V4 from the browser, connect a phone over Bluetooth and talk by voice with no internet or cell service. What to buy, how not to burn the board, and what to do if it ran Meshtastic before.',
+    },
+    body: {
+      ru: `У многих плата Heltec WiFi LoRa 32 лежит без дела после знакомства с Meshtastic: сообщения ходят, но говорить через неё нельзя. Прошивка MeshTRX превращает такую плату в рацию с голосом. Телефон подключается к плате по Bluetooth, плата передаёт голос и текст по радио на другую такую же плату. Интернет, сотовая сеть и вышки не нужны.
+
+MeshTRX — независимый проект, с Meshtastic он не связан. Платы те же, но протокол свой: рация MeshTRX не видит ноды Meshtastic, а ноды Meshtastic не слышат MeshTRX.
+
+## Что понадобится
+
+- две платы Heltec WiFi LoRa 32 — V3, V4 или V4.3. Подробнее о различиях — в статье [о выборе платы](/articles/heltec-v3-v4-which-board/);
+- антенна на диапазон платы, обычно 868 МГц. Короткая антенна из комплекта подходит для первых опытов;
+- кабель USB-C с передачей данных, а не только зарядкой;
+- на каждую рацию — телефон на Android 8 или новее, iPhone или компьютер с Windows, macOS или Linux;
+- по желанию — аккумулятор Li-Po 3,7 В с разъёмом JST 1,25 мм и корпус. Подходят корпуса, сделанные для Meshtastic.
+
+Антенну прикручивайте до того, как подали питание. Передача без антенны выводит из строя выходной каскад радиомодуля, и плата перестаёт слышать.
+
+## Прошивка из браузера
+
+1. Откройте страницу [прошивки](/flash/) в Chrome или Edge на компьютере. Firefox и Safari не умеют работать с USB-портом из страницы.
+2. Подключите плату кабелем и выберите её ревизию. Ревизия напечатана на обратной стороне платы, у разъёма GPS, надпись вида «HTIT-WB32LAF V4.3». Прошивка от другой ревизии запустится, но усилитель будет управляться не тем выводом, и плата будет слышать хуже или не выйдет в эфир.
+3. Если на плате стоял Meshtastic или MeshCore, отметьте «Стереть плату полностью». Остатки старой прошивки в памяти мешают Bluetooth: телефон подключается и сразу отключается.
+4. Нажмите «Прошить» и дождитесь конца. На экране платы появится имя вида MeshTRX-7E88 и четырёхзначный PIN.
+
+Если браузер не видит плату, переведите её в режим загрузки: зажмите кнопку PRG, нажмите и отпустите RST, затем отпустите PRG. Для V4 это особенно важно: у неё USB встроен в процессор, и зависшая программа может не отвечать компьютеру.
+
+## Подключение телефона
+
+Поставьте приложение MeshTRX: для Android — со [страницы загрузки](/download/) или из RuStore, для iPhone — по [инструкции](/ios/), для компьютера — [программу](/download/) под свою систему. В приложении нажмите «Подключить», выберите свою плату и введите PIN с её экрана. PIN спрашивается один раз, дальше телефон подключается сам.
+
+Сделайте то же со второй платой и вторым телефоном. В строке состояния появится «слышно 1 станцию» — рации видят друг друга.
+
+## Первый разговор
+
+Держите кнопку «Говорить» и говорите, отпустите — собеседник услышит. Голос сжимается в телефоне кодеком Codec2 до 3200 бит/с, одна передача длится до 10 секунд. Звук понятный, но не телефонного качества: так устроен узкий радиоканал.
+
+Кроме голоса, приложение отправляет текст до 84 символов, фотографии до 100 КБ и показывает собеседников на карте. Вызвать можно всех сразу или одного человека. Эфир можно закрыть шифрованием: задайте одинаковое кодовое слово на всех рациях группы и сверьте четырёхзначный отпечаток.
+
+## Если что-то не работает
+
+- Телефон подключается и сразу отключается — прошейте плату заново с полным стиранием, удалите её в настройках Bluetooth телефона и подключитесь из приложения.
+- Рации не слышат друг друга — проверьте, что они на одном канале и с одинаковым кодовым словом или обе без него.
+- Плата не включается — коротко нажмите PRG: удержание три секунды выключает плату, и она ждёт нажатия.
+
+Вопросы и результаты своих испытаний можно принести в группу [t.me/MeshTRX](https://t.me/MeshTRX).`,
+      en: `Many people have a Heltec WiFi LoRa 32 board sitting in a drawer after trying Meshtastic: text works, but you can't talk through it. The MeshTRX firmware turns that board into a voice radio. A phone connects to the board over Bluetooth, and the board sends voice and text over the air to another board of the same kind. No internet, cell network or towers are involved.
+
+MeshTRX is an independent project, not affiliated with Meshtastic. The boards are the same but the protocol is different: a MeshTRX radio does not see Meshtastic nodes, and Meshtastic nodes do not hear MeshTRX.
+
+## What you need
+
+- two Heltec WiFi LoRa 32 boards — V3, V4 or V4.3. The differences are covered in the article [on choosing a board](/articles/heltec-v3-v4-which-board/);
+- an antenna for the board's band, usually 868 MHz. The short antenna from the box is fine to start;
+- a USB-C cable that carries data, not just charging;
+- for each radio, an Android 8+ phone, an iPhone, or a Windows, macOS or Linux computer;
+- optionally, a 3.7 V Li-Po battery with a JST 1.25 mm plug and a case. Cases made for Meshtastic fit.
+
+Screw the antenna on before powering the board. Transmitting without an antenna damages the radio's output stage, and the board stops hearing.
+
+## Flashing from the browser
+
+1. Open the [flasher](/flash/) in Chrome or Edge on a computer. Firefox and Safari cannot talk to a USB port from a web page.
+2. Plug in the board and pick its revision. It is printed on the back of the board near the GPS connector, something like "HTIT-WB32LAF V4.3". Firmware for another revision will start, but the amplifier will be driven by the wrong pin, and the board will hear worse or not transmit at all.
+3. If the board ran Meshtastic or MeshCore, tick "Erase the whole board". Leftovers of the old firmware break Bluetooth: the phone connects and immediately drops.
+4. Press "Flash" and wait. The board's screen shows a name like MeshTRX-7E88 and a four-digit PIN.
+
+If the browser does not see the board, put it into download mode: hold PRG, press and release RST, then release PRG. This matters most for V4, whose USB is built into the processor: a hung program may not answer the computer.
+
+## Connecting the phone
+
+Install MeshTRX: for Android from the [downloads page](/download/), for iPhone following the [guide](/ios/), for a computer the [desktop app](/download/) for your system. In the app tap "Connect", pick your board and enter the PIN from its screen. The PIN is asked once; after that the phone connects on its own.
+
+Repeat with the second board and the second phone. The status line will say "1 station heard" — the radios see each other.
+
+## First conversation
+
+Hold "Talk" and speak, release and the other side hears you. The phone compresses the voice with the Codec2 codec to 3200 bit/s, and one transmission lasts up to 10 seconds. Speech is clear but not phone quality: that is the price of a narrow radio channel.
+
+Besides voice, the app sends text up to 84 characters and photos up to 100 KB, and shows other stations on a map. You can call everyone or one person. The air can be encrypted: set the same passphrase on every radio in the group and compare the four-character fingerprint.
+
+## If something does not work
+
+- The phone connects and drops right away — reflash with full erase, remove the board in the phone's Bluetooth settings and connect from the app.
+- The radios do not hear each other — check they are on the same channel and either share a passphrase or both have none.
+- The board does not turn on — press PRG briefly: holding it for three seconds puts the board to sleep, and it waits for a press.
+
+Questions and test results are welcome in the group [t.me/MeshTRX_en](https://t.me/MeshTRX_en).`,
+    },
+  },
+  {
+    slug: 'heltec-v3-v4-which-board',
+    date: '2026-11-03',
+    title: {
+      ru: 'Heltec V3, V4 или V4.3: какую плату выбрать для голосовой связи',
+      en: 'Heltec V3, V4 or V4.3: which board to pick for voice',
+    },
+    summary: {
+      ru: 'Чем отличаются ревизии Heltec WiFi LoRa 32, как узнать свою по надписи на плате, зачем V4 внешний усилитель, что выбрать — 868 или 433 МГц, и какие антенны и аккумуляторы ставят участники нашей группы.',
+      en: 'How the Heltec WiFi LoRa 32 revisions differ, how to tell yours from the marking on the board, why V4 has an external amplifier, 868 versus 433 MHz, and which antennas and batteries people in our group use.',
+    },
+    body: {
+      ru: `MeshTRX работает на платах Heltec WiFi LoRa 32 трёх ревизий. Все они построены на процессоре ESP32-S3 и радиомодуле Semtech SX1262, у всех есть экран 128×64, Bluetooth и разъём для аккумулятора. Различаются они усилителем, памятью и USB, и прошивка для каждой своя.
+
+## Сравнение ревизий
+
+| | V3 | V4 (rev 4.2) | V4.3 |
+|---|---|---|---|
+| Внешний усилитель | нет | GC1109 | KCT8103L |
+| Память | 8 МБ | 16 МБ + PSRAM | 16 МБ + PSRAM |
+| USB | через отдельный мост | встроен в процессор | встроен в процессор |
+| Файл прошивки | firmware-v3 | firmware-v4 | firmware-v4.3 |
+
+Ревизия напечатана на обратной стороне платы, у разъёма GPS: надпись вида «HTIT-WB32LAF V4.3». Если прошить файл от другой ревизии, плата запустится, но усилитель будет включаться не тем выводом. Мы проверяли: прошивка V3 на V4.3 заливается без ошибок, после чего плата молчит.
+
+## Что даёт усилитель
+
+На V3 сигнал идёт с радиомодуля прямо в антенну. На V4 между ними стоит усилитель с малошумящим входом: он поднимает мощность передачи и улучшает приём слабых сигналов. Обратная сторона — расход: на передаче усилитель берёт заметный ток, и аккумулятору нужны толстые провода.
+
+Мощность в приложении задаётся в дБм. Для проверки дальности начинайте со стандартных 14 дБм: участник группы получил на них 2 км в городе с одной рацией на возвышенности и антеннами из комплекта.
+
+## Что выбрать
+
+- **V3** — если плата уже есть или нужна самая дешёвая пара. Для связи в пределах района, лагеря, стройки её достаточно.
+- **V4.3** — если покупаете сейчас. Это текущая ревизия у продавцов, и усилитель даёт запас по дальности.
+- **V4 rev 4.2** встречается реже, работает так же, как V4.3, но с другим усилителем и своей прошивкой.
+
+Все ревизии работают вместе: V3 и V4.3 в одной группе слышат друг друга.
+
+## 868 или 433 МГц
+
+Большинство плат продаётся на 868 МГц, на этом диапазоне MeshTRX даёт 23 канала. У V3 есть исполнение на 433 МГц: на нём 5 каналов и мощность не больше 10 мВт, поддержка пока в бете. Рации на 433 и на 868 МГц друг друга не слышат, поэтому у всей группы должны быть платы одного диапазона, и антенна нужна под свой диапазон.
+
+## Антенны и аккумуляторы
+
+Короткая антенна из комплекта годится для начала. Дальше всего помогает высота: рация на балконе верхнего этажа или на мачте даёт больше, чем любая антенна на уровне земли. Участники группы ставят гибкие штыри на 868 МГц, а для стационарной точки — коллинеарные антенны длиной около метра.
+
+Аккумулятор подключается к разъёму JST 1,25 мм, подходит любой Li-Po 3,7 В. Обращайте внимание на полярность: у разных продавцов провода в разъёме бывают перепутаны. Корпуса для Meshtastic подходят и для MeshTRX, для V3 удобен H1 Case с Printables, для V4 там же есть модели под плату с GPS и аккумулятором.
+
+Выбрали плату — дальше [инструкция по прошивке](/articles/meshtastic-board-to-radio/).`,
+      en: `MeshTRX runs on three revisions of the Heltec WiFi LoRa 32. All of them have an ESP32-S3 processor and a Semtech SX1262 radio, a 128×64 screen, Bluetooth and a battery connector. They differ in the amplifier, memory and USB, and each has its own firmware.
+
+## The revisions side by side
+
+| | V3 | V4 (rev 4.2) | V4.3 |
+|---|---|---|---|
+| External amplifier | none | GC1109 | KCT8103L |
+| Memory | 8 MB | 16 MB + PSRAM | 16 MB + PSRAM |
+| USB | separate bridge chip | built into the processor | built into the processor |
+| Firmware file | firmware-v3 | firmware-v4 | firmware-v4.3 |
+
+The revision is printed on the back of the board near the GPS connector, something like "HTIT-WB32LAF V4.3". Firmware for another revision will start, but the amplifier will be switched by the wrong pin. We tried it: V3 firmware flashes onto a V4.3 without errors, and then the board stays silent.
+
+## What the amplifier gives
+
+On a V3 the signal goes straight from the radio chip to the antenna. On a V4 there is an amplifier in between with a low-noise input: it raises transmit power and improves reception of weak signals. The cost is current draw: the amplifier takes a noticeable current while transmitting, and the battery needs thick wires.
+
+Power is set in the app in dBm. For range tests start with the default 14 dBm: a member of our group got 2 km in a city on it, with one radio on high ground and stock antennas.
+
+## Which to pick
+
+- **V3** — if you already have one or want the cheapest pair. It is enough for a neighbourhood, a camp or a building site.
+- **V4.3** — if you are buying now. It is the current revision at sellers, and the amplifier gives range margin.
+- **V4 rev 4.2** is less common; it works like the V4.3 but with a different amplifier and its own firmware.
+
+All revisions work together: a V3 and a V4.3 in one group hear each other.
+
+## 868 or 433 MHz
+
+Most boards are sold for 868 MHz, where MeshTRX has 23 channels. The V3 also comes in a 433 MHz version: 5 channels and at most 10 mW, support is still in beta. Radios on 433 and 868 MHz do not hear each other, so the whole group needs boards of one band, with antennas for that band.
+
+## Antennas and batteries
+
+The short stock antenna is fine to start with. Height helps most: a radio on a top-floor balcony or a mast gives more than any antenna at ground level. People in our group use flexible 868 MHz whips, and for a fixed station collinear antennas about a metre long.
+
+The battery plugs into the JST 1.25 mm connector; any 3.7 V Li-Po fits. Check the polarity: some sellers wire the plug the other way round. Meshtastic cases fit MeshTRX too; the H1 Case on Printables suits the V3, and Printables also has V4 models with room for GPS and a battery.
+
+Picked a board? Next comes the [flashing guide](/articles/meshtastic-board-to-radio/).`,
+    },
+  },
+  {
+    slug: 'off-grid-communication',
+    date: '2026-11-03',
+    title: {
+      ru: 'Связь без интернета и сотовой сети: рации PMR, Meshtastic, MeshCore и MeshTRX',
+      en: 'Communication without internet or cell service: PMR radios, Meshtastic, MeshCore and MeshTRX',
+    },
+    summary: {
+      ru: 'Какие есть способы держать связь там, где нет сотовой сети: в походе, на даче, при отключении связи. Сравниваем обычные рации, текстовые mesh-сети на платах LoRa и голосовую связь MeshTRX — что умеет каждое и где у каждого предел.',
+      en: 'Ways to stay in touch where there is no cell service: hiking, at a country house, during an outage. We compare ordinary walkie-talkies, text mesh networks on LoRa boards and MeshTRX voice — what each can do and where each runs out.',
+    },
+    body: {
+      ru: `Когда пропадает сотовая сеть — в лесу, в горах, на даче или при отключении мобильного интернета, — остаются средства связи, которым не нужны вышки. Ниже — четыре распространённых варианта для частных лиц и чем они отличаются.
+
+## Обычные рации PMR и LPD
+
+Рации диапазонов PMR (446 МГц) и LPD (433 МГц) продаются в любом магазине туристического снаряжения и работают сразу после включения. Голос передаётся в реальном времени, нажал — говоришь. Дальность зависит от рельефа: в городе обычно сотни метров, на открытой местности — километры. Ретрансляции нет: если собеседника не слышно напрямую, связи нет. Текста, координат и шифрования у дешёвых моделей нет, разговор слышит любой, кто стоит на том же канале.
+
+## Meshtastic
+
+Meshtastic — открытая прошивка для плат на радиомодулях LoRa: Heltec, LilyGO, RAK и других. Платы связываются в сеть, где каждая передаёт сообщения дальше, поэтому текст доходит за пределы прямой видимости. Есть шифрование, координаты на карте, большое сообщество и тысячи нод по всему миру. Голоса нет: протокол рассчитан на короткие сообщения раз в несколько секунд.
+
+## MeshCore
+
+MeshCore — другая прошивка для тех же плат. Сеть строится на выделенных ретрансляторах, что экономит эфир при большом числе участников. Как и Meshtastic, MeshCore передаёт текст. Голос участники нашей группы добавляют своими средствами: например, Dmitry сделал отдельный модуль, который зачитывает входящие сообщения вслух.
+
+## MeshTRX
+
+MeshTRX — прошивка для плат Heltec WiFi LoRa 32 и приложение для телефона и компьютера, которые добавляют голос. Телефон сжимает речь кодеком Codec2 до 3200 бит/с и передаёт её через плату по радио. Кроме голоса есть текст до 84 символов, фото до 100 КБ, координаты на карте, вызовы всех или одного человека, ретранслятор и шифрование. MeshTRX — независимый проект и с сетями Meshtastic и MeshCore не связывается: нужны свои платы MeshTRX у каждого участника.
+
+По замерам в поле голос устойчиво проходит до двух километров в городе, текст — дальше. На высоте расстояния растут: точка на возвышенности добавляет больше, чем мощность. Подробности — в статье [о дальности](/articles/range-in-the-field/).
+
+## Сравнение
+
+| | Рации PMR/LPD | Meshtastic | MeshCore | MeshTRX |
+|---|---|---|---|---|
+| Голос | да, сразу | нет | нет | да, до 10 с за передачу |
+| Текст | нет | да | да | да |
+| Ретрансляция | нет | каждая нода | ретрансляторы | ретранслятор |
+| Шифрование | обычно нет | да | да | да |
+| Нужен телефон | нет | да, для текста | да, для текста | да или компьютер |
+| Что купить | две рации | две платы | две платы | две платы |
+
+## Что выбрать
+
+Если нужен только голос и нет желания возиться с прошивками — подойдут обычные рации. Если важна большая сеть и сообщения далеко за прямой видимостью — Meshtastic или MeshCore. Если плата Meshtastic уже есть, а нужен голос с телефона, текст и карта в одном приложении — MeshTRX: та же плата становится рацией после [прошивки из браузера](/articles/meshtastic-board-to-radio/).`,
+      en: `When the cell network disappears — in a forest, in the mountains, at a country house or during a mobile internet shutdown — what is left are means of communication that need no towers. Here are four common options for private users and how they differ.
+
+## Ordinary PMR and LPD walkie-talkies
+
+PMR (446 MHz) and LPD (433 MHz) radios are sold in any outdoor shop and work right out of the box. Voice is real-time: press and talk. Range depends on terrain: usually hundreds of metres in a city, kilometres in open country. There is no relaying: if you cannot hear the other person directly, there is no link. Cheap models have no text, location or encryption, and anyone on the same channel hears the conversation.
+
+## Meshtastic
+
+Meshtastic is open firmware for boards built around LoRa radio modules: Heltec, LilyGO, RAK and others. The boards form a network in which each one passes messages on, so text reaches beyond line of sight. It has encryption, positions on a map, a large community and thousands of nodes worldwide. There is no voice: the protocol is designed for short messages every few seconds.
+
+## MeshCore
+
+MeshCore is another firmware for the same boards. Its network is built on dedicated repeaters, which saves airtime when there are many users. Like Meshtastic, MeshCore carries text. People in our group add voice in their own ways: Dmitry, for example, built a separate module that reads incoming messages aloud.
+
+## MeshTRX
+
+MeshTRX is firmware for Heltec WiFi LoRa 32 boards plus a phone and desktop app that add voice. The phone compresses speech with the Codec2 codec to 3200 bit/s and sends it over the air through the board. Besides voice there is text up to 84 characters, photos up to 100 KB, positions on a map, calls to everyone or one person, a repeater and encryption. MeshTRX is an independent project and does not talk to Meshtastic or MeshCore networks: every participant needs a board running MeshTRX.
+
+In field tests voice holds up to two kilometres in a city, text goes further. Distances grow with height: a station on high ground adds more than transmit power does. Details are in the article [on range](/articles/range-in-the-field/).
+
+## Comparison
+
+| | PMR/LPD radios | Meshtastic | MeshCore | MeshTRX |
+|---|---|---|---|---|
+| Voice | yes, instant | no | no | yes, up to 10 s per transmission |
+| Text | no | yes | yes | yes |
+| Relaying | no | every node | repeaters | repeater |
+| Encryption | usually no | yes | yes | yes |
+| Needs a phone | no | yes, for text | yes, for text | yes, or a computer |
+| What to buy | two radios | two boards | two boards | two boards |
+
+## Which to choose
+
+If you only need voice and do not want to deal with firmware, ordinary radios will do. If a large network and messages far beyond line of sight matter most, use Meshtastic or MeshCore. If you already have a Meshtastic board and want phone voice, text and a map in one app, MeshTRX turns the same board into a radio after [flashing it from the browser](/articles/meshtastic-board-to-radio/).`,
+    },
+  },
+  {
     slug: 'button-that-pretended-to-work',
     date: '2026-09-21',
     title: {
