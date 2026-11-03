@@ -65,6 +65,10 @@ class MainActivity : AppCompatActivity() {
         // Служба: привязка сразу, фоновый режим — только с разрешением Bluetooth
         startServiceIfAllowed()
         bindService(Intent(this, MeshTRXService::class.java), connection, Context.BIND_AUTO_CREATE)
+        // Без привязки к жизненному циклу: окно в фоне тоже держит службу
+        // привязкой, и пока оно не закроется, служба не остановится.
+        ServiceState.exitRequested.value = false
+        ServiceState.exitRequested.observeForever(exitObserver)
 
         // Fragments
         val fm = supportFragmentManager
@@ -285,7 +289,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private val exitObserver = androidx.lifecycle.Observer<Boolean> { exit ->
+        if (exit == true) finishAndRemoveTask()
+    }
+
     override fun onDestroy() {
+        ServiceState.exitRequested.removeObserver(exitObserver)
         locationHelper?.stop()
         if (bound) {
             unbindService(connection)

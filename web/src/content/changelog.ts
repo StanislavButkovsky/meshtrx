@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '4.4.35',
+    date: '2026-11-03',
+    changes: [
+      'Кнопка «Выход» в уведомлении MeshTRX: отключает рацию, убирает уведомление и закрывает приложение. Раньше приложение продолжало работать в фоне, и остановить его можно было только через настройки Android',
+    ],
+  },
+  {
     version: '4.4.34',
     date: '2026-11-01',
     changes: [

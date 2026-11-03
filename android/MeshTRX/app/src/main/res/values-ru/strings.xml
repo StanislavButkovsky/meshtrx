@@ -248,4 +248,5 @@ MeshTRX v%2$s</string>
     <string name="ui_theme_main">Основное (сине-жёлтое)</string>
     <string name="ui_theme_khaki">Хаки</string>
     <string name="splash_tagline">Рация без интернета и сотовой связи</string>
+    <string name="exit_app">Выход</string>
 </resources>

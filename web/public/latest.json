@@ -1,8 +1,8 @@
 {
   "app": {
-    "version": "4.4.34",
-    "code": 79,
-    "url": "https://meshtrx.ru/downloads/meshtrx-4.4.34.apk"
+    "version": "4.4.35",
+    "code": 80,
+    "url": "https://meshtrx.ru/downloads/meshtrx-4.4.35.apk"
   },
   "firmware": {
     "version": "4.4.37",
@@ -12,13 +12,13 @@
     "v43": "https://meshtrx.ru/downloads/firmware-v4.3-4.4.37.bin"
   },
   "ios": {
-    "version": "1.0.5",
+    "version": "1.0.4",
     "url": "https://meshtrx.ru/ios/"
   },
   "desktop": {
     "version": "1.1.0",
     "page": "https://meshtrx.ru/download/#desktop"
   },
-  "date": "2026-11-01",
+  "date": "2026-11-03",
   "changelog": "https://meshtrx.ru/download/"
 }
