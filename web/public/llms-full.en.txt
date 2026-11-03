@@ -6,7 +6,7 @@
 
 # MeshTRX — User Guide
 
-> App 4.4.5 | Firmware 4.4.4 | Updated: 2026-08-31
+> Android 4.4.35 | iPhone 1.0.4 | Desktop 1.1.0 | Firmware 4.4.37 | Updated: 2026-11-03
 
 ---
 
@@ -34,7 +34,9 @@
 
 ## Overview
 
-**MeshTRX** is a decentralised voice mesh network over LoRa and BLE. Two or more Heltec WiFi LoRa 32 devices talk to each other over LoRa at ranges of 5 km and beyond. Each device connects over Bluetooth LE either to an Android phone or to a computer running the desktop client.
+**MeshTRX** is a decentralised voice mesh network over LoRa and BLE. Two or more Heltec WiFi LoRa 32 devices talk to each other over LoRa at ranges of 5 km and beyond. Each device connects over Bluetooth to a phone (Android or iPhone) or to a computer running the desktop client.
+
+MeshTRX is an independent project, not affiliated with Meshtastic. The boards are the same but the protocol is different: MeshTRX radios do not see Meshtastic nodes, and the other way round.
 
 ```
 [Phone A] <--BLE--> [Heltec A] <--LoRa 868 MHz--> [Heltec B] <--BLE--> [Computer B]
@@ -82,7 +84,7 @@ The revision is printed in small type on the back of the board, next to the GPS 
 ### What you need
 
 - 2 or more Heltec WiFi LoRa 32 devices (V3 or V4)
-- for each device — an Android phone (5.0+) **or** a computer with the desktop client
+- for each device — a phone with Android 8 or newer, an iPhone **or** a computer with the desktop client
 - a USB-C cable for flashing
 - an antenna for the board's band (868 or 433 MHz), screwed on before power is applied: transmitting without an antenna destroys the output stage
 - optionally, a 3.7 V Li-Po battery with a JST 1.25 mm connector and a case. The board is the same one Meshtastic uses, so Meshtastic cases fit. For V3 the [H1 Case](https://www.printables.com/model/741974-h1-case-for-heltec-v3-running-meshtastic) works well — the project author uses it
@@ -101,6 +103,8 @@ pio run -e heltec_wifi_lora_32_V3  --target upload --upload-port /dev/ttyUSB0   
 pio run -e heltec_wifi_lora_32_V4  --target upload --upload-port /dev/ttyUSB0   # V4 rev 4.2
 pio run -e heltec_wifi_lora_32_V43 --target upload --upload-port /dev/ttyUSB0   # V4 rev 4.3
 ```
+
+**If the browser does not see the board** or flashing does not start, put the board into download mode: hold **PRG**, press and release **RST**, then release **PRG**. This matters most for V4: its USB is built into the processor, and a hung program on the board may not answer the computer. In this mode any board can be flashed, even one that "does not turn on" after a failed flash.
 
 After updating the firmware, **update the app as well**: the two agree on a shared protocol, and the pair "new firmware + old app" may fail to find each other over Bluetooth.
 
@@ -136,7 +140,9 @@ All four files sit on the [download page](/download/), in the "Flashing a V4 by 
 
 ### 2. Installing the app
 
-Download the APK from the [download page](/download/) and allow installation from unknown sources — Android will ask about this itself. Every release is signed with the same key, so an update installs over the previous one without uninstalling.
+**Android.** Install MeshTRX from RuStore or download the APK from the [download page](/download/) and allow installation from unknown sources — Android will ask about this itself. Every release is signed with the same key, so an update installs over the previous one without uninstalling.
+
+**iPhone.** The app is not in the App Store; it is installed through AltStore with a free Apple ID, step by step on the [MeshTRX for iPhone](/ios/) page. A free Apple ID signature lasts 7 days; AltStore renews it by itself when the computer running AltServer and the iPhone are on the same Wi-Fi.
 
 From source:
 
@@ -152,9 +158,9 @@ adb install -r app/build/outputs/apk/site/debug/app-site-debug.apk
 2. Go to the **Settings** tab
 3. Press **Connect** — scanning starts
 4. The device appears as **MeshTRX-XXXX**
-5. Press the button on the device (>1 s) — a **PIN** appears
-6. Enter the PIN in the app
-7. The status changes to **● Connected** (green)
+5. The PIN is shown on the device screen at power-on; if the screen has gone dark, hold **PRG** for more than a second and the PIN appears again
+6. Enter the PIN in the app. It is asked once; after that the phone connects to this radio on its own
+7. Settings show **Connected**, and the header shows the Bluetooth icon
 
 **If the phone does not see the device in the Bluetooth list.** Check that both the phone and the device are on recent versions: before 4.4.3 the device went on air without a name, so the phone did not show it in the list. Update both sides — updating one will not help. If that does not help, power-cycle the device: it releases an abandoned connection on its own, but not instantly.
 
@@ -310,28 +316,25 @@ Two buttons at the top of the PTT screen:
 
 | Mode | Description |
 |------|-------------|
-| **All** | You hear every transmission on the channel |
-| **Mine** | You hear only calls addressed to you |
+| **Listen all** | You hear every transmission on the channel |
+| **My calls only** | You hear only calls addressed to you |
 
-The active mode is highlighted in green.
+The selected mode is highlighted.
 
 ---
 
 ## Calls
 
-### Call types
+### Who you talk to and who you call
 
-| Type | Button | Description |
-|------|--------|-------------|
-| **Broadcast** | BROADCAST (blue) | A call to everyone on the channel |
-| **Private** | CALL (green) | A call to one particular station |
-| **Group** | via the picker | A call to a group (up to 8 participants) |
+Above the **Talk** button is the addressee line. The **@** button on the left opens the list of stations: pick a station or **General channel**. The addressee decides what the buttons next to it do:
 
-### How to call
+| Addressee | Bell button | "Talk" button |
+|-----------|-------------|---------------|
+| **General channel** | broadcast call: everyone on the channel is alerted | voice to everyone at once, in real time |
+| **A station** | private call to that station | a voice message to that station: up to 10 seconds, sent with a delivery mark |
 
-1. **Broadcast call**: press **BROADCAST** — everyone on the channel is notified
-2. **Private call**: press **CALL** → pick a station from the list → the call is sent
-3. Incoming call: an overlay appears with **ACCEPT** / **DECLINE**
+An incoming call opens a separate screen with **ACCEPT** / **REJECT**. Groups are still in development.
 
 ### Recent calls
 
@@ -353,7 +356,7 @@ A red number on the **PTT** tab shows how many calls you missed: the call ended 
 
 1. Go to the **Chat** tab
 2. Type your text (up to 84 characters)
-3. Press the send button (the green arrow)
+3. Press the send button with the arrow
 4. By default this is a broadcast to the channel
 
 ### Addressed messages
@@ -468,14 +471,15 @@ Tap a file in the list:
 
 ### Radar (tactical)
 
-- Black background with green range rings
+- Works without internet: range rings on a dark background, colours follow the theme
 - Compass orientation (true bearing)
 - Stations are drawn relative to your position
 - Zoom buttons +/− (100 m to 100 km)
 - A contrast button (normal / bright for outdoors)
 - Auto-zoom to the furthest station (5 km by default)
-- Brightness by RSSI
-- Call sign on the dot
+- Dot colour by age: heard less than 5 minutes ago — normal colour, 5–10 minutes — yellow, longer — red
+- Brightness by signal level: the weaker, the paler
+- Call sign on the dot, distance and signal level under it
 
 ### GPS
 
@@ -533,6 +537,10 @@ The button sends the radio settings to the device and stores them in NVS.
 
 ---
 
+### Background work and exit
+
+While the app is connected to the radio it keeps working with the window closed: it receives voice, messages and calls. A permanent MeshTRX notification reminds you of that. To close the app completely, press **Exit** in that notification: the phone disconnects from the radio, the notification goes away and the app closes. On the next start it connects to the same radio by itself. The button appeared in 4.4.35; older versions could only be stopped from Android settings.
+
 ### Updates
 
 At the bottom of Settings the app shows what has been released: **Check for
@@ -573,7 +581,10 @@ How it works:
 - a **fingerprint** appears below — four characters, identical on every device
   whose key matches, so the key can be verified out loud without saying it;
 - deriving the key takes about three seconds; that delay is the protection
-  against guessing;
+  against guessing. When the key is applied the phrase field clears and the
+  fingerprint appears under it a few seconds later. With firmware before 4.4.37
+  and an app older than 4.4.34 the fingerprint sometimes showed up only after
+  reconnecting, although the key was already set;
 - the phrase must be at least eight characters, and several words are better: a
   short one is cracked in an evening.
 
@@ -755,12 +766,12 @@ The screen turns itself off after 30 seconds.
 |---------|----------|-------------|
 | Call sign | Top left | Large white text |
 | Device name | Bottom left | Small grey text |
-| Status | Top right | ● Connected (green) / Disconnected (grey) |
-| Channel + frequency | Bottom right | Green text, "CH 5 · 864.65 MHz" |
+| Status | Top right | Bluetooth icon and the radio's battery voltage |
+| Channel + frequency | Bottom right | "CH 5 · 864.65 MHz" in the accent colour |
 
 ### Bottom navigation
 
-Five tabs: **PTT**, **Chat**, **Files**, **Map**, **Settings**. The active tab is highlighted in green.
+Five tabs: **PTT**, **Chat**, **Files**, **Map**, **Settings**. The active tab is highlighted in the accent colour.
 
 ---
 
@@ -795,7 +806,7 @@ Five tabs: **PTT**, **Chat**, **Files**, **Map**, **Settings**. The active tab i
 |-----------|-------|
 | Service | Nordic UART Service (NUS) |
 | MTU | 128 bytes |
-| Commands | 40+ (0x01–0x28) |
+| Commands | 60+ (0x01–0x3E) |
 | Audio packet | 36 bytes (cmd + flags + sender + 32 payload) |
 | Authorisation | a 4-digit PIN (derived from the MAC) |
 
