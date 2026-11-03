@@ -24,6 +24,9 @@
 
 Разборы того, как проект устроен внутри. Числа в них взяты из исходников.
 
+- [Как сделать рацию из платы Meshtastic: Heltec V3 и V4](https://meshtrx.ru/articles/meshtastic-board-to-radio/), 2026-11-03
+- [Heltec V3, V4 или V4.3: какую плату выбрать для голосовой связи](https://meshtrx.ru/articles/heltec-v3-v4-which-board/), 2026-11-03
+- [Связь без интернета и сотовой сети: рации PMR, Meshtastic, MeshCore и MeshTRX](https://meshtrx.ru/articles/off-grid-communication/), 2026-11-03
 - [Кнопка, которая делала вид, что работает](https://meshtrx.ru/articles/button-that-pretended-to-work/), 2026-09-21
 - [Шифрование в 39 байтах](https://meshtrx.ru/articles/encryption-in-39-bytes/), 2026-09-16
 - [Ретранслятор удваивает дальность и делит эфир](https://meshtrx.ru/articles/repeater-math/), 2026-09-15
