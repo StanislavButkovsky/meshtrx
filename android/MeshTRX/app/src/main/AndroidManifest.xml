@@ -25,7 +25,10 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
-    <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
+    <!-- Bluetooth не обязателен: рацию можно подключить кабелем (OTG), и
+         телефоны с урезанным радио тоже должны ставить приложение -->
+    <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
+    <uses-feature android:name="android.hardware.usb.host" android:required="false" />
 
     <application
         android:allowBackup="true"
@@ -44,6 +47,14 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Рацию воткнули кабелем: система предложит открыть MeshTRX и
+                 сразу даст ему доступ к USB -->
+            <intent-filter>
+                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
+                android:resource="@xml/usb_radio_filter" />
         </activity>
 
         <activity

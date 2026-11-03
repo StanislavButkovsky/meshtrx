@@ -85,6 +85,10 @@ class BleManager(private val context: Context) {
     private val handler = Handler(Looper.getMainLooper())
     private var scanning = false
 
+    /** Рация на кабеле. Пока порт открыт, все пакеты идут по нему, а не по
+     *  Bluetooth: команды и голос у них общие. */
+    var usbLink: UsbLink? = null
+
     var onConnected: (() -> Unit)? = null
     var onDisconnected: (() -> Unit)? = null
     var onDataReceived: ((ByteArray) -> Unit)? = null
@@ -184,10 +188,13 @@ class BleManager(private val context: Context) {
         handler.post { onDisconnected?.invoke() }
     }
 
-    fun isConnected(): Boolean = bluetoothGatt != null && rxCharacteristic != null
+    fun isConnected(): Boolean = usbLink?.isOpen == true || isBleConnected()
+
+    fun isBleConnected(): Boolean = bluetoothGatt != null && rxCharacteristic != null
 
     @Synchronized
     fun send(data: ByteArray): Boolean {
+        usbLink?.let { if (it.isOpen) return it.send(data) }
         val rx = rxCharacteristic ?: return false
         val gatt = bluetoothGatt ?: return false
         return try {

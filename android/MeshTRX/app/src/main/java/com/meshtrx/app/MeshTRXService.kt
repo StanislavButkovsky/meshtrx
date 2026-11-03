@@ -54,6 +54,7 @@ class MeshTRXService : Service() {
 
     private val binder = LocalBinder()
     lateinit var bleManager: BleManager
+    lateinit var usbLink: UsbLink
     lateinit var audioEngine: AudioEngine
     lateinit var voxEngine: VoxEngine
 
@@ -73,6 +74,8 @@ class MeshTRXService : Service() {
         goForeground()
 
         bleManager = BleManager(applicationContext)
+        usbLink = UsbLink(applicationContext)
+        bleManager.usbLink = usbLink
         audioEngine = AudioEngine()
         voxEngine = VoxEngine()
 
@@ -86,6 +89,7 @@ class MeshTRXService : Service() {
         loadMessages()
         startPeerCleanup()
         registerReceiver(adapterReceiver, IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED))
+        usbLink.start()
 
         // Загрузить позывной
         val saved = prefs.getString("my_callsign", null)
@@ -166,6 +170,20 @@ class MeshTRXService : Service() {
 
         bleManager.onDataReceived = { data -> handleBleData(data) }
 
+        // Кабель главнее Bluetooth: раз рацию воткнули проводом, по нему и
+        // работаем. PIN не спрашиваем — провод в руках и так даёт доступ к рации.
+        usbLink.onData = { data -> handleBleData(data) }
+        usbLink.onOpened = { _ ->
+            handler.post {
+                stopReconnect()
+                if (bleManager.isBleConnected()) bleManager.disconnect()
+                pendingDeviceAddr = null      // сохранённая рация по Bluetooth остаётся прежней
+                ServiceState.deviceName.value = getString(R.string.usb_device_name)
+                bleManager.onConnected?.invoke()
+            }
+        }
+        usbLink.onClosed = { handler.post { bleManager.onDisconnected?.invoke() } }
+
         audioEngine.onAudioEncoded = { encoded ->
             if (ServiceState.isPttActive.value == true && bleManager.isConnected()) {
                 bleManager.sendAudioData(encoded)
@@ -229,6 +247,7 @@ class MeshTRXService : Service() {
 
     fun disconnect() {
         stopReconnect()
+        usbLink.close()
         if (ServiceState.txMode.value == TxMode.VOX) {
             audioEngine.stopVoxMonitoring()
             voxEngine.reset()
@@ -331,6 +350,7 @@ class MeshTRXService : Service() {
 
     @SuppressLint("MissingPermission")
     fun autoConnect() {
+        if (usbLink.isOpen) return
         if (!hasBlePermission()) return
         val addr = prefs.getString("last_device_addr", null) ?: return
         val name = prefs.getString("last_device_name", "") ?: ""
@@ -1800,6 +1820,7 @@ class MeshTRXService : Service() {
         saveFileTransfers()
         saveMessages()
         audioEngine.destroy()
+        usbLink.stop()
         bleManager.disconnect()
         Log.d(TAG, "Service destroyed")
         super.onDestroy()
