@@ -64,7 +64,13 @@ class Link:
     def stop(self):
         self._want_connection = False
         if self._loop:
-            asyncio.run_coroutine_threadsafe(self._disconnect(), self._loop).result(5)
+            try:
+                asyncio.run_coroutine_threadsafe(self._disconnect(), self._loop).result(5)
+            except Exception:                                     # noqa: BLE001
+                # Windows не всегда успевает разорвать Bluetooth за 5 с, и
+                # программа падала на выходе с окном TimeoutError. Ждать дольше
+                # незачем: процесс всё равно закрывается, связь отпустит система.
+                pass
             self._loop.call_soon_threadsafe(self._loop.stop)
         if self._thread:
             self._thread.join(timeout=3)
