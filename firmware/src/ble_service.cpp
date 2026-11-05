@@ -2,6 +2,7 @@
 #include "oled_display.h"
 #include "lora_radio.h"
 #include <esp_mac.h>
+#include "usb_link.h"
 
 bool bleConnected = false;
 volatile bool bleConnEvent = false;  // обработать в bleTask, не в колбэке
@@ -195,6 +196,18 @@ bool bleEnsureAdvertising() {
     bleLastRxMs = millis();
   }
 
+  // Рация на кабеле: Bluetooth молчит — не шумит рядом с антенной и не даёт
+  // второму телефону перехватить рацию. Кабель вынули — через 15 с, когда
+  // связь по нему истечёт, объявления вернутся здесь же.
+  if (usbLinkActive()) {
+    if (bleIsAdvertising()) bleStopAdvertising();
+    if (bleConnected && pServer) {
+      std::vector<uint16_t> handles = pServer->getPeerDevices();
+      for (uint16_t h : handles) pServer->disconnect(h);
+    }
+    return false;
+  }
+
   if (bleConnected || bleIsAdvertising()) return false;
   NimBLEDevice::getAdvertising()->start();
   bleAdvRestarts++;
@@ -212,9 +225,14 @@ uint32_t bleGetPin() {
 }
 
 bool bleSendNotify(uint8_t* data, size_t len) {
+  // Телефон может быть и на кабеле: тогда пакет уходит в рамке по USB.
+  bool viaUsb = usbLinkSend(data, len);
   // Телефона нет — это не потеря данных, а обычное состояние; считаем отдельно,
   // иначе статистика notify_fail врёт каждый раз, когда никто не подключён.
-  if (!bleConnected || !pTxChar) { bleNotifyNoConn++; return false; }
+  if (!bleConnected || !pTxChar) {
+    if (!viaUsb) bleNotifyNoConn++;
+    return viaUsb;
+  }
 
   pTxChar->setValue(data, len);
   if (pTxChar->notify()) { bleNotifyOk++; return true; }
@@ -223,16 +241,18 @@ bool bleSendNotify(uint8_t* data, size_t len) {
   // очереди контроллера. Ждём один интервал соединения и пробуем ещё раз:
   // голос идёт 12 пакетов в секунду, потерять кадр хуже, чем задержать его.
   vTaskDelay(pdMS_TO_TICKS(20));
-  if (!bleConnected) { bleNotifyNoConn++; return false; }
+  if (!bleConnected) { bleNotifyNoConn++; return viaUsb; }
   pTxChar->setValue(data, len);
   if (pTxChar->notify()) { bleNotifyOk++; bleNotifyRetry++; return true; }
 
   bleNotifyFail++;
-  return false;
+  return viaUsb;
 }
 
+// «Телефон подключён» — по Bluetooth или по кабелю: от этого зависят приём в
+// эфире без пауз, доставка накопленных сообщений и всё, что шлётся телефону.
 bool bleIsConnected() {
-  return bleConnected;
+  return bleConnected || usbLinkActive();
 }
 
 String bleGetDeviceName() {

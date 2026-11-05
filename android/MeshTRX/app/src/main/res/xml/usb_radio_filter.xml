@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Рации MeshTRX на кабеле: мост CP2102 (Heltec V3) и встроенный USB ESP32-S3 (V4) -->
+<resources>
+    <usb-device vendor-id="4292" product-id="60000" />
+    <usb-device vendor-id="12346" product-id="4097" />
+</resources>

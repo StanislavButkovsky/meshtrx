@@ -22,6 +22,8 @@ object ServiceState {
     val peers = MutableLiveData<List<Peer>>(emptyList())
     val scanResults = MutableLiveData<List<ScanDevice>>(emptyList())
     val deviceName = MutableLiveData("")
+    /** Рация подключена кабелем, а не по Bluetooth */
+    val viaUsb = MutableLiveData(false)
     val callSign = MutableLiveData("")  // позывной (из настроек или из beacon)
     val rmsLevel = MutableLiveData(0)
     val statusMessage = MutableLiveData("Не подключено")

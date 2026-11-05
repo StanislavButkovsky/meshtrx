@@ -420,6 +420,9 @@ class Client:
     def _on_link_state(self, state: str, detail: str):
         self.state, self.state_detail = state, detail
         if state == "connected":
+            # По кабелю PIN не спрашиваем: провод в руках — доступ к рации и так есть
+            if self.link.via_usb:
+                self.authorized = True
             # Рация могла смениться: сетку сбрасываем на 868 до её ответа.
             self.band = proto.Band()
             self._emit("band", self.band)

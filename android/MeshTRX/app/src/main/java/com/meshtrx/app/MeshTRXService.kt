@@ -54,6 +54,7 @@ class MeshTRXService : Service() {
 
     private val binder = LocalBinder()
     lateinit var bleManager: BleManager
+    lateinit var usbLink: UsbLink
     lateinit var audioEngine: AudioEngine
     lateinit var voxEngine: VoxEngine
 
@@ -73,6 +74,8 @@ class MeshTRXService : Service() {
         goForeground()
 
         bleManager = BleManager(applicationContext)
+        usbLink = UsbLink(applicationContext)
+        bleManager.usbLink = usbLink
         audioEngine = AudioEngine()
         voxEngine = VoxEngine()
 
@@ -86,6 +89,7 @@ class MeshTRXService : Service() {
         loadMessages()
         startPeerCleanup()
         registerReceiver(adapterReceiver, IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED))
+        usbLink.start()
 
         // Загрузить позывной
         val saved = prefs.getString("my_callsign", null)
@@ -125,7 +129,9 @@ class MeshTRXService : Service() {
             updateNotification("Подключено — ${ServiceState.deviceName.value}")
         }
 
-        bleManager.onDisconnected = {
+        bleManager.onDisconnected = onDisconnected@{
+            // Bluetooth оборвался, а рация на кабеле — связь есть, ничего не гасим
+            if (usbLink.isOpen) return@onDisconnected
             handler.removeCallbacks(keepAliveRunnable)
             ServiceState.connectionState.postValue(BleState.DISCONNECTED)
             ServiceState.statusMessage.postValue("Отключено")
@@ -165,6 +171,26 @@ class MeshTRXService : Service() {
         }
 
         bleManager.onDataReceived = { data -> handleBleData(data) }
+
+        // Кабель главнее Bluetooth: раз рацию воткнули проводом, по нему и
+        // работаем. PIN не спрашиваем — провод в руках и так даёт доступ к рации.
+        usbLink.onData = { data -> handleBleData(data) }
+        usbLink.onOpened = { board ->
+            handler.post {
+                stopReconnect()
+                if (bleManager.isBleConnected()) bleManager.disconnect()
+                pendingDeviceAddr = null      // сохранённая рация по Bluetooth остаётся прежней
+                ServiceState.deviceName.value = board
+                ServiceState.viaUsb.value = true
+                bleManager.onConnected?.invoke()
+            }
+        }
+        usbLink.onClosed = {
+            handler.post {
+                ServiceState.viaUsb.value = false
+                bleManager.onDisconnected?.invoke()
+            }
+        }
 
         audioEngine.onAudioEncoded = { encoded ->
             if (ServiceState.isPttActive.value == true && bleManager.isConnected()) {
@@ -229,6 +255,7 @@ class MeshTRXService : Service() {
 
     fun disconnect() {
         stopReconnect()
+        usbLink.close()
         if (ServiceState.txMode.value == TxMode.VOX) {
             audioEngine.stopVoxMonitoring()
             voxEngine.reset()
@@ -263,9 +290,12 @@ class MeshTRXService : Service() {
                     Log.d(TAG, "Bluetooth выключен")
                     handler.removeCallbacks(reconnectRunnable)
                     bleManager.dropLink("Bluetooth выключен")
-                    // Если соединения и не было, dropLink молчит — статус ставим сами
-                    ServiceState.connectionState.postValue(BleState.DISCONNECTED)
-                    ServiceState.statusMessage.postValue("Bluetooth выключен")
+                    // Рация на кабеле: Bluetooth ей не нужен, связь не трогаем
+                    if (!usbLink.isOpen) {
+                        // Если соединения и не было, dropLink молчит — статус ставим сами
+                        ServiceState.connectionState.postValue(BleState.DISCONNECTED)
+                        ServiceState.statusMessage.postValue("Bluetooth выключен")
+                    }
                 }
                 BluetoothAdapter.STATE_ON -> {
                     Log.d(TAG, "Bluetooth включён, переподключаемся")
@@ -331,6 +361,10 @@ class MeshTRXService : Service() {
 
     @SuppressLint("MissingPermission")
     fun autoConnect() {
+        // Окно открылось — проверить кабель: рацию могли воткнуть, пока
+        // приложение было свёрнуто, и тогда оповещение о ней пришло мимо службы
+        usbLink.probe()
+        if (usbLink.isOpen) return
         if (!hasBlePermission()) return
         val addr = prefs.getString("last_device_addr", null) ?: return
         val name = prefs.getString("last_device_name", "") ?: ""
@@ -1800,6 +1834,7 @@ class MeshTRXService : Service() {
         saveFileTransfers()
         saveMessages()
         audioEngine.destroy()
+        usbLink.stop()
         bleManager.disconnect()
         Log.d(TAG, "Service destroyed")
         super.onDestroy()

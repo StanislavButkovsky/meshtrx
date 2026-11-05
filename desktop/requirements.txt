@@ -1,5 +1,6 @@
 # Зависимости настольного клиента. Codec2 берётся из системы — см. README.
 PySide6>=6.6
 bleak>=0.22
+pyserial>=3.5
 sounddevice>=0.4.6
 numpy>=1.24

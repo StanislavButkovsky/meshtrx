@@ -35,6 +35,10 @@
                 <ImageView android:id="@+id/ivBleStatus"
                     android:layout_width="18dp" android:layout_height="18dp"
                     android:src="@drawable/ic_bluetooth_off" />
+                <TextView android:id="@+id/tvUsbStatus"
+                    android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="USB" android:textSize="11sp" android:textStyle="bold"
+                    android:textColor="?attr/mtx_accent" android:visibility="gone" />
                 <ImageView android:id="@+id/ivBattery"
                     android:layout_width="16dp" android:layout_height="16dp"
                     android:src="@drawable/ic_battery_empty"

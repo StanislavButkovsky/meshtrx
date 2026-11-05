@@ -158,11 +158,21 @@ class MainActivity : AppCompatActivity() {
         }
         ServiceState.currentChannel.observe(this) { showChannel() }
         ServiceState.band.observe(this) { showChannel() }
-        ServiceState.connectionState.observe(this) { state ->
-            val connected = state == com.meshtrx.app.model.BleState.CONNECTED
+        val tvUsbStatus = findViewById<android.widget.TextView>(R.id.tvUsbStatus)
+        // Рация на кабеле — вместо значка Bluetooth надпись USB
+        fun showLink() {
+            val connected = ServiceState.connectionState.value == com.meshtrx.app.model.BleState.CONNECTED
+            val usb = connected && ServiceState.viaUsb.value == true
+            ivBleStatus.visibility = if (usb) android.view.View.GONE else android.view.View.VISIBLE
+            tvUsbStatus.visibility = if (usb) android.view.View.VISIBLE else android.view.View.GONE
             ivBleStatus.setImageResource(
                 if (connected) R.drawable.ic_bluetooth else R.drawable.ic_bluetooth_off
             )
+        }
+        ServiceState.viaUsb.observe(this) { showLink() }
+        ServiceState.connectionState.observe(this) { state ->
+            val connected = state == com.meshtrx.app.model.BleState.CONNECTED
+            showLink()
             // Скрыть батарею если не подключены
             ivBattery.visibility = if (connected) android.view.View.VISIBLE else android.view.View.GONE
             tvBattery.visibility = if (connected) android.view.View.VISIBLE else android.view.View.GONE
