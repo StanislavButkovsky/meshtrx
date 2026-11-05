@@ -1,6 +1,6 @@
 # MeshTRX — User Guide
 
-> Android 4.4.35 | iPhone 1.0.4 | Desktop 1.1.0 | Firmware 4.4.37 | Updated: 2026-11-03
+> Android 4.4.36 | iPhone 1.0.4 | Desktop 1.2.0 | Firmware 4.4.38 | Updated: 2026-11-05
 
 ---
 

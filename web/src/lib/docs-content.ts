@@ -4,7 +4,7 @@
 
 export const USER_GUIDE = `# MeshTRX — Руководство пользователя
 
-> Android 4.4.35 | iPhone 1.0.4 | Компьютер 1.1.0 | Прошивка 4.4.37 | Обновлено: 2026-11-03
+> Android 4.4.36 | iPhone 1.0.4 | Компьютер 1.2.0 | Прошивка 4.4.38 | Обновлено: 2026-11-05
 
 ---
 
@@ -13,7 +13,8 @@ export const USER_GUIDE = `# MeshTRX — Руководство пользова
 1. [Обзор](#обзор)
 2. [Аппаратура](#аппаратура)
 3. [Первое подключение](#первое-подключение)
-3.1. [Настольный клиент](#настольный-клиент-windows-linux-macos)
+3.1. [Подключение по кабелю](#4-подключение-по-кабелю-usb-и-otg)
+3.2. [Настольный клиент](#настольный-клиент-windows-linux-macos)
 4. [Главный экран](#главный-экран)
 5. [Голосовая связь (PTT)](#голосовая-связь-ptt)
 6. [Режимы прослушивания](#режимы-прослушивания)
@@ -210,6 +211,34 @@ adb install -r app/build/outputs/apk/site/debug/app-site-debug.apk
 стороны — по отдельности не поможет. Если не помогло, выключите и включите
 питание устройства: брошенное соединение оно отпускает само, но не мгновенно.
 
+### 4. Подключение по кабелю (USB и OTG)
+
+Рацию можно подключить к телефону Android проводом через OTG-переходник, а к
+компьютеру — обычным USB-кабелем. Нужны прошивка 4.4.38, приложение Android
+4.4.36 и программа для компьютера 1.2.0 или новее. iPhone по кабелю не
+подключается.
+
+**Телефон.** Воткните рацию через OTG-переходник. Телефон спросит, открыть ли
+для неё MeshTRX, — ответьте «Да» (можно отметить «по умолчанию», тогда больше
+не спросит). PIN не нужен: у кого в руках провод, у того и рация. Кабель
+главнее Bluetooth: если телефон был подключён по Bluetooth, он переходит на
+провод сам. В шапке вместо значка Bluetooth появится надпись **USB**, под
+позывным — модель платы.
+
+Пока рация на кабеле, Bluetooth на телефоне можно выключить — связь не
+пропадёт. Сама рация на кабеле тоже молчит по Bluetooth: не объявляет о себе и
+не принимает подключений. Выньте кабель — через 15 секунд Bluetooth на рации
+вернётся, и телефон подключится по нему, как обычно.
+
+**Компьютер.** Подключите рацию USB-кабелем и нажмите «Искать»: первой в списке
+будет строка «MeshTRX по USB». PIN тоже не нужен. На Windows для V3 нужен
+драйвер CP210x от Silicon Labs — обычно Windows ставит его сама; V4 работает
+без драйвера.
+
+**Если рация не появляется.** Часть кабелей USB только заряжают и данных не
+передают — возьмите тот, которым прошивали рацию. Проверьте, что OTG включён в
+настройках телефона, если там есть такой пункт.
+
 ---
 
 ## Настольный клиент (Windows / Linux / macOS)
@@ -218,7 +247,8 @@ adb install -r app/build/outputs/apk/site/debug/app-site-debug.apk
 вызовы, файлы, радар, карта, шифрование эфира, поиск свободного канала,
 настройки и ретранслятор, оформление «Основное» и «Хаки». Плюс журнал
 диагностики, которого в телефоне нет. Компьютер подключается к рации по
-Bluetooth — значит, к рации в этот момент не подключён телефон.
+Bluetooth или USB-кабелем ([подключение по кабелю](#4-подключение-по-кабелю-usb-и-otg)); к одной рации в
+один момент подключается кто-то один — телефон или компьютер.
 
 **Установка.** На странице [загрузок](https://meshtrx.ru/download/#desktop) —
 готовые программы для Windows, macOS (Apple M и Intel) и Linux, ставить Python
@@ -985,7 +1015,7 @@ wake=BUTTON\`.
 
 export const USER_GUIDE_EN = `# MeshTRX — User Guide
 
-> Android 4.4.35 | iPhone 1.0.4 | Desktop 1.1.0 | Firmware 4.4.37 | Updated: 2026-11-03
+> Android 4.4.36 | iPhone 1.0.4 | Desktop 1.2.0 | Firmware 4.4.38 | Updated: 2026-11-05
 
 ---
 
@@ -994,7 +1024,8 @@ export const USER_GUIDE_EN = `# MeshTRX — User Guide
 1. [Overview](#overview)
 2. [Hardware](#hardware)
 3. [First connection](#first-connection)
-3.1. [Desktop client](#desktop-client-windows-linux-macos)
+3.1. [Connecting by cable](#4-connecting-by-cable-usb-and-otg)
+3.2. [Desktop client](#desktop-client-windows-linux-macos)
 4. [The main screen](#the-main-screen)
 5. [Voice (PTT)](#voice-ptt)
 6. [Listening modes](#listening-modes)
@@ -1143,11 +1174,23 @@ adb install -r app/build/outputs/apk/site/debug/app-site-debug.apk
 
 **If the phone does not see the device in the Bluetooth list.** Check that both the phone and the device are on recent versions: before 4.4.3 the device went on air without a name, so the phone did not show it in the list. Update both sides — updating one will not help. If that does not help, power-cycle the device: it releases an abandoned connection on its own, but not instantly.
 
+### 4. Connecting by cable (USB and OTG)
+
+The radio can be connected to an Android phone by wire through an OTG adapter, and to a computer with an ordinary USB cable. You need firmware 4.4.38, the Android app 4.4.36 and the desktop program 1.2.0 or newer. The iPhone does not connect by cable.
+
+**Phone.** Plug the radio in through the OTG adapter. The phone asks whether to open MeshTRX for it — answer "Yes" (you can tick "use by default", then it will not ask again). No PIN is needed: whoever holds the cable holds the radio. The cable takes priority over Bluetooth: if the phone was connected over Bluetooth, it switches to the wire on its own. The header shows **USB** instead of the Bluetooth icon, and the board model under the call sign.
+
+While the radio is on the cable, you can turn Bluetooth off on the phone — the link stays up. The radio itself keeps quiet on Bluetooth while on the cable: it does not announce itself and does not accept connections. Unplug the cable, and 15 seconds later Bluetooth comes back on the radio and the phone connects over it as usual.
+
+**Computer.** Connect the radio with a USB cable and press "Искать" (Search): the first line in the list is "MeshTRX по USB". No PIN here either. On Windows the V3 needs the Silicon Labs CP210x driver — Windows usually installs it itself; the V4 works without a driver.
+
+**If the radio does not show up.** Some USB cables only charge and carry no data — use the one you flashed the radio with. Check that OTG is enabled in the phone settings, if there is such an option.
+
 ---
 
 ## Desktop client (Windows / Linux / macOS)
 
-The computer gives you everything the phone does: voice, text and voice messages, calls, files, radar, map, air encryption, the free-channel finder, settings and the repeater, plus the Main and Khaki themes. There is also a diagnostics log the phone does not have. The computer connects to the radio over Bluetooth, so the phone must not be connected to that radio at the same time.
+The computer gives you everything the phone does: voice, text and voice messages, calls, files, radar, map, air encryption, the free-channel finder, settings and the repeater, plus the Main and Khaki themes. There is also a diagnostics log the phone does not have. The computer connects to the radio over Bluetooth or a USB cable ([connecting by cable](#4-connecting-by-cable-usb-and-otg)); only one of them — the phone or the computer — can be connected to a radio at a time.
 
 **Installing.** The [download page](https://meshtrx.com/download/#desktop) has ready-made apps for Windows, macOS (Apple M and Intel) and Linux — no Python or libraries needed.
 

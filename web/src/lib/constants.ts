@@ -19,13 +19,13 @@ export const SITE = {
 };
 
 export const VERSION = {
-  app: '4.4.35',
+  app: '4.4.36',
   // Приложение и прошивка живут своей жизнью и нумеруются раздельно:
   // подставлять прошивке свежую дату, когда менялось только приложение, —
   // значит гнать людей перепрошивать рации впустую, и наоборот.
-  firmware: '4.4.37',
-  firmwareDate: '2026-11-01',
-  date: '2026-11-03',
+  firmware: '4.4.38',
+  firmwareDate: '2026-11-05',
+  date: '2026-11-05',
 };
 
 export const FEATURES = [
@@ -112,8 +112,8 @@ export const VERSION_IOS = {
 // Настольный клиент: номер свой. Файлы по ~100 МБ лежат в релизе на GitHub,
 // а не в репозитории сайта.
 export const VERSION_DESKTOP = {
-  app: '1.1.0',
-  date: '2026-10-30',
+  app: '1.2.0',
+  date: '2026-11-05',
 };
 const DESKTOP_RELEASE = `https://github.com/StanislavButkovsky/meshtrx/releases/download/desktop-v${VERSION_DESKTOP.app}`;
 export const DESKTOP_LINKS = {
