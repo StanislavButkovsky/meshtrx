@@ -113,6 +113,7 @@ class UsbLink(private val context: Context) {
         }
         if (Build.VERSION.SDK_INT >= 33) context.registerReceiver(receiver, f, Context.RECEIVER_NOT_EXPORTED)
         else context.registerReceiver(receiver, f)
+        Log.i(TAG, "start: USB devices " + manager.deviceList.values.joinToString { "%04x:%04x".format(it.vendorId, it.productId) })
         // Рация могла быть подключена ещё до запуска приложения
         manager.deviceList.values.firstOrNull { isRadio(it) }?.let { request(it) }
     }
@@ -131,6 +132,7 @@ class UsbLink(private val context: Context) {
 
     private fun request(d: UsbDevice) {
         if (isOpen) return
+        Log.d(TAG, "рация на кабеле: ${d.deviceName}, разрешение ${manager.hasPermission(d)}")
         if (manager.hasPermission(d)) { open(d); return }
         val flags = if (Build.VERSION.SDK_INT >= 31) PendingIntent.FLAG_MUTABLE else 0
         val pi = PendingIntent.getBroadcast(context, 0,
@@ -143,7 +145,7 @@ class UsbLink(private val context: Context) {
         if (isOpen) return
         val c = manager.openDevice(d) ?: run { Log.w(TAG, "openDevice вернул null"); return }
         val ok = if (d.vendorId == VID_SILABS) setupCp210x(c, d) else setupCdcAcm(c, d)
-        if (!ok) { c.close(); return }
+        if (!ok) { Log.w(TAG, "не удалось настроить порт ${d.deviceName}"); c.close(); return }
         conn = c; device = d; running = true
         Thread(::readLoop, "meshtrx-usb-rx").start()
         Thread(::keepAliveLoop, "meshtrx-usb-ka").start()

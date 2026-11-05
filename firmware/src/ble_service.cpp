@@ -196,6 +196,18 @@ bool bleEnsureAdvertising() {
     bleLastRxMs = millis();
   }
 
+  // Рация на кабеле: Bluetooth молчит — не шумит рядом с антенной и не даёт
+  // второму телефону перехватить рацию. Кабель вынули — через 15 с, когда
+  // связь по нему истечёт, объявления вернутся здесь же.
+  if (usbLinkActive()) {
+    if (bleIsAdvertising()) bleStopAdvertising();
+    if (bleConnected && pServer) {
+      std::vector<uint16_t> handles = pServer->getPeerDevices();
+      for (uint16_t h : handles) pServer->disconnect(h);
+    }
+    return false;
+  }
+
   if (bleConnected || bleIsAdvertising()) return false;
   NimBLEDevice::getAdvertising()->start();
   bleAdvRestarts++;

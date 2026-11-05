@@ -249,5 +249,4 @@ MeshTRX v%2$s</string>
     <string name="ui_theme_khaki">Khaki</string>
     <string name="splash_tagline">Walkie-talkie without internet or cell service</string>
     <string name="exit_app">Exit</string>
-    <string name="usb_device_name">MeshTRX over USB</string>
 </resources>
