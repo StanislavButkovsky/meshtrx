@@ -970,6 +970,10 @@ class MeshTRXController: ObservableObject {
             handleFwVersion(data)
         case BLECmd.bandInfo:
             handleBandInfo(data)
+        case BLECmd.pttButton:
+            // Кнопка на ноде — то же, что удержание «Говорить» на экране
+            guard data.count >= 2 else { break }
+            if data[1] != 0 { pttDown() } else { pttUp() }
         case BLECmd.cryptoAlien:
             handleCryptoAlien(data)
         case BLECmd.scanResult:

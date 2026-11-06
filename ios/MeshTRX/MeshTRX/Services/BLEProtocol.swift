@@ -63,6 +63,7 @@ enum BLECmd {
     static let setChannelAll: UInt8 = 0x36
     static let hearPlaintext: UInt8 = 0x3D
     static let bandInfo:     UInt8 = 0x3E  // сетка частот прошивки (с 4.4.34)
+    static let pttButton:    UInt8 = 0x3F  // [1/0] нажали/отпустили кнопку PTT на ноде (с 4.4.39)
     static let scanPeers:    UInt8 = 0x33
     static let scanChannels: UInt8 = 0x34
     static let scanResult:   UInt8 = 0x35

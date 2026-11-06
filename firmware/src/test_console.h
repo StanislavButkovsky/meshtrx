@@ -44,6 +44,8 @@ bool testHookSetChannel(uint8_t ch);
 void testHookInfo();
 // Выключение устройства — то же, что удержание кнопки, но проверяемое стендом
 void testHookPowerOff();
+// Стенд не может нажать внешнюю кнопку PTT: 1 — нажата, 0 — отпущена, -1 — снова читать вывод
+void testHookPttButton(int state);
 // Разослать группе команду сменить канал (проверка стендом)
 void testHookChannelAll(uint8_t channel, uint8_t delaySec);
 uint8_t testHookCurrentChannel();
