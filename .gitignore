@@ -53,3 +53,4 @@ web/tsconfig.tsbuildinfo
 telegram.env
 deploy.env
 .env.local
+.aider*

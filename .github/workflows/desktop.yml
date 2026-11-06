@@ -20,7 +20,9 @@ jobs:
         include:
           - os: windows-latest
             target: windows
-          - os: macos-14
+          # macos-14 GitHub больше не выдаёт (11.2026); нижнюю версию macOS
+          # задаёт MACOSX_DEPLOYMENT_TARGET, а не машина сборки
+          - os: macos-15
             target: macos-arm64
           - os: macos-15-intel
             target: macos-intel
