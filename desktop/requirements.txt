@@ -1,6 +1,11 @@
 # Зависимости настольного клиента. Codec2 берётся из системы — см. README.
-PySide6>=6.6
+# macOS: Qt 6.8 и новее не запускаются на старых системах — 6.10 требует уже
+# macOS 14.4 (Monterey и Ventura, issue #134). 6.7 работает с macOS 11 Big Sur.
+PySide6>=6.6; sys_platform != "darwin"
+PySide6>=6.6,<6.8; sys_platform == "darwin"
 bleak>=0.22
 pyserial>=3.5
 sounddevice>=0.4.6
-numpy>=1.24
+numpy>=1.24; sys_platform != "darwin"
+# numpy 2 на Apple M ставится сборкой под macOS 14 — берём 1.26, она с macOS 11
+numpy>=1.24,<2; sys_platform == "darwin"

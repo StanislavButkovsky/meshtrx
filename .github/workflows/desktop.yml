@@ -20,7 +20,9 @@ jobs:
         include:
           - os: windows-latest
             target: windows
-          - os: macos-14
+          # macos-14 GitHub больше не выдаёт (11.2026); нижнюю версию macOS
+          # задаёт MACOSX_DEPLOYMENT_TARGET, а не машина сборки
+          - os: macos-15
             target: macos-arm64
           - os: macos-15-intel
             target: macos-intel
@@ -30,6 +32,9 @@ jobs:
     env:
       # В исходниках русские комментарии: без этого Windows читает их в cp1252
       PYTHONUTF8: "1"
+      # Нижняя версия macOS, на которой программа должна запускаться. Сборочные
+      # машины — macOS 14–15, и без этого всё собранное здесь требует их же.
+      MACOSX_DEPLOYMENT_TARGET: "11.0"
     steps:
       - uses: actions/checkout@v4
 
@@ -67,11 +72,16 @@ jobs:
           ldd "$DLL" | grep -i mingw64 | awk '{print $3}' | while read d; do cp "$d" /c/codec2/ || true; done
           ls /c/codec2
           echo "CODEC2_LIB=$(ls /c/codec2/*.dll | xargs -n1 cygpath -w | paste -sd';')" >> $GITHUB_ENV
-      - name: Codec2 (macOS)
+      # Не из Homebrew: его готовые сборки требуют ту же macOS, что у сборочной
+      # машины (14–15), — на Monterey и Ventura программа бы не запустилась
+      - name: Codec2 (macOS, из исходников под macOS 11)
         if: runner.os == 'macOS'
         run: |
-          brew install codec2
-          echo "CODEC2_LIB=$(ls $(brew --prefix codec2)/lib/libcodec2*.dylib | head -1)" >> $GITHUB_ENV
+          git clone --depth 1 --branch 1.2.0 https://github.com/drowe67/codec2.git /tmp/codec2
+          cmake -S /tmp/codec2 -B /tmp/codec2/build -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 -DUNITTEST=OFF -DLPCNET=OFF
+          cmake --build /tmp/codec2/build --target codec2 -j 4
+          echo "CODEC2_LIB=$(ls /tmp/codec2/build/src/libcodec2*.dylib | head -1)" >> $GITHUB_ENV
       - name: Codec2 (Linux)
         if: runner.os == 'Linux'
         run: |
@@ -80,6 +90,19 @@ jobs:
 
       - name: Сборка
         run: pyinstaller --noconfirm desktop/packaging/meshtrx.spec
+
+      # Проверка: ни одна библиотека внутри программы не должна требовать macOS
+      # новее 11 — иначе на старых системах программа молча не откроется
+      - name: Проверка версии macOS
+        if: runner.os == 'macOS'
+        run: |
+          bad=0
+          while IFS= read -r f; do
+            m=$(otool -l "$f" 2>/dev/null | awk '/LC_BUILD_VERSION/{b=1} b&&/minos/{print $2; exit} /LC_VERSION_MIN_MACOSX/{v=1} v&&/version/{print $2; exit}')
+            [ -z "$m" ] && continue
+            if [ "$(printf '%s\n11.0\n' "$m" | sort -V | tail -1)" != "11.0" ]; then echo "требует macOS $m: $f"; bad=1; fi
+          done < <(find dist/MeshTRX.app -type f \( -name '*.so' -o -name '*.dylib' -o -perm -u+x \))
+          [ $bad = 0 ] && echo "все библиотеки — macOS 11 и старше" || exit 1
 
       - name: Упаковка
         shell: bash
