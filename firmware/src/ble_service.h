@@ -69,6 +69,9 @@
 // [база кГц u32 LE][шаг кГц u16 LE][число каналов u8][макс. мощность i8][мин. мощность i8]
 // Старые прошивки его не шлют — приложение тогда считает сетку 868.
 #define BLE_CMD_BAND_INFO          0x3E
+// ESP→телефон: [1 — нажали, 0 — отпустили] внешняя кнопка PTT на ноде. Говорить
+// начинает телефон: микрофон у него, нода только сообщает о кнопке.
+#define BLE_CMD_PTT_BUTTON         0x3F
 // UPLOAD_STATUS values: 0=ACCEPTED, 1=BUSY, 2=SENDING, 3=DELIVERED, 4=FAILED, 5=NO_MEMORY
 
 extern bool bleConnected;

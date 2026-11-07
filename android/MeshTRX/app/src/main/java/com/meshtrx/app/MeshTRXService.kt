@@ -361,6 +361,9 @@ class MeshTRXService : Service() {
 
     @SuppressLint("MissingPermission")
     fun autoConnect() {
+        // Микрофон могли разрешить уже после запуска службы — добавить ей тип
+        // «микрофон», пока окно открыто: из фона Android 14 этого не позволит
+        if (inForeground && !foregroundMic) goForeground()
         // Окно открылось — проверить кабель: рацию могли воткнуть, пока
         // приложение было свёрнуто, и тогда оповещение о ней пришло мимо службы
         usbLink.probe()
@@ -438,6 +441,19 @@ class MeshTRXService : Service() {
         bleManager.sendPttStart()
         audioEngine.startRecording()
         startPttLimit()
+    }
+
+    private var hwPttDown = false
+    private fun hardwarePtt(down: Boolean) {
+        if (down) {
+            if (ServiceState.txMode.value != TxMode.PTT || ServiceState.isPttActive.value == true) return
+            hwPttDown = true
+            pttDown()
+        } else if (hwPttDown) {
+            hwPttDown = false
+            // Предел 10 с мог уже закончить передачу сам — второй раз не гасим
+            if (ServiceState.isPttActive.value == true) pttUp()
+        }
     }
 
     fun pttUp() {
@@ -924,6 +940,15 @@ class MeshTRXService : Service() {
                     val v = String(data, 1, data.size - 1, Charsets.US_ASCII).trim()
                     ServiceState.firmwareVersion.postValue(v)
                     Log.d(TAG, "Прошивка рации: $v")
+                }
+            }
+            BleManager.CMD_PTT_BUTTON -> {
+                // Кнопка на ноде говорит в общий канал в реальном времени, как
+                // экранная «Говорить» без адресата: так она работает и с
+                // погасшим экраном, когда окна приложения нет.
+                if (data.size >= 2) {
+                    val down = data[1].toInt() != 0
+                    handler.post { hardwarePtt(down) }
                 }
             }
             BleManager.CMD_BAND_INFO -> {
@@ -1797,17 +1822,29 @@ class MeshTRXService : Service() {
     // и отклонил 4.4.25: при первом запуске окно разрешений ещё открыто, а
     // служба уже стартовала. Без разрешения служба живёт просто привязанной к
     // экрану; MainActivity запустит её заново, когда разрешение дадут.
+    //
+    // Микрофон: с Android 11 запись с погасшим экраном разрешена только службе
+    // с типом «микрофон», а без неё кнопка PTT на ноде молчала бы, как только
+    // экран погас. Тип добавляем, только когда микрофон уже разрешён, — иначе
+    // Android 14 закроет приложение; разрешат позже — окно позовёт нас снова.
     private var inForeground = false
-    private fun goForeground() {
-        if (inForeground || !hasBlePermission()) return
+    private var foregroundMic = false
+    private fun hasMicPermission(): Boolean =
+        checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+    fun goForeground() {
+        val mic = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && hasMicPermission()
+        if ((inForeground && (foregroundMic || !mic)) || !hasBlePermission()) return
         val notif = buildNotification("Запуск...")
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                startForeground(NOTIF_ID, notif, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
+                var type = ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
+                if (mic) type = type or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+                startForeground(NOTIF_ID, notif, type)
             } else {
                 startForeground(NOTIF_ID, notif)
             }
             inForeground = true
+            foregroundMic = mic
         } catch (e: Exception) {
             Log.w(TAG, "фоновая служба не включена: ${e.message}")
         }

@@ -552,6 +552,14 @@ class Client:
             self._emit("file_done", tr)
 
     def _handle_named(self, kind: str, payload):
+        if kind == "ptt_button":
+            # Кнопка на ноде говорит в общий канал, как кнопка «Говорить»
+            if payload:
+                self.start_ptt()
+            else:
+                self.stop_ptt()
+            return
+
         if kind == "settings":
             try:
                 self.settings = json.loads(payload)

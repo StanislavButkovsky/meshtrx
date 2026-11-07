@@ -75,6 +75,7 @@ class BleManager(private val context: Context) {
         const val CMD_GET_KEY_STATE = 0x3C
         const val CMD_HEAR_PLAINTEXT = 0x3D
         const val CMD_BAND_INFO = 0x3E
+        const val CMD_PTT_BUTTON = 0x3F   // нода→телефон: [1/0] нажали/отпустили кнопку PTT на ноде
     }
 
     private val bluetoothAdapter: BluetoothAdapter? =

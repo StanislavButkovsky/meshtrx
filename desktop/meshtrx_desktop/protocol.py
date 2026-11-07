@@ -70,6 +70,7 @@ class Cmd(IntEnum):
     GET_KEY_STATE = 0x3C
     HEAR_PLAINTEXT = 0x3D   # слышать ли открытый эфир, когда ключ задан
     BAND_INFO = 0x3E        # сетка частот прошивки (с 4.4.34), идёт за FW_VERSION
+    PTT_BUTTON = 0x3F       # [1/0] нажали/отпустили внешнюю кнопку PTT на ноде (с 4.4.39)
 
 
 class CallType(IntEnum):
@@ -429,6 +430,9 @@ def parse(data: bytes):
         base, step, count, mx, mn = struct.unpack_from("<IHBbb", data, 1)
         if 1 <= count <= 64:
             return Band(base, step, count, mx, mn)
+
+    if cmd == Cmd.PTT_BUTTON and len(data) >= 2:
+        return ("ptt_button", bool(data[1]))
 
     if cmd == Cmd.FW_VERSION:
         return ("fw_version", data[1:17].decode("ascii", "replace").strip())

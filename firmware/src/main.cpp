@@ -35,6 +35,11 @@
 // === Пины ===
 #define PIN_LED       35
 #define PIN_USER_BTN  0
+// Внешняя кнопка PTT: замыкает вывод на землю. GPIO47 выведен на гребёнку и у
+// V3, и у V4, и ни к чему на плате не подключён (GNSS у V4 — 38/39, питание —
+// 36/40); не входит в выводы, от которых зависит загрузка. Встроенную кнопку
+// под PTT не отдаём: удержание 3 с выключает ноду.
+#define PIN_PTT_BTN   47
 
 // === Очереди FreeRTOS ===
 static QueueHandle_t txAudioQueue = nullptr;   // аудио пакеты для TX
@@ -220,6 +225,7 @@ static void pttStop(bool byTimeout);
 static void pttStart();
 static void loadSettings();
 static void handleUserButton();
+static void handlePttButton();
 static void usbTaskFunc(void* param);
 
 // Кодовое слово от телефона. Ключ из него выводится около трёх секунд, и
@@ -293,6 +299,7 @@ static void setupPowerManagement() {
   // GPIO wakeup: LoRa DIO1 + кнопка USER
   gpio_wakeup_enable(GPIO_NUM_14, GPIO_INTR_HIGH_LEVEL);  // LoRa DIO1
   gpio_wakeup_enable(GPIO_NUM_0, GPIO_INTR_LOW_LEVEL);    // кнопка USER
+  gpio_wakeup_enable(GPIO_NUM_47, GPIO_INTR_LOW_LEVEL);   // внешняя кнопка PTT
   esp_sleep_enable_gpio_wakeup();
 
   // BLE wakeup — контроллер будит CPU на каждое соединение
@@ -328,6 +335,8 @@ void setup() {
 
   // Кнопка USER
   pinMode(PIN_USER_BTN, INPUT_PULLUP);
+  // Внешняя PTT: без кнопки вывод висит на подтяжке и читается как «отпущена»
+  pinMode(PIN_PTT_BTN, INPUT_PULLUP);
 
   // ADC для батареи
   analogSetAttenuation(ADC_11db);
@@ -441,6 +450,7 @@ void loop() {
   testConsoleTick();
 #endif
   handleUserButton();
+  handlePttButton();
   oledSleepTick();
 
   if (pendingPhraseSet) {
@@ -541,6 +551,36 @@ static void powerOff() {
     esp_restart();
   }
   esp_deep_sleep_start();
+}
+
+// Внешняя кнопка PTT. Нода только сообщает телефону «нажали» и «отпустили» —
+// записывает и сжимает голос телефон, как при нажатии на экране. Дребезг
+// отсекаем выдержкой: контакт должен простоять в новом положении 30 мс.
+#ifdef TEST_CONSOLE
+static volatile int8_t pttForced = -1;   // стенд «нажимает» кнопку командой PTTBTN
+void testHookPttButton(int state) { pttForced = (int8_t)(state < 0 ? -1 : state != 0); }
+#endif
+
+static void handlePttButton() {
+  static bool     state = false;      // принятое положение: true — нажата
+  static uint32_t changedMs = 0;      // когда вход впервые показал другое положение
+  bool raw = (digitalRead(PIN_PTT_BTN) == LOW);
+#ifdef TEST_CONSOLE
+  if (pttForced >= 0) raw = pttForced;
+#endif
+  if (raw == state) { changedMs = 0; return; }
+  if (!changedMs) { changedMs = millis() ? millis() : 1; return; }
+  if (millis() - changedMs < 30) return;
+  state = raw; changedMs = 0;
+
+  if (!bleIsConnected()) {
+    // Телефона нет — передавать нечем; пусть человек это увидит, а не жмёт впустую
+    if (state) { oledWake(); oledShowMessage("PTT", "no phone", 1500); }
+    return;
+  }
+  uint8_t msg[2] = { BLE_CMD_PTT_BUTTON, (uint8_t)(state ? 1 : 0) };
+  bleSendNotify(msg, sizeof(msg));
+  LOG_F("EVT PTT_BUTTON %d\n", state ? 1 : 0);
 }
 
 static void handleUserButton() {

@@ -379,6 +379,12 @@ static void handleLine(char* line) {
   // Кнопку стенд нажать не может, а проверять выключение надо: команда
   // делает ровно то же, что удержание кнопки три секунды.
   if (strcmp(cmd, "POWEROFF") == 0) { evt("EVT POWEROFF\n"); testHookPowerOff(); return; }
+  if (strcmp(cmd, "PTTBTN") == 0) {
+    char* arg = nextTok(&p);
+    testHookPttButton(arg ? atoi(arg) : -1);
+    evt("EVT PTTBTN ok\n");
+    return;
+  }
 
   if (strcmp(cmd, "TESTMODE") == 0) {
     char* arg = nextTok(&p);

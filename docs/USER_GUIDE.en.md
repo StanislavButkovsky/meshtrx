@@ -745,6 +745,14 @@ The same button turns it back on; a short press is enough. Waking from this slee
 
 In repeater mode the threshold is longer — eight seconds: there the shorter holds are already taken by resetting the statistics and leaving the mode. While you hold the button a countdown runs on the screen, so you are not holding it blind.
 
+### External PTT button
+
+You can wire your own talk button to the node: a plain tactile switch, the PTT from an old radio, or a button on the case. You need firmware 4.4.39 and app 4.4.37 or newer.
+
+The button shorts **GPIO 47** to **GND**. Both pins are on the header of the V3 and the V4; the pull-up is enabled in the firmware, so no resistors are needed.
+
+Hold the button and the phone records your voice and sends it to the general channel, just like holding Talk with no addressee; release it to end the transmission. The limit is the same 10 seconds. The phone has to be connected to the node — by cable or over Bluetooth — and its screen can be off. Without a phone the node shows `PTT no phone`. The built-in PRG button cannot do this: holding it turns the node off.
+
 ---
 
 ## Indicators
@@ -813,7 +821,7 @@ Five tabs: **PTT**, **Chat**, **Files**, **Map**, **Settings**. The active tab i
 |-----------|-------|
 | Service | Nordic UART Service (NUS) |
 | MTU | 128 bytes |
-| Commands | 60+ (0x01–0x3E) |
+| Commands | 60+ (0x01–0x3F) |
 | Audio packet | 36 bytes (cmd + flags + sender + 32 payload) |
 | Authorisation | a 4-digit PIN (derived from the MAC) |
 
