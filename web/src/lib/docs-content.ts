@@ -4,7 +4,7 @@
 
 export const USER_GUIDE = `# MeshTRX — Руководство пользователя
 
-> Android 4.4.36 | iPhone 1.0.4 | Компьютер 1.2.0 | Прошивка 4.4.38 | Обновлено: 2026-11-05
+> Android 4.4.37 | iPhone 1.0.4 | Компьютер 1.2.1 | Прошивка 4.4.39 | Обновлено: 2026-11-07
 
 ---
 
@@ -918,6 +918,22 @@ wake=BUTTON\`.
 уже заняты сбросом статистики и выходом из режима. Пока вы держите кнопку, на
 экране идёт обратный отсчёт, так что вслепую держать не придётся.
 
+### Внешняя кнопка PTT
+
+К ноде можно подключить свою кнопку «Говорить»: простую тактовую, тангенту от
+старой рации или кнопку на корпусе. Нужны прошивка 4.4.39 и приложение 4.4.37
+или новее.
+
+Кнопка замыкает вывод **GPIO 47** на **GND**. Оба вывода есть на гребёнке у V3
+и у V4, подтяжка уже включена в прошивке, резисторы не нужны.
+
+Держите кнопку — телефон пишет голос и передаёт его в общий канал, как при
+удержании «Говорить» без адресата; отпустили — конец передачи. Предел тот же,
+10 секунд. Телефон должен быть подключён к ноде — по кабелю или по Bluetooth,
+экран при этом может быть погашен. Если телефона нет, на экране ноды появится
+\`PTT no phone\`. Встроенная кнопка PRG для этого не подходит: её удержание
+выключает ноду.
+
 ---
 
 ## Индикация
@@ -986,7 +1002,7 @@ wake=BUTTON\`.
 |----------|----------|
 | Сервис | Nordic UART Service (NUS) |
 | MTU | 128 байт |
-| Команды | 60+ (0x01–0x3E) |
+| Команды | 60+ (0x01–0x3F) |
 | Аудио пакет | 36 байт (cmd + flags + отправитель + 32 payload) |
 | Авторизация | 4-значный PIN (из MAC) |
 
@@ -1015,7 +1031,7 @@ wake=BUTTON\`.
 
 export const USER_GUIDE_EN = `# MeshTRX — User Guide
 
-> Android 4.4.36 | iPhone 1.0.4 | Desktop 1.2.0 | Firmware 4.4.38 | Updated: 2026-11-05
+> Android 4.4.37 | iPhone 1.0.4 | Desktop 1.2.1 | Firmware 4.4.39 | Updated: 2026-11-07
 
 ---
 
@@ -1760,6 +1776,14 @@ The same button turns it back on; a short press is enough. Waking from this slee
 
 In repeater mode the threshold is longer — eight seconds: there the shorter holds are already taken by resetting the statistics and leaving the mode. While you hold the button a countdown runs on the screen, so you are not holding it blind.
 
+### External PTT button
+
+You can wire your own talk button to the node: a plain tactile switch, the PTT from an old radio, or a button on the case. You need firmware 4.4.39 and app 4.4.37 or newer.
+
+The button shorts **GPIO 47** to **GND**. Both pins are on the header of the V3 and the V4; the pull-up is enabled in the firmware, so no resistors are needed.
+
+Hold the button and the phone records your voice and sends it to the general channel, just like holding Talk with no addressee; release it to end the transmission. The limit is the same 10 seconds. The phone has to be connected to the node — by cable or over Bluetooth — and its screen can be off. Without a phone the node shows \`PTT no phone\`. The built-in PRG button cannot do this: holding it turns the node off.
+
 ---
 
 ## Indicators
@@ -1828,7 +1852,7 @@ Five tabs: **PTT**, **Chat**, **Files**, **Map**, **Settings**. The active tab i
 |-----------|-------|
 | Service | Nordic UART Service (NUS) |
 | MTU | 128 bytes |
-| Commands | 60+ (0x01–0x3E) |
+| Commands | 60+ (0x01–0x3F) |
 | Audio packet | 36 bytes (cmd + flags + sender + 32 payload) |
 | Authorisation | a 4-digit PIN (derived from the MAC) |
 
