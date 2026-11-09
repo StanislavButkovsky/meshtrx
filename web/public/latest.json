@@ -1,15 +1,15 @@
 {
   "app": {
-    "version": "4.4.37",
-    "code": 82,
-    "url": "https://meshtrx.ru/downloads/meshtrx-4.4.37.apk"
+    "version": "4.4.38",
+    "code": 83,
+    "url": "https://meshtrx.ru/downloads/meshtrx-4.4.38.apk"
   },
   "firmware": {
-    "version": "4.4.39",
-    "v3": "https://meshtrx.ru/downloads/firmware-v3-4.4.39.bin",
-    "v3_433": "https://meshtrx.ru/downloads/firmware-v3-433-4.4.39.bin",
-    "v4": "https://meshtrx.ru/downloads/firmware-v4-4.4.39.bin",
-    "v43": "https://meshtrx.ru/downloads/firmware-v4.3-4.4.39.bin"
+    "version": "4.4.40",
+    "v3": "https://meshtrx.ru/downloads/firmware-v3-4.4.40.bin",
+    "v3_433": "https://meshtrx.ru/downloads/firmware-v3-433-4.4.40.bin",
+    "v4": "https://meshtrx.ru/downloads/firmware-v4-4.4.40.bin",
+    "v43": "https://meshtrx.ru/downloads/firmware-v4.3-4.4.40.bin"
   },
   "ios": {
     "version": "1.0.4",
@@ -19,6 +19,6 @@
     "version": "1.2.1",
     "page": "https://meshtrx.ru/download/#desktop"
   },
-  "date": "2026-11-07",
+  "date": "2026-11-09",
   "changelog": "https://meshtrx.ru/download/"
 }

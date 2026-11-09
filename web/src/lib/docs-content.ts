@@ -4,7 +4,7 @@
 
 export const USER_GUIDE = `# MeshTRX — Руководство пользователя
 
-> Android 4.4.37 | iPhone 1.0.4 | Компьютер 1.2.1 | Прошивка 4.4.39 | Обновлено: 2026-11-07
+> Android 4.4.38 | iPhone 1.0.4 | Компьютер 1.2.1 | Прошивка 4.4.40 | Обновлено: 2026-11-09
 
 ---
 
@@ -641,10 +641,13 @@ python3 -m venv .venv
 800, дело было в этом.
 
 ### Beacon
-- Интервал отправки маячка (Никогда / 1–60 мин / 1 час)
+- Интервал отправки маячка (Никогда / 1–60 мин / 1 час). Уходит на устройство
+  сразу при выборе и хранится в нём (с прошивки 4.4.40; раньше устройство его
+  не принимало и оставалось на 5 минутах)
 
 ### Список станций
-- Таймаут удаления неактивных (15 мин – 24 часа)
+- Таймаут удаления неактивных (15 мин – 24 часа); хранится в телефоне, как и
+  срок истории файлов (с 4.4.38)
 
 ### История файлов
 - Срок хранения (7 / 14 / 30 / 90 дней / Без ограничений)
@@ -659,7 +662,8 @@ python3 -m venv .venv
 - Русский / English — переключение мгновенное
 
 ### Применить и сохранить
-Кнопка отправляет настройки радио на устройство и сохраняет в NVS.
+Кнопка отправляет на устройство мощность, Duty Cycle и позывной и сохраняет их
+в нём. Маяк и списки ниже применяются сразу, кнопка для них не нужна.
 
 ---
 
@@ -1031,7 +1035,7 @@ wake=BUTTON\`.
 
 export const USER_GUIDE_EN = `# MeshTRX — User Guide
 
-> Android 4.4.37 | iPhone 1.0.4 | Desktop 1.2.1 | Firmware 4.4.39 | Updated: 2026-11-07
+> Android 4.4.38 | iPhone 1.0.4 | Desktop 1.2.1 | Firmware 4.4.40 | Updated: 2026-11-09
 
 ---
 
@@ -1553,10 +1557,10 @@ The timbre of the voice itself cannot be adjusted: it goes on air through Codec2
 Since version 4.4.5 every setting in this section is remembered and survives an app restart. In earlier versions they were reset to factory values on every close — if a VOX threshold you had tuned "went back to 800 by itself", this was why.
 
 ### Beacon
-- Beacon interval (Never / 1–60 min / 1 hour)
+- Beacon interval (Never / 1–60 min / 1 hour). Sent to the device as soon as you pick it and stored there (since firmware 4.4.40; before that the device ignored it and stayed at 5 minutes)
 
 ### Station list
-- Timeout for removing inactive stations (15 min to 24 hours)
+- Timeout for removing inactive stations (15 min to 24 hours); stored on the phone, like the file history retention (since 4.4.38)
 
 ### File history
 - Retention (7 / 14 / 30 / 90 days / Unlimited)
@@ -1571,7 +1575,7 @@ Since version 4.4.5 every setting in this section is remembered and survives an 
 - Russian / English — switches instantly
 
 ### Apply and save
-The button sends the radio settings to the device and stores them in NVS.
+The button sends transmit power, Duty Cycle and the call sign to the device and stores them there. The beacon and the lists above apply right away and do not need the button.
 
 ---
 
