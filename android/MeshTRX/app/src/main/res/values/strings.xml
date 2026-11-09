@@ -37,7 +37,7 @@
     <string name="vox_hangtime">Delay: %d ms</string>
     <string name="beacon">Beacon</string>
     <string name="peer_list">Peer list</string>
-    <string name="remove_after">Remove after: 60 min</string>
+    <string name="remove_after">Remove a station not heard for:</string>
     <string name="file_history">File history</string>
     <string name="language">Language</string>
     <string name="apply_save">Apply and save</string>

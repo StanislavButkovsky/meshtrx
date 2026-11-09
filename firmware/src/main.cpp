@@ -2277,6 +2277,16 @@ static void handleBleData(uint8_t* data, size_t len) {
         beaconSetCallSign(cs);
         LOG_F("[Settings] CallSign → %s\n", cs);
       }
+      // Интервал маяка приложение слало всегда, но прошивка его не разбирала —
+      // в настройках «Beacon» молча возвращался к 5 минутам. Сам интервал
+      // beacon.cpp хранит у себя, в своём разделе настроек.
+      if (doc["beacon_interval"].is<int>()) {
+        int bi = doc["beacon_interval"];
+        if (bi == 0 || (bi >= 60 && bi <= 3600)) {
+          beaconSetInterval((uint32_t)bi);
+          LOG_F("[Settings] Beacon → %d sec\n", bi);
+        }
+      }
       if (doc["file_timeout"].is<int>()) {
         uint16_t ft = doc["file_timeout"];
         if (ft >= 30 && ft <= 180) {

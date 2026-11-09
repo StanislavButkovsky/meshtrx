@@ -675,6 +675,11 @@ class MeshTRXService : Service() {
         voxEngine.threshold = prefs.getInt("vox_threshold", VoxEngine.DEFAULT_THRESHOLD)
         voxEngine.hangtimeMs = prefs.getLong("vox_hangtime", VoxEngine.DEFAULT_HANGTIME_MS)
         ServiceState.rxVolume.value = volume
+        // Сколько держать станцию в списке и сколько хранить историю файлов —
+        // тоже телефонные настройки; раньше они жили только в памяти, и экран
+        // настроек при каждом открытии возвращал их к 60 мин и 30 дням
+        ServiceState.peerTimeoutMin.value = prefs.getInt("peer_timeout_min", 60)
+        ServiceState.fileHistoryDays.value = prefs.getInt("file_history_days", 30)
     }
 
     fun setRxVolume(percent: Int) {

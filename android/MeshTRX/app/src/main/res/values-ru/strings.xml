@@ -37,7 +37,7 @@
     <string name="vox_hangtime">Задержка: %d мс</string>
     <string name="beacon">Beacon</string>
     <string name="peer_list">Список станций</string>
-    <string name="remove_after">Удалять через: 60 мин</string>
+    <string name="remove_after">Убирать станцию, если её не слышно:</string>
     <string name="file_history">История файлов</string>
     <string name="language">Язык / Language</string>
     <string name="apply_save">Применить и сохранить</string>
