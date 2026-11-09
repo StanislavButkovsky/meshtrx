@@ -249,10 +249,17 @@ class SettingsFragment : Fragment() {
         val timeoutOptions = listOf(getString(R.string.timeout_15), getString(R.string.timeout_30), getString(R.string.timeout_60), getString(R.string.timeout_2h), getString(R.string.timeout_6h), getString(R.string.timeout_24h))
         val timeoutValues = listOf(15, 30, 60, 120, 360, 1440)
         spinnerPeerTimeout.adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, timeoutOptions)
-        spinnerPeerTimeout.setSelection(2) // 60 мин
+        // Показываем сохранённое значение, а не 60 мин из разметки: иначе само
+        // открытие экрана перезаписывало выбор человека. Читаем прямо из
+        // настроек телефона — экран бывает готов раньше, чем служба их загрузит.
+        val localPrefs = requireContext().getSharedPreferences("meshtrx", android.content.Context.MODE_PRIVATE)
+        val savedTimeout = localPrefs.getInt("peer_timeout_min", 60)
+        ServiceState.peerTimeoutMin.value = savedTimeout
+        spinnerPeerTimeout.setSelection(timeoutValues.indexOf(savedTimeout).let { if (it < 0) 2 else it })
         spinnerPeerTimeout.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(p: AdapterView<*>?, v2: View?, pos: Int, id: Long) {
                 ServiceState.peerTimeoutMin.value = timeoutValues[pos]
+                localPrefs.edit().putInt("peer_timeout_min", timeoutValues[pos]).apply()
             }
             override fun onNothingSelected(p: AdapterView<*>?) {}
         }
@@ -349,6 +356,21 @@ class SettingsFragment : Fragment() {
             val idx = listOf(0, 60, 180, 300, 900, 1800, 3600).indexOf(sec)
             if (idx >= 0) spinnerBeacon.setSelection(idx)
         }
+        // Маяк уходит в рацию сразу, как соседние настройки списков, — раньше
+        // только по «Применить и сохранить», и без неё при следующем
+        // подключении экран показывал прежнее значение из рации: казалось, что
+        // настройка «сбрасывается». Пока значение рации неизвестно, не шлём:
+        // выбор из разметки не должен её перезаписать.
+        spinnerBeacon.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(p: AdapterView<*>?, v2: View?, pos: Int, id: Long) {
+                val sec = listOf(0, 60, 180, 300, 900, 1800, 3600)[pos]
+                val dev = ServiceState.deviceBeaconSec.value ?: return
+                if (sec == dev || service?.bleManager?.isConnected() != true) return
+                service?.bleManager?.sendSettings("{\"beacon_interval\":$sec}")
+                ServiceState.deviceBeaconSec.value = sec
+            }
+            override fun onNothingSelected(p: AdapterView<*>?) {}
+        }
 
         seekTxPower.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(sb: SeekBar?, value: Int, fromUser: Boolean) {
@@ -364,10 +386,13 @@ class SettingsFragment : Fragment() {
         val historyOptions = listOf(getString(R.string.history_7d), getString(R.string.history_14d), getString(R.string.history_30d), getString(R.string.history_90d), getString(R.string.history_unlimited))
         val historyValues = listOf(7, 14, 30, 90, 3650)
         spinnerFileHistory.adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, historyOptions)
-        spinnerFileHistory.setSelection(2) // 30 дней
+        val savedHistory = localPrefs.getInt("file_history_days", 30)
+        ServiceState.fileHistoryDays.value = savedHistory
+        spinnerFileHistory.setSelection(historyValues.indexOf(savedHistory).let { if (it < 0) 2 else it })
         spinnerFileHistory.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(p: AdapterView<*>?, v2: View?, pos: Int, id: Long) {
                 ServiceState.fileHistoryDays.value = historyValues[pos]
+                localPrefs.edit().putInt("file_history_days", historyValues[pos]).apply()
             }
             override fun onNothingSelected(p: AdapterView<*>?) {}
         }
