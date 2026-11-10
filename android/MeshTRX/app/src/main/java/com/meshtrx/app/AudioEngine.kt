@@ -88,9 +88,13 @@ class AudioEngine {
     /**
      * Запуск записи для PTT — кодирует и отправляет сразу.
      */
+    /** Микрофон, с которого писать: гарнитура на время передачи с её кнопки. null — как решит система. */
+    var preferredInput: android.media.AudioDeviceInfo? = null
+
     fun startRecording() {
         if (recording) return
         ensureAudioRecord()
+        audioRecord?.setPreferredDevice(preferredInput)
         audioRecord?.startRecording()
         recording = true
         sendAudio = true

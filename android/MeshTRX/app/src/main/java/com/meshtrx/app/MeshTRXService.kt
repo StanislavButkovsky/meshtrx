@@ -55,6 +55,7 @@ class MeshTRXService : Service() {
     private val binder = LocalBinder()
     lateinit var bleManager: BleManager
     lateinit var usbLink: UsbLink
+    lateinit var headsetPtt: HeadsetPtt
     lateinit var audioEngine: AudioEngine
     lateinit var voxEngine: VoxEngine
 
@@ -75,6 +76,7 @@ class MeshTRXService : Service() {
 
         bleManager = BleManager(applicationContext)
         usbLink = UsbLink(applicationContext)
+        headsetPtt = HeadsetPtt(applicationContext) { handler.post { toggleHeadsetPtt() } }
         bleManager.usbLink = usbLink
         audioEngine = AudioEngine()
         voxEngine = VoxEngine()
@@ -103,6 +105,7 @@ class MeshTRXService : Service() {
             ServiceState.connectionState.postValue(BleState.CONNECTED)
             ServiceState.statusMessage.postValue("Подключено")
             audioEngine.startPlayback()
+            if (headsetPttEnabled()) handler.post { headsetPtt.enable() }
             bleManager.requestSettings()
             // Рация могла смениться на прошивку другого диапазона: сетку
             // сбрасываем и спрашиваем заново (ответ BAND_INFO идёт за версией).
@@ -132,6 +135,7 @@ class MeshTRXService : Service() {
         bleManager.onDisconnected = onDisconnected@{
             // Bluetooth оборвался, а рация на кабеле — связь есть, ничего не гасим
             if (usbLink.isOpen) return@onDisconnected
+            handler.post { headsetPtt.disable() }
             handler.removeCallbacks(keepAliveRunnable)
             ServiceState.connectionState.postValue(BleState.DISCONNECTED)
             ServiceState.statusMessage.postValue("Отключено")
@@ -461,6 +465,8 @@ class MeshTRXService : Service() {
         stopPttLimit()
         ServiceState.isPttActive.value = false
         audioEngine.stopRecording()
+        audioEngine.preferredInput = null
+        headsetPtt.stopSco()
         Thread { Thread.sleep(100); bleManager.sendPttEnd() }.start()
     }
 
@@ -713,6 +719,27 @@ class MeshTRXService : Service() {
     fun voxThreshold(): Int = voxEngine.threshold
     fun voxHangtime(): Long = voxEngine.hangtimeMs
     fun rogerBeepEnabled(): Boolean = prefs.getBoolean("roger_beep", true)
+
+    // Кнопка Bluetooth-гарнитуры как PTT. По умолчанию выключена: пока она
+    // включена, MeshTRX забирает у музыкальных приложений кнопку паузы.
+    fun headsetPttEnabled(): Boolean = prefs.getBoolean("headset_ptt", false)
+
+    fun setHeadsetPtt(enabled: Boolean) {
+        prefs.edit().putBoolean("headset_ptt", enabled).apply()
+        if (enabled && bleManager.isConnected()) headsetPtt.enable() else headsetPtt.disable()
+    }
+
+    /** Нажатие кнопки гарнитуры: передача идёт — закончить, нет — начать.
+     *  Говорим в микрофон гарнитуры, если она подключена. */
+    private fun toggleHeadsetPtt() {
+        if (ServiceState.isPttActive.value == true) { pttUp(); return }
+        if (ServiceState.txMode.value != TxMode.PTT || !bleManager.isConnected()) return
+        headsetPtt.beep()
+        headsetPtt.startSco {
+            audioEngine.preferredInput = headsetPtt.scoInput()
+            pttDown()
+        }
+    }
 
     fun sendTextMessage(text: String, destId: String? = null, destName: String? = null) {
         val seq = msgSeq++
@@ -1877,6 +1904,7 @@ class MeshTRXService : Service() {
         saveMessages()
         audioEngine.destroy()
         usbLink.stop()
+        headsetPtt.disable()
         bleManager.disconnect()
         Log.d(TAG, "Service destroyed")
         super.onDestroy()

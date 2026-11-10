@@ -174,6 +174,8 @@ MeshTRX v%2$s</string>
     <string name="rx_volume">Громкость приёма: %d%%</string>
     <string name="ptt_rms">PTT RMS: %d (отсечка шума)</string>
     <string name="roger_beep">Звук окончания передачи</string>
+    <string name="headset_ptt">Кнопка гарнитуры — PTT</string>
+    <string name="headset_ptt_hint">Нажал кнопку Bluetooth-гарнитуры — передача пошла, нажал ещё раз — конец. Говорить в микрофон гарнитуры. Пока включено, пауза в музыке с гарнитуры не работает.</string>
     <string name="repeater_title">Ретранслятор</string>
     <string name="repeater_warning">Устройство перезагрузится в режиме ретранслятора. Подключитесь к WiFi для мониторинга.</string>
     <string name="wifi_ssid">WiFi SSID (опционально)</string>
