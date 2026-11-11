@@ -305,6 +305,13 @@ class SettingsFragment : Fragment() {
             service?.setRogerBeep(checked)
         }
 
+        // Кнопка Bluetooth-гарнитуры как PTT
+        val switchHeadsetPtt = v.findViewById<SwitchMaterial>(R.id.switchHeadsetPtt)
+        switchHeadsetPtt.isChecked = service?.headsetPttEnabled() ?: false
+        switchHeadsetPtt.setOnCheckedChangeListener { _, checked ->
+            service?.setHeadsetPtt(checked)
+        }
+
         // VOX
         val tvVoxThreshold = v.findViewById<TextView>(R.id.tvVoxThreshold)
         val seekVoxThreshold = v.findViewById<SeekBar>(R.id.seekVoxThreshold)

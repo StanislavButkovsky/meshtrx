@@ -753,6 +753,12 @@ The button shorts **GPIO 47** to **GND**. Both pins are on the header of the V3 
 
 Hold the button and the phone records your voice and sends it to the general channel, just like holding Talk with no addressee; release it to end the transmission. The limit is the same 10 seconds. The phone has to be connected to the node — by cable or over Bluetooth — and its screen can be off. Without a phone the node shows `PTT no phone`. The built-in PRG button cannot do this: holding it turns the node off.
 
+### Bluetooth headset button
+
+On Android you can also talk with the button of a Bluetooth headset (app 4.4.39 and newer). Turn on **Headset button — PTT** in **Settings → Audio**.
+
+A headset cannot "hold" its button, so it works as a toggle: press it — a short beep and the transmission starts; press again — it ends. After 10 seconds the transmission stops by itself, just like with holding. Speak into the headset microphone: during the transmission the sound is taken from it. It works with the screen off too. While the switch is on, the headset button does not pause music in other apps. Selfie buttons that send play/pause work as well.
+
 ---
 
 ## Indicators
