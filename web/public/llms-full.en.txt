@@ -1,12 +1,12 @@
 # MeshTRX — full documentation
 
-> App 4.4.39, firmware 4.4.40, updated 2026-11-07. Source: https://meshtrx.ru/docs/
+> App 4.4.40, firmware 4.4.40, updated 2026-11-07. Source: https://meshtrx.ru/docs/
 
 ---
 
 # MeshTRX — User Guide
 
-> Android 4.4.39 | iPhone 1.0.4 | Desktop 1.2.1 | Firmware 4.4.40 | Updated: 2026-11-11
+> Android 4.4.40 | iPhone 1.0.4 | Desktop 1.2.1 | Firmware 4.4.40 | Updated: 2026-11-11
 
 ---
 
@@ -763,7 +763,7 @@ Hold the button and the phone records your voice and sends it to the general cha
 
 On Android you can also talk with the button of a Bluetooth headset (app 4.4.39 and newer). Turn on **Headset button — PTT** in **Settings → Audio**.
 
-A headset cannot "hold" its button, so it works as a toggle: press it — a short beep and the transmission starts; press again — it ends. After 10 seconds the transmission stops by itself, just like with holding. Speak into the headset microphone: during the transmission the sound is taken from it. It works with the screen off too. While the switch is on, the headset button does not pause music in other apps. Selfie buttons that send play/pause work as well.
+A headset cannot "hold" its button, so it works as a toggle: press it — a short beep and the transmission starts; press again — it ends. After 10 seconds the transmission stops by itself, just like with holding. It works with the screen off too. By default the sound comes from the phone microphone. The **Speak into the headset microphone** switch takes it from the headset instead, but the headset then goes into "call" mode, and on some models (Redmi AirDots 2, for example) the button in that mode calls the voice assistant and does not stop the transmission — keep it off then. While the switch is on, the headset button does not pause music in other apps. Selfie buttons that send play/pause work as well.
 
 ---
 

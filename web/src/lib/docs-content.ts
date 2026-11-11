@@ -4,7 +4,7 @@
 
 export const USER_GUIDE = `# MeshTRX — Руководство пользователя
 
-> Android 4.4.39 | iPhone 1.0.4 | Компьютер 1.2.1 | Прошивка 4.4.40 | Обновлено: 2026-11-11
+> Android 4.4.40 | iPhone 1.0.4 | Компьютер 1.2.1 | Прошивка 4.4.40 | Обновлено: 2026-11-11
 
 ---
 
@@ -945,9 +945,12 @@ wake=BUTTON\`.
 
 Гарнитура не умеет «держать» кнопку, поэтому она работает переключателем:
 нажали — короткий сигнал, передача пошла; нажали ещё раз — конец. Через 10
-секунд передача закончится сама, как и при удержании. Говорить нужно в
-микрофон гарнитуры: на время передачи звук берётся с неё. Работает и с
-погасшим экраном. Пока переключатель включён, кнопка гарнитуры не ставит на
+секунд передача закончится сама, как и при удержании. Работает и с погасшим
+экраном. Звук по умолчанию берётся с микрофона телефона. Переключатель
+**Говорить в микрофон гарнитуры** берёт его с гарнитуры, но для этого она
+переходит в «звонковый» режим, и у некоторых моделей (например, Redmi AirDots
+2) кнопка в нём вызывает голосового помощника и не останавливает передачу —
+тогда оставьте его выключенным. Пока переключатель включён, кнопка гарнитуры не ставит на
 паузу музыку в других приложениях. Селфи-кнопки, которые шлют «воспроизведение/
 пауза», тоже подходят.
 
@@ -1048,7 +1051,7 @@ wake=BUTTON\`.
 
 export const USER_GUIDE_EN = `# MeshTRX — User Guide
 
-> Android 4.4.39 | iPhone 1.0.4 | Desktop 1.2.1 | Firmware 4.4.40 | Updated: 2026-11-11
+> Android 4.4.40 | iPhone 1.0.4 | Desktop 1.2.1 | Firmware 4.4.40 | Updated: 2026-11-11
 
 ---
 
@@ -1805,7 +1808,7 @@ Hold the button and the phone records your voice and sends it to the general cha
 
 On Android you can also talk with the button of a Bluetooth headset (app 4.4.39 and newer). Turn on **Headset button — PTT** in **Settings → Audio**.
 
-A headset cannot "hold" its button, so it works as a toggle: press it — a short beep and the transmission starts; press again — it ends. After 10 seconds the transmission stops by itself, just like with holding. Speak into the headset microphone: during the transmission the sound is taken from it. It works with the screen off too. While the switch is on, the headset button does not pause music in other apps. Selfie buttons that send play/pause work as well.
+A headset cannot "hold" its button, so it works as a toggle: press it — a short beep and the transmission starts; press again — it ends. After 10 seconds the transmission stops by itself, just like with holding. It works with the screen off too. By default the sound comes from the phone microphone. The **Speak into the headset microphone** switch takes it from the headset instead, but the headset then goes into "call" mode, and on some models (Redmi AirDots 2, for example) the button in that mode calls the voice assistant and does not stop the transmission — keep it off then. While the switch is on, the headset button does not pause music in other apps. Selfie buttons that send play/pause work as well.
 
 ---
 
