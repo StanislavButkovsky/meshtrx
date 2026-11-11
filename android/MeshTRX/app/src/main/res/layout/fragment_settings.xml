@@ -182,6 +182,20 @@
         </LinearLayout>
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="@string/headset_ptt_hint" android:textSize="12sp" android:textColor="?attr/mtx_text_dim"
+            android:layout_marginBottom="8dp" />
+        <LinearLayout
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:gravity="center_vertical">
+            <TextView android:layout_width="0dp" android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="@string/headset_mic" android:textSize="13sp" android:textColor="?attr/mtx_text2" />
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switchHeadsetMic"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_marginStart="8dp" android:checked="false" />
+        </LinearLayout>
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/headset_mic_hint" android:textSize="12sp" android:textColor="?attr/mtx_text_dim"
             android:layout_marginBottom="16dp" />
 
         <!-- VOX -->

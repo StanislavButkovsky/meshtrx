@@ -311,6 +311,11 @@ class SettingsFragment : Fragment() {
         switchHeadsetPtt.setOnCheckedChangeListener { _, checked ->
             service?.setHeadsetPtt(checked)
         }
+        val switchHeadsetMic = v.findViewById<SwitchMaterial>(R.id.switchHeadsetMic)
+        switchHeadsetMic.isChecked = service?.headsetMicEnabled() ?: false
+        switchHeadsetMic.setOnCheckedChangeListener { _, checked ->
+            service?.setHeadsetMic(checked)
+        }
 
         // VOX
         val tvVoxThreshold = v.findViewById<TextView>(R.id.tvVoxThreshold)

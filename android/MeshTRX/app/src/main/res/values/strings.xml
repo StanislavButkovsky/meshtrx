@@ -175,7 +175,9 @@ MeshTRX v%2$s</string>
     <string name="ptt_rms">PTT RMS: %d (noise gate)</string>
     <string name="roger_beep">End-of-transmission tone</string>
     <string name="headset_ptt">Headset button — PTT</string>
-    <string name="headset_ptt_hint">Press the Bluetooth headset button to start talking, press again to stop. Speak into the headset microphone. While on, the headset button does not pause music.</string>
+    <string name="headset_ptt_hint">Press the Bluetooth headset button to start talking, press again to stop. While on, the headset button does not pause music.</string>
+    <string name="headset_mic">Speak into the headset microphone</string>
+    <string name="headset_mic_hint">Otherwise the sound comes from the phone. With some headsets this mode makes the button call the voice assistant and not stop the transmission — turn it off then.</string>
     <string name="repeater_title">Repeater</string>
     <string name="repeater_warning">Device will restart in repeater mode. Connect to WiFi AP to monitor.</string>
     <string name="wifi_ssid">WiFi SSID (optional)</string>
