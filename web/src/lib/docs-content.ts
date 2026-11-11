@@ -4,7 +4,7 @@
 
 export const USER_GUIDE = `# MeshTRX — Руководство пользователя
 
-> Android 4.4.38 | iPhone 1.0.4 | Компьютер 1.2.1 | Прошивка 4.4.40 | Обновлено: 2026-11-09
+> Android 4.4.39 | iPhone 1.0.4 | Компьютер 1.2.1 | Прошивка 4.4.40 | Обновлено: 2026-11-11
 
 ---
 
@@ -938,6 +938,19 @@ wake=BUTTON\`.
 \`PTT no phone\`. Встроенная кнопка PRG для этого не подходит: её удержание
 выключает ноду.
 
+### Кнопка Bluetooth-гарнитуры
+
+На Android говорить можно и кнопкой Bluetooth-гарнитуры (с приложения 4.4.39).
+Включите в **Настройках → Аудио** переключатель **Кнопка гарнитуры — PTT**.
+
+Гарнитура не умеет «держать» кнопку, поэтому она работает переключателем:
+нажали — короткий сигнал, передача пошла; нажали ещё раз — конец. Через 10
+секунд передача закончится сама, как и при удержании. Говорить нужно в
+микрофон гарнитуры: на время передачи звук берётся с неё. Работает и с
+погасшим экраном. Пока переключатель включён, кнопка гарнитуры не ставит на
+паузу музыку в других приложениях. Селфи-кнопки, которые шлют «воспроизведение/
+пауза», тоже подходят.
+
 ---
 
 ## Индикация
@@ -1035,7 +1048,7 @@ wake=BUTTON\`.
 
 export const USER_GUIDE_EN = `# MeshTRX — User Guide
 
-> Android 4.4.38 | iPhone 1.0.4 | Desktop 1.2.1 | Firmware 4.4.40 | Updated: 2026-11-09
+> Android 4.4.39 | iPhone 1.0.4 | Desktop 1.2.1 | Firmware 4.4.40 | Updated: 2026-11-11
 
 ---
 
@@ -1787,6 +1800,12 @@ You can wire your own talk button to the node: a plain tactile switch, the PTT f
 The button shorts **GPIO 47** to **GND**. Both pins are on the header of the V3 and the V4; the pull-up is enabled in the firmware, so no resistors are needed.
 
 Hold the button and the phone records your voice and sends it to the general channel, just like holding Talk with no addressee; release it to end the transmission. The limit is the same 10 seconds. The phone has to be connected to the node — by cable or over Bluetooth — and its screen can be off. Without a phone the node shows \`PTT no phone\`. The built-in PRG button cannot do this: holding it turns the node off.
+
+### Bluetooth headset button
+
+On Android you can also talk with the button of a Bluetooth headset (app 4.4.39 and newer). Turn on **Headset button — PTT** in **Settings → Audio**.
+
+A headset cannot "hold" its button, so it works as a toggle: press it — a short beep and the transmission starts; press again — it ends. After 10 seconds the transmission stops by itself, just like with holding. Speak into the headset microphone: during the transmission the sound is taken from it. It works with the screen off too. While the switch is on, the headset button does not pause music in other apps. Selfie buttons that send play/pause work as well.
 
 ---
 
