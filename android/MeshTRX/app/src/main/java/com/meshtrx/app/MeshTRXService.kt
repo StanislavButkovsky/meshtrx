@@ -729,12 +729,22 @@ class MeshTRXService : Service() {
         if (enabled && bleManager.isConnected()) headsetPtt.enable() else headsetPtt.disable()
     }
 
-    /** Нажатие кнопки гарнитуры: передача идёт — закончить, нет — начать.
-     *  Говорим в микрофон гарнитуры, если она подключена. */
+    // Микрофон гарнитуры — отдельно и по умолчанию выключен. Чтобы взять его,
+    // гарнитура переходит в «звонковый» режим, и у многих моделей кнопка в нём
+    // уходит телефону как вызов помощника, а не как «плей/пауза»: передачу уже
+    // не остановить (так было у Redmi AirDots 2 — выскакивал Gemini).
+    fun headsetMicEnabled(): Boolean = prefs.getBoolean("headset_mic", false)
+
+    fun setHeadsetMic(enabled: Boolean) {
+        prefs.edit().putBoolean("headset_mic", enabled).apply()
+    }
+
+    /** Нажатие кнопки гарнитуры: передача идёт — закончить, нет — начать. */
     private fun toggleHeadsetPtt() {
         if (ServiceState.isPttActive.value == true) { pttUp(); return }
         if (ServiceState.txMode.value != TxMode.PTT || !bleManager.isConnected()) return
         headsetPtt.beep()
+        if (!headsetMicEnabled()) { pttDown(); return }
         headsetPtt.startSco {
             audioEngine.preferredInput = headsetPtt.scoInput()
             pttDown()
