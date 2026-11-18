@@ -1,6 +1,6 @@
 # MeshTRX — User Guide
 
-> Android 4.4.40 | iPhone 1.0.4 | Desktop 1.2.1 | Firmware 4.4.40 | Updated: 2026-11-11
+> Android 4.4.40 | iPhone 1.0.4 | Desktop 1.2.1 | Firmware 4.4.41 | Updated: 2026-11-18
 
 ---
 
@@ -441,20 +441,20 @@ Use the filter drop-down to show messages from one particular station or from ev
 ### Sending files
 
 1. Press **File** — the file manager opens
-2. Pick a file (100 KB max)
+2. Pick a file (100 KB max; about 55 KB on a V3 board)
 3. The transfer starts automatically
 
 ### Transfer parameters
 
 | Parameter | Value |
 |-----------|-------|
-| Max size | 100 KB |
+| Max size | 100 KB in the app; V3 radio ~55 KB, V4 ~85 KB |
 | Chunk size | 120 bytes |
 | Interval | 100 ms |
 | Throughput | ~1.2 KB/s |
 | An 11 KB photo | ~10 seconds |
 
-The hundred kilobytes is a ceiling for any file, not the size a photo is squeezed to: a photo prepared by the app takes 5–20 KB and goes out in about ten seconds. The ceiling exists for two reasons at once. First, the device's memory: an incoming file is held whole in the radio's RAM, and there is about a hundred kilobytes of it free, so a request for more is refused outright rather than dropped halfway. Second, the air: the channel is single and half-duplex, and for the whole transfer nobody else can talk or send a message. Hence the rule of thumb: the smaller the file, the less of the shared channel you take.
+The hundred kilobytes is a ceiling for any file, not the size a photo is squeezed to: a photo prepared by the app takes 5–20 KB and goes out in about ten seconds. The ceiling exists for two reasons at once. First, the device's memory: the file is held whole in the radio's RAM, and the firmware keeps another 30 KB in reserve on top of it, so a request for more is refused outright rather than dropped halfway. The real limit depends on the board: a Heltec V3 (no PSRAM) takes files up to about 55 KB, a V4 up to about 85 KB (measured on firmware 4.4.41; on 4.4.38–4.4.40 the V3 was down to about 44 KB). Second, the air: the channel is single and half-duplex, and for the whole transfer nobody else can talk or send a message. Hence the rule of thumb: the smaller the file, the less of the shared channel you take.
 
 ### What you can do with a file
 

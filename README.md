@@ -17,7 +17,7 @@ MeshTRX is an open-source communication system that provides PTT voice, text mes
 - **Desktop client** — Windows, Linux and macOS (Python + PySide6), same
   features over the same BLE protocol
 - **Messaging** — Text chat up to 84 chars, broadcast or direct
-- **Files** — Photo and file transfer up to 100 KB over LoRa
+- **Files** — Photo and file transfer up to 100 KB over LoRa (about 55 KB on Heltec V3)
 - **Map & Radar** — OpenStreetMap + tactical radar with zoom and contrast, peer positions via GPS
 - **Splash screen** — Animated launch screen with version info
 - **Calls** — All-call, private, group (up to 8 members)
