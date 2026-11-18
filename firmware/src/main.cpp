@@ -111,6 +111,7 @@ static volatile uint8_t fileTxAckStatus = 0;
 static uint16_t fileTxMissing[50];
 static uint16_t fileTxMissingCount = 0;
 static TaskHandle_t fileSendTaskHandle = nullptr;
+static TaskHandle_t usbTaskHandle = nullptr;
 
 // LED
 static volatile bool fileTxActive = false;
@@ -360,7 +361,11 @@ void setup() {
 
   // Порт читаем в любом режиме: по нему ходят и команды стенда, и рамки
   // телефона на кабеле. Обработчик рамок включается ниже, в обычном режиме.
-  xTaskCreatePinnedToCore(usbTaskFunc, "usb", 8192, nullptr, 2, nullptr, 1);
+  // Стек 6 КБ: по кабелю сюда приходят те же команды телефона, что по
+  // Bluetooth, а там обработчик укладывается в 5 КБ стека NimBLE; сверху
+  // буфер рамки ~1 КБ. 8 КБ на V3 без PSRAM — это почти 10 КБ кучи, которых
+  // с 4.4.38 стало не хватать файлам. Запас виден в INFO_TASKS usb=.
+  xTaskCreatePinnedToCore(usbTaskFunc, "usb", 6144, nullptr, 2, &usbTaskHandle, 1);
 
   // Проверить режим ретранслятора
   repeaterInit();
@@ -433,7 +438,10 @@ void setup() {
                  false, false, getCachedBattery());
 
     // FreeRTOS задачи
-    xTaskCreatePinnedToCore(loraTaskFunc, "lora", 16384, nullptr, 5, &loraTaskHandle, 0);
+    // 8 КБ: на стенде (голос, файлы, NACK, вызовы, ретранслятор) задача
+    // занимает ~3 КБ, codec2 на ноде не вызывается. Было 16 КБ, из них
+    // ~13 КБ не использовались никогда, а на V3 это память под файлы.
+    xTaskCreatePinnedToCore(loraTaskFunc, "lora", 8192, nullptr, 5, &loraTaskHandle, 0);
     xTaskCreatePinnedToCore(bleTaskFunc, "ble", 4096, nullptr, 5, nullptr, 1);
     xTaskCreatePinnedToCore(beaconTask, "beacon", 4096, nullptr, 2, nullptr, 1);
     xTaskCreatePinnedToCore(fileSendTask, "filesend", 8192, nullptr, 3, &fileSendTaskHandle, 1);
@@ -2725,11 +2733,12 @@ void testHookInfo() {
     txAudioQueue ? (unsigned)uxQueueMessagesWaiting(txAudioQueue) : 0,
     (unsigned)inboxCount(), (unsigned)inboxCapacityBytes());
 
-  Serial.printf("EVT INFO_TASKS lora=%u ble=%u filesend=%u main=%u\n",
+  Serial.printf("EVT INFO_TASKS lora=%u ble=%u filesend=%u main=%u usb=%u\n",
     loraTaskHandle ? (unsigned)uxTaskGetStackHighWaterMark(loraTaskHandle) : 0,
     0u,
     fileSendTaskHandle ? (unsigned)uxTaskGetStackHighWaterMark(fileSendTaskHandle) : 0,
-    (unsigned)uxTaskGetStackHighWaterMark(nullptr));
+    (unsigned)uxTaskGetStackHighWaterMark(nullptr),
+    usbTaskHandle ? (unsigned)uxTaskGetStackHighWaterMark(usbTaskHandle) : 0);
 }
 
 #endif // TEST_CONSOLE
