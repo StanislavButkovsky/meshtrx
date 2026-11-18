@@ -44,8 +44,16 @@ class Event:
 
 def discover_ports(count: int = 2) -> list[str]:
     """Найти подключённые платы: V3 отдаётся мостом (ttyUSB), V4 — нативным USB
-    (ttyACM). Порядок фиксируем сортировкой, чтобы прогоны были повторяемы."""
+    (ttyACM). Порядок фиксируем сортировкой, чтобы прогоны были повторяемы.
+
+    Платы могут стоять и на другой машине: тогда их адреса (через запятую)
+    берутся из MESHTRX_BENCH_PORTS, например
+    rfc2217://localhost:4000?ign_set_control,rfc2217://localhost:4001?ign_set_control."""
     import glob
+    import os
+    env = os.environ.get("MESHTRX_BENCH_PORTS", "").strip()
+    if env:
+        return [p.strip() for p in env.split(",") if p.strip()][:count]
     ports = sorted(glob.glob("/dev/ttyUSB*")) + sorted(glob.glob("/dev/ttyACM*"))
     return ports[:count]
 
@@ -55,7 +63,18 @@ class Device:
                  log_path: str | None = None):
         self.port = port
         self.name = name or port
-        self.ser = serial.Serial(port, baud, timeout=0.2)
+        # serial_for_url понимает и /dev/tty*, и rfc2217://хост:порт — порт
+        # платы, подключённой к другой машине (см. discover_ports). Через
+        # RFC2217 DTR и RTS по умолчанию остаются поднятыми, и V3 (RTS заведён
+        # на EN через мост CP2102) висит в сбросе — поэтому их опускаем до
+        # открытия. Локальный порт открывается как раньше.
+        if "://" in port:
+            self.ser = serial.serial_for_url(port, baud, timeout=0.2, do_not_open=True)
+            self.ser.dtr = False
+            self.ser.rts = False
+            self.ser.open()
+        else:
+            self.ser = serial.serial_for_url(port, baud, timeout=0.2)
         self.events: "queue.Queue[Event]" = queue.Queue()
         self.lines: list[str] = []
         self._log = open(log_path, "a", encoding="utf-8") if log_path else None
