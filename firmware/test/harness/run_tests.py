@@ -55,6 +55,11 @@ def test_ping(A: Device, B: Device):
               f"A ch={ia.get('ch')} B ch={ib.get('ch')}")
         check("A: heap в норме", ia.int("heap") > 60000, f"{ia.int('heap')} байт")
         check("B: heap в норме", ib.int("heap") > 60000, f"{ib.int('heap')} байт")
+    # Предел тока усилителя: при 60 мА (умолчание RadioLib) 20–22 дБм не выходят
+    for nm, d in (("A", A), ("B", B)):
+        r = d.radio()
+        check(f"{nm}: предел тока усилителя 140 мА", r is not None and r.int("ocp") >= 140,
+              f"ocp={r.get('ocp') if r else 'нет ответа'}")
     return ia, ib
 
 

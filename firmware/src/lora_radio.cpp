@@ -100,6 +100,16 @@ void loraInit() {
   }
   Serial.println("OK");
 
+  // Предел тока усилителя SX1262. RadioLib в begin() ставит 60 мА, а на
+  // 20–22 дБм чипу нужно больше 100 мА: при 60 мА срабатывает защита OCP, и
+  // реальная мощность выходит на ~7 дБ ниже заданной. Пользователь V3 заметил,
+  // что Meshtastic на тех же 20 дБм сильнее в разы, — он ставит 140 мА.
+  // 140 мА — максимум регистра OCP; setOutputPower() его сохраняет.
+  state = radio.setCurrentLimit(LORA_CURRENT_LIMIT_MA);
+  if (state != RADIOLIB_ERR_NONE) {
+    Serial.printf("[LoRa] setCurrentLimit FAILED, code %d\n", state);
+  }
+
   // Включить аппаратный CRC
   radio.setCRC(true);
 
@@ -261,6 +271,11 @@ bool loraIsDutyCycleEnabled() {
 
 int8_t loraGetTxPower() {
   return currentTxPower;
+}
+
+float loraGetCurrentLimit() {
+  MutexGuard g;
+  return radio.getCurrentLimit();
 }
 
 uint8_t loraGetChannel() {

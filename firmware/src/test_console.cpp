@@ -582,10 +582,10 @@ static void handleLine(char* line) {
         (int)loraGetTxPower());
       return;
     }
-    Serial.printf("EVT RADIO_STAT irq=%04X rx_armed=%d tx=%d mode=%d dio1=%d rxflag=%d t=%lu\n",
+    Serial.printf("EVT RADIO_STAT irq=%04X rx_armed=%d tx=%d mode=%d dio1=%d rxflag=%d ocp=%d t=%lu\n",
       loraGetIrqStatus(), loraIsRxArmed() ? 1 : 0, loraIsTxInProgress() ? 1 : 0,
       (int)loraGetPowerMode(), digitalRead(LORA_DIO1), loraRxFlag ? 1 : 0,
-      (unsigned long)millis());
+      (int)(loraGetCurrentLimit() + 0.5f), (unsigned long)millis());
     return;
   }
 
