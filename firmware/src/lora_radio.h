@@ -78,6 +78,7 @@
 #define LORA_CR          7       // 4/7 — больше FEC для надёжности
 #define LORA_SYNCWORD    0x34
 #define LORA_PREAMBLE    8    // стандартная преамбула для голоса/файлов/чанков
+#define LORA_CURRENT_LIMIT_MA 140.0f  // OCP SX1262: максимум регистра, как в Meshtastic (по умолчанию RadioLib — 60)
 
 // === Power modes ===
 #define LORA_PREAMBLE_SHORT  8    // для голоса/файлов (active mode)
@@ -107,6 +108,7 @@ void loraSetTxPower(int8_t power);
 void loraSetDutyCycle(bool enabled);
 bool loraIsDutyCycleEnabled();
 int8_t loraGetTxPower();
+float loraGetCurrentLimit();   // предел тока усилителя SX1262 (OCP), мА
 uint8_t loraGetChannel();
 
 // Power management

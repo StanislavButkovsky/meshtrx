@@ -164,6 +164,11 @@ class Device:
         self.send("INFO")
         return self.wait("INFO", timeout)
 
+    def radio(self, timeout: float = 3.0) -> Event | None:
+        self.drain()
+        self.send("RADIO")
+        return self.wait("RADIO_STAT", timeout)
+
     def pin(self, timeout: float = 3.0) -> Event | None:
         """PIN для подключения телефона. Раньше его можно было узнать только
         из загрузочного лога, то есть перезагрузив плату."""
